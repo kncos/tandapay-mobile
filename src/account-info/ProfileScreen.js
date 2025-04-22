@@ -67,6 +67,20 @@ function SettingsButton(props: {||}) {
   );
 }
 
+function TandaPayButton(props: {||}) {
+  const navigation = useNavigation();
+  return (
+    <ZulipButton
+      style={styles.button}
+      secondary
+      text="TandaPay Menu"
+      onPress={() => {
+        navigation.push('settings');
+      }}
+    />
+  );
+}
+
 function SwitchAccountButton(props: {||}) {
   const navigation = useNavigation();
   return (
@@ -177,6 +191,9 @@ export default function ProfileScreen(props: Props): Node {
         </View>
         <View style={styles.buttonRow}>
           <SettingsButton />
+        </View>
+        <View style={styles.buttonRow}>
+          <TandaPayButton />
         </View>
         <View style={styles.buttonRow}>
           <SwitchAccountButton />
