@@ -75,7 +75,7 @@ function TandaPayButton(props: {||}) {
       secondary
       text="TandaPay Menu"
       onPress={() => {
-        navigation.push('settings');
+        navigation.push('tandapay-menu');
       }}
     />
   );

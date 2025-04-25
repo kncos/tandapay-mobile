@@ -51,6 +51,8 @@ import StreamListScreen from '../subscriptions/StreamListScreen';
 import ReadReceiptsScreen from '../message/ReadReceiptsScreen';
 import { useHaveServerDataGate } from '../withHaveServerDataGate';
 
+import TandaPayMenuScreen from '../tandapay/tandapayMenu';
+
 export type AppNavigatorParamList = {|
   +'account-pick': RouteParamsOf<typeof AccountPickScreen>,
   +'account-details': RouteParamsOf<typeof AccountDetailsScreen>,
@@ -81,6 +83,7 @@ export type AppNavigatorParamList = {|
   +settings: RouteParamsOf<typeof SettingsScreen>,
   +'selectable-options': RouteParamsOf<typeof SelectableOptionsScreen>,
   +'read-receipts': RouteParamsOf<typeof ReadReceiptsScreen>,
+  +'tandapay-menu': void,
 |};
 
 /**
@@ -192,6 +195,7 @@ export default function AppNavigator(props: Props): Node {
       {/* These screens do not expect server data in order to function
           normally. */}
       <Stack.Screen name="account-pick" component={AccountPickScreen} />
+      <Stack.Screen name="tandapay-menu" component={TandaPayMenuScreen} />
       <Stack.Screen name="auth" component={AuthScreen} />
       <Stack.Screen name="dev-auth" component={DevAuthScreen} />
       <Stack.Screen name="password-auth" component={PasswordAuthScreen} />
