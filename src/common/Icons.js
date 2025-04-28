@@ -120,3 +120,7 @@ export const IconWildcardMention: SpecificIconType = makeIcon(FontAwesome, 'bull
 /* eslint-disable react/function-component-definition */
 export const IconWebPublic: SpecificIconType = props => <ZulipIcon name="globe" {...props} />;
 export const IconFollow: SpecificIconType = props => <ZulipIcon name="follow" {...props} />;
+
+export const IconWallet: SpecificIconType = makeIcon(Feather, 'lock');
+export const IconTandaPayActions: SpecificIconType = makeIcon(MaterialIcon, 'send');
+export const IconTandaPayInfo: SpecificIconType = makeIcon(Feather, 'info');

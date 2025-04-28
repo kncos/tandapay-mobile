@@ -33,9 +33,10 @@ export default function ZulipTextIntl(props: Props): Node {
         // If you see this in dev, it means there's a user-facing string
         // that hasn't been added to
         // static/translations/messages_en.json. Please add it! :)
-        defaultMessage={
-          process.env.NODE_ENV === 'development' ? `UNTRANSLATED—${message}—UNTRANSLATED` : message
-        }
+        // defaultMessage={
+        //   process.env.NODE_ENV === 'development' ? `UNTRANSLATED—${message}—UNTRANSLATED` : message
+        // }
+        defaultMessage={message}
         values={values}
       />
     </ZulipText>

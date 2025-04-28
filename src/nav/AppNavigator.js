@@ -51,7 +51,11 @@ import StreamListScreen from '../subscriptions/StreamListScreen';
 import ReadReceiptsScreen from '../message/ReadReceiptsScreen';
 import { useHaveServerDataGate } from '../withHaveServerDataGate';
 
-import TandaPayMenuScreen from '../tandapay/tandapayMenu';
+import TandaPayMenuScreen from '../tandapay/TandaPayMenuScreen';
+import TandaPayInfoScreen from '../tandapay/TandaPayInfoScreen';
+import TandaPayActionsScreen from '../tandapay/TandaPayActionsScreen';
+import TandaPaySettingsScreen from '../tandapay/TandaPaySettingsScreen';
+import WalletScreen from '../tandapay/WalletScreen';
 
 export type AppNavigatorParamList = {|
   +'account-pick': RouteParamsOf<typeof AccountPickScreen>,
@@ -84,6 +88,10 @@ export type AppNavigatorParamList = {|
   +'selectable-options': RouteParamsOf<typeof SelectableOptionsScreen>,
   +'read-receipts': RouteParamsOf<typeof ReadReceiptsScreen>,
   +'tandapay-menu': void,
+  +'tandapay-info': void,
+  +'tandapay-actions': void,
+  +'tandapay-settings': void,
+  +'wallet': void,
 |};
 
 /**
@@ -195,7 +203,13 @@ export default function AppNavigator(props: Props): Node {
       {/* These screens do not expect server data in order to function
           normally. */}
       <Stack.Screen name="account-pick" component={AccountPickScreen} />
+
       <Stack.Screen name="tandapay-menu" component={TandaPayMenuScreen} />
+      <Stack.Screen name="tandapay-info" component={TandaPayInfoScreen} />
+      <Stack.Screen name="tandapay-actions" component={TandaPayActionsScreen} />
+      <Stack.Screen name="tandapay-settings" component={TandaPaySettingsScreen} />
+      <Stack.Screen name="wallet" component={WalletScreen} />
+
       <Stack.Screen name="auth" component={AuthScreen} />
       <Stack.Screen name="dev-auth" component={DevAuthScreen} />
       <Stack.Screen name="password-auth" component={PasswordAuthScreen} />
