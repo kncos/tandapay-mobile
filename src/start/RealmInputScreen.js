@@ -265,6 +265,8 @@ export default function RealmInputScreen(props: Props): Node {
       keyboardShouldPersistTaps="always"
       shouldShowLoadingBanner={false}
     >
+      <ZulipText text="Welcome to TandaPay Mobile. TandaPay is powered by Zulip. Your community secretary should provide a Zulip chat URL." />
+      <ZulipText text=" " />
       <ZulipTextIntl
         text={{
           text: 'Enter your Zulip server URL: <z-link>(What’s this?)</z-link>',
