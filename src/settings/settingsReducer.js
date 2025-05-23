@@ -13,7 +13,7 @@ import { ensureUnreachable } from '../types';
 
 const initialGlobalSettingsState: $Exact<GlobalSettingsState> = {
   language: 'en',
-  theme: 'default',
+  theme: 'night', // changed from 'default' to 'night' for dark mode by default
   browser: 'default',
   experimentalFeaturesEnabled: false,
   markMessagesReadOnScroll: 'always',

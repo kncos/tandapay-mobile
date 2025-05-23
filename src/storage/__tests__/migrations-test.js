@@ -29,7 +29,7 @@ describe('migrations', () => {
     // Settings from their reducer's initial value at this version.
     settings: {
       locale: 'en',
-      theme: 'default',
+      theme: 'night', // changed from 'default' to 'night' for dark mode by default
       offlineNotification: true,
       onlineNotification: true,
       experimentalFeaturesEnabled: false,
@@ -74,7 +74,7 @@ describe('migrations', () => {
     outbox: [], // cleared of lacking sender_id
     settings: {
       language: 'en', // renamed from locale
-      theme: 'default',
+      theme: 'night', // changed from 'default' to 'night' for dark mode by default
       offlineNotification: true,
       onlineNotification: true,
       experimentalFeaturesEnabled: false,
@@ -91,7 +91,7 @@ describe('migrations', () => {
     migrations: { version: 52 },
     settings: {
       language: 'en',
-      theme: 'default',
+      theme: 'night', // changed from 'default' to 'night' for dark mode by default
       offlineNotification: true,
       onlineNotification: true,
       experimentalFeaturesEnabled: false,
