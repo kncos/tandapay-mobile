@@ -29,6 +29,7 @@
     "@react-native-community/masked-view": "^0.1.10",
     "@react-native-community/netinfo": "6.0.0",
     "@react-native-community/push-notification-ios": "^1.5.0",
+    "@react-native-picker/picker": "2.4.0",
     "@react-navigation/bottom-tabs": "npm:@zulip/react-navigation-bottom-tabs@5.11.16-0.zulip.1",
     "@react-navigation/material-top-tabs": "^5.2.19",
     "@react-navigation/native": "^5.7.6",
@@ -80,6 +81,7 @@
     "reselect": "^4.0.0",
     "rn-fetch-blob": "zulip/rn-fetch-blob#e17b2a51c",
     "timezone": "^1.0.13",
+    "viem": "^2.29.4",
     "zulip-markdown-parser": "^1.0.6"
   },
   "devDependencies": {

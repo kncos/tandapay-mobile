@@ -37,6 +37,8 @@ local.properties
 android/app/build/
 android/build/
 
+src/tandapay/todo.md
+
 ### ^
 ### The portion of this file above this line comes from RN upstream's
 ### template.  We leave that part unchanged as much as we can, to help

@@ -55,7 +55,7 @@ import TandaPayMenuScreen from '../tandapay/TandaPayMenuScreen';
 import TandaPayInfoScreen from '../tandapay/TandaPayInfoScreen';
 import TandaPayActionsScreen from '../tandapay/TandaPayActionsScreen';
 import TandaPaySettingsScreen from '../tandapay/TandaPaySettingsScreen';
-import WalletScreen from '../tandapay/WalletScreen';
+import WalletScreen from '../tandapay/wallet/WalletScreen';
 
 export type AppNavigatorParamList = {|
   +'account-pick': RouteParamsOf<typeof AccountPickScreen>,
