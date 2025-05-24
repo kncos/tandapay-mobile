@@ -22,6 +22,23 @@ module.exports = {
       //   https://www.npmjs.com/package/babel-plugin-transform-flow-enums
       { enums: true }
     ],
+    // [
+    //   '@babel/plugin-transform-private-methods', { 'loose': true }
+    // ],
     'transform-flow-enums'
   ],
+  overrides: [
+    {
+      test: './node_modules/ethers',
+      plugins: [
+        ['@babel/plugin-transform-private-methods', { 'loose': true }]
+      ]
+    },
+    {
+      test: './node_modules/@ethersproject',
+      plugins: [
+        ['@babel/plugin-transform-private-methods', { 'loose': true }]
+      ]
+    }
+  ]
 };
