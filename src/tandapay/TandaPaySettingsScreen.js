@@ -9,11 +9,7 @@ import Screen from '../common/Screen';
 import SwitchRow from '../common/SwitchRow';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
-import {
-  IconWallet,
-  IconNotifications,
-  IconSmartphone,
-} from '../common/Icons';
+import { IconWallet, IconNotifications, IconSmartphone } from '../common/Icons';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-settings'>,

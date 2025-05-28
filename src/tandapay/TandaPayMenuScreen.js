@@ -10,16 +10,9 @@ import type { RouteProp } from '@react-navigation/native';
 // You might also need the navigation prop type, even if you don't use it yet
 import Screen from '../common/Screen';
 
-import type {
-  AppNavigationProp,
-} from '../nav/AppNavigator'; // Or whatever navigator type is appropriate
+import type { AppNavigationProp } from '../nav/AppNavigator'; // Or whatever navigator type is appropriate
 import NavRow from '../common/NavRow';
-import {
-  IconSettings,
-  IconTandaPayActions,
-  IconTandaPayInfo,
-  IconWallet,
-} from '../common/Icons';
+import { IconSettings, IconTandaPayActions, IconTandaPayInfo, IconWallet } from '../common/Icons';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-menu'>,

@@ -8,12 +8,7 @@ import type { RouteProp } from '../react-navigation';
 import Screen from '../common/Screen';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
-import {
-  IconSend,
-  IconPlusCircle,
-  IconGroup,
-  IconTandaPayInfo,
-} from '../common/Icons';
+import { IconSend, IconPlusCircle, IconGroup, IconTandaPayInfo } from '../common/Icons';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-actions'>,

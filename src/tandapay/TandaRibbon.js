@@ -61,13 +61,7 @@ export default function TandaRibbon(props: Props): Node {
   const [collapsed, setCollapsed] = useState(initiallyCollapsed);
 
   return (
-    <View
-      style={[
-        styles.ribbon,
-        { marginTop, marginBottom, marginHorizontal },
-        ribbonStyle,
-      ]}
-    >
+    <View style={[styles.ribbon, { marginTop, marginBottom, marginHorizontal }, ribbonStyle]}>
       <TouchableOpacity
         onPress={() => setCollapsed(c => !c)}
         activeOpacity={0.7}
@@ -79,7 +73,12 @@ export default function TandaRibbon(props: Props): Node {
         </ZulipText>
       </TouchableOpacity>
       {!collapsed && (
-        <View style={[styles.contentContainer, contentBackgroundColor != null ? { backgroundColor: contentBackgroundColor } : null]}>
+        <View
+          style={[
+            styles.contentContainer,
+            contentBackgroundColor != null ? { backgroundColor: contentBackgroundColor } : null,
+          ]}
+        >
           {children}
         </View>
       )}

@@ -1,0 +1,182 @@
+/* @flow strict-local */
+
+import React, { useState } from 'react';
+import type { Node } from 'react';
+import { View, StyleSheet, TextInput, Alert } from 'react-native';
+
+import type { RouteProp } from '../../react-navigation';
+import type { AppNavigationProp } from '../../nav/AppNavigator';
+import Screen from '../../common/Screen';
+import ZulipButton from '../../common/ZulipButton';
+import ZulipText from '../../common/ZulipText';
+import { importWallet, validateMnemonic } from './WalletManager';
+
+type Props = $ReadOnly<{|
+  navigation: AppNavigationProp<'wallet-import'>,
+  route: RouteProp<'wallet-import', void>,
+|}>;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 16,
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  validInput: {
+    borderColor: '#4CAF50',
+  },
+  invalidInput: {
+    borderColor: '#f44336',
+  },
+  errorText: {
+    color: '#f44336',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  buttonContainer: {
+    marginBottom: 12,
+  },
+  buttonSpacing: {
+    marginBottom: 12,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+export default function WalletImportScreen(props: Props): Node {
+  const { navigation } = props;
+  const [mnemonic, setMnemonic] = useState('');
+  const [isValid, setIsValid] = useState<?boolean>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleMnemonicChange = (text: string) => {
+    setMnemonic(text);
+    if (text.trim().length > 0) {
+      setIsValid(validateMnemonic(text));
+    } else {
+      setIsValid(null);
+    }
+  };
+
+  const handleImport = async () => {
+    if (isValid !== true || mnemonic.trim().length === 0) {
+      Alert.alert('Invalid Phrase', 'Please enter a valid 12-word recovery phrase.');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const walletInfo = await importWallet(mnemonic);
+      Alert.alert(
+        'Wallet Imported',
+        `Successfully imported wallet: ${walletInfo.address.substring(0, 6)}...${walletInfo.address.substring(38)}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Reset navigation stack to remove all setup screens
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'wallet' }],
+              });
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Import Failed', error.message || 'Failed to import wallet. Please check your recovery phrase.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const getInputStyle = () => {
+    const baseStyle = [styles.textInput];
+    if (isValid === true) {
+      baseStyle.push(styles.validInput);
+    } else if (isValid === false) {
+      baseStyle.push(styles.invalidInput);
+    }
+    return baseStyle;
+  };
+
+  return (
+    <Screen title="Import Wallet">
+      <View style={styles.container}>
+        <ZulipText style={styles.title} text="Import Existing Wallet" />
+        <ZulipText
+          style={styles.description}
+          text="Enter your 12-word recovery phrase to restore your wallet. Make sure to enter the words in the correct order."
+        />
+
+        <View style={styles.inputContainer}>
+          <ZulipText style={styles.label} text="Recovery Phrase" />
+          <TextInput
+            style={getInputStyle()}
+            value={mnemonic}
+            onChangeText={handleMnemonicChange}
+            placeholder="Enter your 12-word recovery phrase..."
+            placeholderTextColor="#999"
+            multiline
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+          />
+          {isValid === false && (
+            <ZulipText
+              style={styles.errorText}
+              text="Invalid recovery phrase. Please check the words and try again."
+            />
+          )}
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <View style={styles.buttonSpacing}>
+            <ZulipButton
+              text={isImporting ? 'Importing...' : 'Import Wallet'}
+              disabled={isValid !== true || isImporting}
+              onPress={handleImport}
+            />
+          </View>
+          <ZulipButton
+            secondary
+            text="Cancel"
+            onPress={() => navigation.goBack()}
+            disabled={isImporting}
+          />
+        </View>
+      </View>
+    </Screen>
+  );
+}

@@ -56,6 +56,10 @@ import TandaPayInfoScreen from '../tandapay/TandaPayInfoScreen';
 import TandaPayActionsScreen from '../tandapay/TandaPayActionsScreen';
 import TandaPaySettingsScreen from '../tandapay/TandaPaySettingsScreen';
 import WalletScreen from '../tandapay/wallet/WalletScreen';
+import WalletSetupScreen from '../tandapay/wallet/WalletSetupScreen';
+import WalletGenerateScreen from '../tandapay/wallet/WalletGenerateScreen';
+import WalletImportScreen from '../tandapay/wallet/WalletImportScreen';
+import WalletVerifyScreen from '../tandapay/wallet/WalletVerifyScreen';
 
 export type AppNavigatorParamList = {|
   +'account-pick': RouteParamsOf<typeof AccountPickScreen>,
@@ -91,7 +95,11 @@ export type AppNavigatorParamList = {|
   +'tandapay-info': void,
   +'tandapay-actions': void,
   +'tandapay-settings': void,
-  +'wallet': void,
+  +wallet: void,
+  +'wallet-setup': void,
+  +'wallet-generate': void,
+  +'wallet-import': void,
+  +'wallet-verify': {| mnemonic: string |},
 |};
 
 /**
@@ -201,9 +209,19 @@ export default function AppNavigator(props: Props): Node {
       <Stack.Screen name="read-receipts" component={useHaveServerDataGate(ReadReceiptsScreen)} />
       <Stack.Screen name="tandapay-menu" component={useHaveServerDataGate(TandaPayMenuScreen)} />
       <Stack.Screen name="tandapay-info" component={useHaveServerDataGate(TandaPayInfoScreen)} />
-      <Stack.Screen name="tandapay-actions" component={useHaveServerDataGate(TandaPayActionsScreen)} />
-      <Stack.Screen name="tandapay-settings" component={useHaveServerDataGate(TandaPaySettingsScreen)} />
+      <Stack.Screen
+        name="tandapay-actions"
+        component={useHaveServerDataGate(TandaPayActionsScreen)}
+      />
+      <Stack.Screen
+        name="tandapay-settings"
+        component={useHaveServerDataGate(TandaPaySettingsScreen)}
+      />
       <Stack.Screen name="wallet" component={useHaveServerDataGate(WalletScreen)} />
+      <Stack.Screen name="wallet-setup" component={WalletSetupScreen} />
+      <Stack.Screen name="wallet-generate" component={WalletGenerateScreen} />
+      <Stack.Screen name="wallet-import" component={WalletImportScreen} />
+      <Stack.Screen name="wallet-verify" component={WalletVerifyScreen} />
 
       {/* These screens do not expect server data in order to function
           normally. */}

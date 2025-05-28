@@ -4,7 +4,6 @@ import React, { useState, useEffect, useContext } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 // $FlowFixMe[untyped-import] - @react-native-picker/picker is a third-party library
 import { Picker } from '@react-native-picker/picker';
 
@@ -21,7 +20,7 @@ type Token = {|
 |};
 
 type Props = {|
-  walletAddress: string,
+  walletAddress: ?string,
 |};
 
 type TokenPickerProps = {|
@@ -170,6 +169,11 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
 
   useEffect(() => {
     let isMounted = true;
+    if (walletAddress == null || walletAddress === '') {
+      setBalance('0');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     fetchBalance(selectedToken, walletAddress).then(bal => {
       if (isMounted) {

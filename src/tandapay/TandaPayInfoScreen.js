@@ -4,7 +4,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import type { Node } from 'react';
 
 import '@ethersproject/shims';
-// eslint-disable-next-line import/no-extraneous-dependencies
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
 
@@ -13,12 +12,7 @@ import type { RouteProp } from '../react-navigation';
 import Screen from '../common/Screen';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
-import {
-  IconServer,
-  IconTandaPayInfo,
-  IconAlertTriangle,
-  IconGroup,
-} from '../common/Icons';
+import { IconServer, IconTandaPayInfo, IconAlertTriangle, IconGroup } from '../common/Icons';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-info'>,
@@ -108,16 +102,8 @@ export default function TandaPayInfoScreen(props: Props): Node {
         </>
       )}
 
-      <TextRow
-        icon={{ Component: IconGroup }}
-        title="Active Groups"
-        subtitle="0 groups joined"
-      />
-      <TextRow
-        icon={{ Component: IconTandaPayInfo }}
-        title="Network"
-        subtitle="Ethereum Mainnet"
-      />
+      <TextRow icon={{ Component: IconGroup }} title="Active Groups" subtitle="0 groups joined" />
+      <TextRow icon={{ Component: IconTandaPayInfo }} title="Network" subtitle="Ethereum Mainnet" />
     </Screen>
   );
 }

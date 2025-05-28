@@ -1,22 +1,21 @@
 /* @flow strict-local */
-/* eslint-disable import/no-extraneous-dependencies */
 
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Linking } from 'react-native';
+import { View, StyleSheet, Linking, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 
 import ZulipButton from '../../common/ZulipButton';
-// $FlowFixMe[untyped-import] - Adding Flow types to this component
 import WalletBalanceCard from './WalletBalanceCard';
 import ZulipText from '../../common/ZulipText';
-// $FlowFixMe[untyped-import] - Adding Flow types to this component
 import TandaRibbon from '../TandaRibbon';
 import TandaPayBanner from '../TandaPayBanner';
 import { BRAND_COLOR, QUARTER_COLOR } from '../../styles';
+import { hasWallet, getWalletAddress } from './WalletManager';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet'>,
@@ -59,19 +58,94 @@ function WalletButtonRow({ onSend, onReceive }) {
 }
 
 export default function WalletScreen(props: Props): Node {
-  const walletAddress = '0x195605c92F0C875a98c7c144CF817A23D779C310'; // Replace with actual address from state/secure store
+  const { navigation } = props;
+  const [walletAddress, setWalletAddress] = useState<?string>(null);
+  const [loading, setLoading] = useState(true);
+  const [walletExists, setWalletExists] = useState(false);
+
+  const checkWallet = useCallback(async () => {
+    try {
+      setLoading(true);
+      const exists = await hasWallet();
+      setWalletExists(exists);
+
+      if (exists) {
+        const address = await getWalletAddress();
+        setWalletAddress(address);
+      } else {
+        setWalletAddress(null);
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error checking wallet:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkWallet();
+  }, [checkWallet]);
+
+  // Refresh wallet state when screen comes into focus (e.g., returning from setup)
+  useFocusEffect(
+    useCallback(() => {
+      checkWallet();
+    }, [checkWallet])
+  );
 
   const handleSend = () => {
     // TODO: Implement send functionality
   };
+
   const handleReceive = () => {
     // TODO: Implement receive functionality
   };
 
   const handleViewOnExplorer = () => {
-    const url = `https://etherscan.io/address/${walletAddress}`;
-    Linking.openURL(url);
+    if (walletAddress != null && walletAddress !== '') {
+      const url = `https://etherscan.io/address/${walletAddress}`;
+      Linking.openURL(url);
+    }
   };
+
+  const handleSetupWallet = () => {
+    navigation.push('wallet-setup');
+  };
+
+  if (loading) {
+    return (
+      <Screen title="Wallet">
+        <View style={[styles.container, { justifyContent: 'center' }]}>
+          <ActivityIndicator size="large" />
+          <ZulipText text="Loading wallet..." style={{ marginTop: 16, textAlign: 'center' }} />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (!walletExists || walletAddress == null || walletAddress === '') {
+    return (
+      <Screen title="Wallet">
+        <View style={styles.container}>
+          <View style={{ alignItems: 'center', paddingHorizontal: 20 }}>
+            <ZulipText
+              style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' }}
+              text="No Wallet Found"
+            />
+            <ZulipText
+              style={{ fontSize: 16, marginBottom: 32, textAlign: 'center', lineHeight: 24 }}
+              text="You need to create or import a wallet to use TandaPay's features."
+            />
+            <ZulipButton
+              text="Set Up Wallet"
+              onPress={handleSetupWallet}
+            />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen title="Wallet">
