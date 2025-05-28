@@ -9,6 +9,7 @@ import IoniconsIcon from 'react-native-vector-icons/Ionicons';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import ZulipIcon from './ZulipIcon';
 
@@ -124,3 +125,7 @@ export const IconFollow: SpecificIconType = props => <ZulipIcon name="follow" {.
 export const IconWallet: SpecificIconType = makeIcon(Feather, 'lock');
 export const IconTandaPayActions: SpecificIconType = makeIcon(MaterialIcon, 'send');
 export const IconTandaPayInfo: SpecificIconType = makeIcon(Feather, 'info');
+
+// Use MaterialCommunityIcons for actual Ethereum and USDC icons
+export const IconEthereum: SpecificIconType = makeIcon(MaterialCommunityIcons, 'ethereum');
+export const IconUSDC: SpecificIconType = makeIcon(MaterialCommunityIcons, 'currency-usd-circle');

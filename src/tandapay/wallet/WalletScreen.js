@@ -48,7 +48,7 @@ function WalletButtonRow({ onSend, onReceive }) {
 }
 
 export default function WalletScreen() {
-  const walletAddress = '0xYourWalletAddressHere'; // Replace with actual address from state/secure store
+  const walletAddress = '0x195605c92F0C875a98c7c144CF817A23D779C310'; // Replace with actual address from state/secure store
 
   const handleSend = () => {
     // TODO: Implement send functionality

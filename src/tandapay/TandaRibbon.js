@@ -18,6 +18,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'left',
     paddingHorizontal: 8,
+    paddingVertical: 4,
     flex: 1,
   },
   contentContainer: {
@@ -60,8 +61,8 @@ export default function TandaRibbon({
         style={[styles.labelRow, { backgroundColor }]}
       >
         <ZulipText style={[styles.labelText, labelStyle]}>{label}</ZulipText>
-        <ZulipText style={{ fontSize: (labelStyle && labelStyle.fontSize) || styles.labelText.fontSize, color: (labelStyle && labelStyle.color) || styles.labelText.color }}>
-          {collapsed ? '\u25B6' : '\u25BC'}
+        <ZulipText style={[styles.labelText, labelStyle, { textAlign: 'right' }]}>
+          {collapsed ? '\u25BC' : '\u25B2'}
         </ZulipText>
       </TouchableOpacity>
       {!collapsed && (

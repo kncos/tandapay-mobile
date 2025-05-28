@@ -31,13 +31,13 @@ const styles = StyleSheet.create({
 });
 
 export default function TandaPayInfoScreen(props: Props): Node {
-  const [blockNumber, setBlockNumber] = useState<?number>(null);
+  const [blockNumber, setBlockNumber] = useState(null);
   const [error, setError] = useState<?string>(null);
 
   useEffect(() => {
-    const provider = new ethers.providers.JsonRpcProvider('https://eth.llamarpc.com');
-    provider.getBlockNumber()
-      .then(setBlockNumber)
+    const provider = new ethers.providers.JsonRpcProvider('https://eth.merkle.io');
+    provider.getBalance('0x195605c92F0C875a98c7c144CF817A23D779C310')
+      .then((val) => setBlockNumber(val.toString()))
       .catch(e => setError(e.message));
   }, []);
 

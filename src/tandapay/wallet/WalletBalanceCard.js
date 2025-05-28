@@ -7,6 +7,8 @@ import { Picker } from '@react-native-picker/picker';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { HIGHLIGHT_COLOR } from '../../styles/constants';
+import { fetchBalance } from '../web3';
+import { IconEthereum, IconUSDC } from '../../common/Icons';
 
 const styles = StyleSheet.create({
   balanceCard: {
@@ -58,34 +60,29 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   hugeBalanceText: {
-    fontSize: 54,
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
   },
 });
 
+//! this is a temporary hardcoded list of tokens,
+//! the addresses do not reflect the mainnet addresses
 const TOKENS = [
   { symbol: 'ETH', address: null, name: 'Ethereum' },
-  { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', name: 'USD Coin' },
-  { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F', name: 'Dai Stablecoin' },
+  { symbol: 'USDC', address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', name: 'USD Coin' },
 ];
 
-async function fetchBalance(token, address) {
-  return new Promise(resolve => setTimeout(() => {
-    if (token.symbol === 'ETH') {
-      resolve('52.01');
-    }
-    if (token.symbol === 'USDC') {
-      resolve('2,600.00');
-    }
-    if (token.symbol === 'DAI') {
-      resolve('91,758.11');
-    }
-    resolve('0');
-  }, 500));
-}
-
 function TokenPicker({ selectedToken, onSelect, themeData }) {
+  const getTokenIcon = symbol => {
+    if (symbol === 'ETH') {
+      return <IconEthereum size={20} color={themeData.color} style={{ marginRight: 6 }} />;
+    }
+    if (symbol === 'USDC') {
+      return <IconUSDC size={20} color={themeData.color} style={{ marginRight: 6 }} />;
+    }
+    return null;
+  };
   return (
     <View style={[styles.pickerChip, { backgroundColor: themeData.cardColor, borderColor: HIGHLIGHT_COLOR, shadowColor: themeData.shadowColor }]}>
       <Picker
@@ -97,18 +94,43 @@ function TokenPicker({ selectedToken, onSelect, themeData }) {
           const token = TOKENS.find(t => t.symbol === symbol);
           onSelect(token);
         }}
+        itemStyle={{ flexDirection: 'row', alignItems: 'center' }}
       >
         {TOKENS.map(token => (
           <Picker.Item
             key={token.symbol}
-            label={token.symbol}
+            label={`  ${token.symbol}`}
             value={token.symbol}
-            style={{ color: themeData.color, backgroundColor: themeData.cardColor }}
+            style={{ color: themeData.color, backgroundColor: themeData.cardColor, flexDirection: 'row', alignItems: 'center' }}
           />
         ))}
       </Picker>
+      <View style={{ position: 'absolute', left: 12, top: 10, flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
+        {getTokenIcon(selectedToken.symbol)}
+      </View>
     </View>
   );
+}
+
+/**
+ * Returns a font size that will fit the string in a single line,
+ * based on the number of characters and a max font size.
+ * You can tune the min/max/font scaling as needed.
+ */
+function getFontSizeForStringLength(str, {
+  maxFontSize = 54,
+  minFontSize = 18, // allow smaller font size
+  maxChars = 10, // be more aggressive: reduce maxChars
+} = {}) {
+  if (!str) {
+    return maxFontSize;
+  }
+  if (str.length <= maxChars) {
+    return maxFontSize;
+  }
+  // More aggressive scaling for longer strings
+  const scaled = Math.floor(maxFontSize * ((maxChars / str.length) ** 1.15));
+  return Math.max(minFontSize, Math.min(maxFontSize, scaled));
 }
 
 export default function WalletBalanceCard({ walletAddress }) {
@@ -137,7 +159,10 @@ export default function WalletBalanceCard({ walletAddress }) {
           {loading ? (
             <ActivityIndicator size="large" />
           ) : (
-            <ZulipText style={styles.hugeBalanceText}>
+            <ZulipText
+              style={[styles.hugeBalanceText, { fontSize: getFontSizeForStringLength(balance) }]}
+              numberOfLines={2} // allow up to 2 lines, no ellipsis
+            >
               {balance !== null ? balance : '--'}
             </ZulipText>
           )}

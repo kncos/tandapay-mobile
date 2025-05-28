@@ -99,3 +99,6 @@ src/tandapay/todo.md
 /fastlane/Preview.html
 /fastlane/screenshots
 /fastlane/test_output
+
+# tandapay stuff
+src/tandapay/env.js
