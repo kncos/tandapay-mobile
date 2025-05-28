@@ -1,7 +1,11 @@
+// @flow strict-local
+
 import React, { useState, useEffect, useContext } from 'react';
+import type { Node } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
+// $FlowFixMe[untyped-import] - @react-native-picker/picker is a third-party library
 import { Picker } from '@react-native-picker/picker';
 
 import ZulipText from '../../common/ZulipText';
@@ -9,6 +13,29 @@ import { ThemeContext } from '../../styles';
 import { HIGHLIGHT_COLOR } from '../../styles/constants';
 import { fetchBalance } from '../web3';
 import { IconEthereum, IconUSDC } from '../../common/Icons';
+
+type Token = {|
+  symbol: string,
+  address: ?string,
+  name: string,
+|};
+
+type Props = {|
+  walletAddress: string,
+|};
+
+type TokenPickerProps = {|
+  selectedToken: Token,
+  onSelect: (Token) => void,
+  themeData: $ReadOnly<{|
+    backgroundColor: string,
+    cardColor: string,
+    color: string,
+    brandColor?: string,
+    dividerColor: string,
+    themeName: string,
+  |}>,
+|};
 
 const styles = StyleSheet.create({
   balanceCard: {
@@ -68,12 +95,12 @@ const styles = StyleSheet.create({
 
 //! this is a temporary hardcoded list of tokens,
 //! the addresses do not reflect the mainnet addresses
-const TOKENS = [
+const TOKENS: Array<Token> = [
   { symbol: 'ETH', address: null, name: 'Ethereum' },
   { symbol: 'USDC', address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', name: 'USD Coin' },
 ];
 
-function TokenPicker({ selectedToken, onSelect, themeData }) {
+function TokenPicker({ selectedToken, onSelect, themeData }: TokenPickerProps): Node {
   const getTokenIcon = symbol => {
     if (symbol === 'ETH') {
       return <IconEthereum size={20} color={themeData.color} style={{ marginRight: 6 }} />;
@@ -84,15 +111,17 @@ function TokenPicker({ selectedToken, onSelect, themeData }) {
     return null;
   };
   return (
-    <View style={[styles.pickerChip, { backgroundColor: themeData.cardColor, borderColor: HIGHLIGHT_COLOR, shadowColor: themeData.shadowColor }]}>
+    <View style={[styles.pickerChip, { backgroundColor: themeData.cardColor, borderColor: HIGHLIGHT_COLOR }]}>
       <Picker
         selectedValue={selectedToken.symbol}
         style={styles.picker}
         mode="dropdown"
-        dropdownIconColor={themeData.brandColor || '#6492fd'}
+        dropdownIconColor={themeData.brandColor ?? '#6492fd'}
         onValueChange={symbol => {
           const token = TOKENS.find(t => t.symbol === symbol);
-          onSelect(token);
+          if (token) {
+            onSelect(token);
+          }
         }}
         itemStyle={{ flexDirection: 'row', alignItems: 'center' }}
       >
@@ -105,7 +134,7 @@ function TokenPicker({ selectedToken, onSelect, themeData }) {
           />
         ))}
       </Picker>
-      <View style={{ position: 'absolute', left: 12, top: 10, flexDirection: 'row', alignItems: 'center', pointerEvents: 'none' }}>
+      <View style={{ position: 'absolute', left: 12, top: 10, flexDirection: 'row', alignItems: 'center' }}>
         {getTokenIcon(selectedToken.symbol)}
       </View>
     </View>
@@ -117,12 +146,12 @@ function TokenPicker({ selectedToken, onSelect, themeData }) {
  * based on the number of characters and a max font size.
  * You can tune the min/max/font scaling as needed.
  */
-function getFontSizeForStringLength(str, {
+function getFontSizeForStringLength(str: ?string, {
   maxFontSize = 54,
   minFontSize = 18, // allow smaller font size
   maxChars = 10, // be more aggressive: reduce maxChars
-} = {}) {
-  if (!str) {
+} = {}): number {
+  if (str == null || str.length === 0) {
     return maxFontSize;
   }
   if (str.length <= maxChars) {
@@ -133,9 +162,9 @@ function getFontSizeForStringLength(str, {
   return Math.max(minFontSize, Math.min(maxFontSize, scaled));
 }
 
-export default function WalletBalanceCard({ walletAddress }) {
-  const [selectedToken, setSelectedToken] = useState(TOKENS[0]);
-  const [balance, setBalance] = useState(null);
+export default function WalletBalanceCard({ walletAddress }: Props): Node {
+  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS[0]);
+  const [balance, setBalance] = useState<?string>(null);
   const [loading, setLoading] = useState(false);
   const themeData = useContext(ThemeContext);
 
@@ -152,7 +181,7 @@ export default function WalletBalanceCard({ walletAddress }) {
   }, [selectedToken, walletAddress]);
 
   return (
-    <View style={[styles.balanceCard, { backgroundColor: themeData.backgroundColor, shadowColor: themeData.shadowColor, borderColor: HIGHLIGHT_COLOR }]}>
+    <View style={[styles.balanceCard, { backgroundColor: themeData.backgroundColor, borderColor: HIGHLIGHT_COLOR }]}>
       <View style={styles.balanceColumn}>
         <ZulipText style={styles.label} text="Balance" />
         <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%' }}>

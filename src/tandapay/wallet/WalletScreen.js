@@ -1,16 +1,27 @@
+/* @flow strict-local */
 /* eslint-disable import/no-extraneous-dependencies */
 
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import type { Node } from 'react';
+import { View, StyleSheet, Linking } from 'react-native';
+
+import type { RouteProp } from '../../react-navigation';
+import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 
 import ZulipButton from '../../common/ZulipButton';
+// $FlowFixMe[untyped-import] - Adding Flow types to this component
 import WalletBalanceCard from './WalletBalanceCard';
-import ZulipBanner from '../../common/ZulipBanner';
 import ZulipText from '../../common/ZulipText';
-import SectionHeader from '../../common/SectionHeader';
+// $FlowFixMe[untyped-import] - Adding Flow types to this component
 import TandaRibbon from '../TandaRibbon';
-import { BRAND_COLOR } from '../../styles';
+import TandaPayBanner from '../TandaPayBanner';
+import { BRAND_COLOR, QUARTER_COLOR } from '../../styles';
+
+type Props = $ReadOnly<{|
+  navigation: AppNavigationProp<'wallet'>,
+  route: RouteProp<'wallet', void>,
+|}>;
 
 const styles = StyleSheet.create({
   container: {
@@ -47,7 +58,7 @@ function WalletButtonRow({ onSend, onReceive }) {
   );
 }
 
-export default function WalletScreen() {
+export default function WalletScreen(props: Props): Node {
   const walletAddress = '0x195605c92F0C875a98c7c144CF817A23D779C310'; // Replace with actual address from state/secure store
 
   const handleSend = () => {
@@ -57,13 +68,27 @@ export default function WalletScreen() {
     // TODO: Implement receive functionality
   };
 
+  const handleViewOnExplorer = () => {
+    const url = `https://etherscan.io/address/${walletAddress}`;
+    Linking.openURL(url);
+  };
+
   return (
     <Screen title="Wallet">
       <View style={styles.container}>
         <WalletBalanceCard walletAddress={walletAddress} />
-        <ZulipBanner />
         <WalletButtonRow onSend={handleSend} onReceive={handleReceive} />
         <TandaRibbon label="Transactions" backgroundColor={BRAND_COLOR}>
+          <TandaPayBanner
+            visible
+            text="All Caught Up!"
+            backgroundColor={QUARTER_COLOR}
+            buttons={[{
+              id: 'view-explorer',
+              label: 'View on Explorer',
+              onPress: handleViewOnExplorer,
+            }]}
+          />
           <ZulipText text="item1" />
           <ZulipText text="item2" />
           <ZulipText text="item3" />

@@ -14,7 +14,7 @@ const merkleUrl = 'https://eth.merkle.io';
  * If token.address is null, fetches ETH balance. Otherwise, fetches ERC20 balance.
  * Returns a string representing the balance (in human-readable units).
  */
-export async function fetchBalance(token: { symbol: string, address: ?string }, address: string): Promise<string> {
+export async function fetchBalance(token: { symbol: string, address: ?string, name: string }, address: string): Promise<string> {
   // You can change this provider as needed
   const provider = new ethers.providers.JsonRpcProvider(alchemy_sepolia_url);
 

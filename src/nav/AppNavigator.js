@@ -199,16 +199,15 @@ export default function AppNavigator(props: Props): Node {
       <Stack.Screen name="user-status" component={useHaveServerDataGate(UserStatusScreen)} />
       <Stack.Screen name="settings" component={useHaveServerDataGate(SettingsScreen)} />
       <Stack.Screen name="read-receipts" component={useHaveServerDataGate(ReadReceiptsScreen)} />
+      <Stack.Screen name="tandapay-menu" component={useHaveServerDataGate(TandaPayMenuScreen)} />
+      <Stack.Screen name="tandapay-info" component={useHaveServerDataGate(TandaPayInfoScreen)} />
+      <Stack.Screen name="tandapay-actions" component={useHaveServerDataGate(TandaPayActionsScreen)} />
+      <Stack.Screen name="tandapay-settings" component={useHaveServerDataGate(TandaPaySettingsScreen)} />
+      <Stack.Screen name="wallet" component={useHaveServerDataGate(WalletScreen)} />
 
       {/* These screens do not expect server data in order to function
           normally. */}
       <Stack.Screen name="account-pick" component={AccountPickScreen} />
-
-      <Stack.Screen name="tandapay-menu" component={TandaPayMenuScreen} />
-      <Stack.Screen name="tandapay-info" component={TandaPayInfoScreen} />
-      <Stack.Screen name="tandapay-actions" component={TandaPayActionsScreen} />
-      <Stack.Screen name="tandapay-settings" component={TandaPaySettingsScreen} />
-      <Stack.Screen name="wallet" component={WalletScreen} />
 
       <Stack.Screen name="auth" component={AuthScreen} />
       <Stack.Screen name="dev-auth" component={DevAuthScreen} />

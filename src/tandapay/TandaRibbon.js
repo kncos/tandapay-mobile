@@ -1,4 +1,7 @@
+// @flow strict-local
+
 import React, { useState } from 'react';
+import type { Node } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import ZulipText from '../common/ZulipText';
 
@@ -22,29 +25,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 8,
+    padding: 0,
   },
 });
 
+type Props = $ReadOnly<{|
+  label: string,
+  backgroundColor?: string,
+  initiallyCollapsed?: boolean,
+  marginTop?: number,
+  marginBottom?: number,
+  marginHorizontal?: number,
+  labelStyle?: {||},
+  ribbonStyle?: {||},
+  contentBackgroundColor?: string,
+  children: Node,
+|}>;
+
 /**
- * Props:
- * - label: string (required)
- * - backgroundColor: string (optional, default: '#eee')
- * - initiallyCollapsed: boolean (optional, default: false)
- * - children: React.ReactNode (content to show/hide)
+ * A collapsible ribbon component with customizable styling.
  */
-export default function TandaRibbon({
-  label,
-  backgroundColor = '#eee',
-  initiallyCollapsed = false,
-  marginTop = 8,
-  marginBottom = 8,
-  marginHorizontal = 0,
-  labelStyle = {},
-  ribbonStyle = {},
-  contentBackgroundColor = undefined,
-  children,
-}) {
+export default function TandaRibbon(props: Props): Node {
+  const {
+    label,
+    backgroundColor = '#eee',
+    initiallyCollapsed = false,
+    marginTop = 8,
+    marginBottom = 8,
+    marginHorizontal = 0,
+    labelStyle = {},
+    ribbonStyle = {},
+    contentBackgroundColor = undefined,
+    children,
+  } = props;
   const [collapsed, setCollapsed] = useState(initiallyCollapsed);
 
   return (
@@ -66,7 +79,7 @@ export default function TandaRibbon({
         </ZulipText>
       </TouchableOpacity>
       {!collapsed && (
-        <View style={[styles.contentContainer, contentBackgroundColor ? { backgroundColor: contentBackgroundColor } : null]}>
+        <View style={[styles.contentContainer, contentBackgroundColor != null ? { backgroundColor: contentBackgroundColor } : null]}>
           {children}
         </View>
       )}
