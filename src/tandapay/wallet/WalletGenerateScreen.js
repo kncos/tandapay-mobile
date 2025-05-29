@@ -15,7 +15,7 @@ import type { WalletInfo } from './WalletManager';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-generate'>,
-  route: RouteProp<'wallet-generate', void>,
+  route: RouteProp<'wallet-generate', {| setupScreenCount?: number |} | void>,
 |}>;
 
 const styles = StyleSheet.create({
@@ -71,7 +71,8 @@ const styles = StyleSheet.create({
 });
 
 export default function WalletGenerateScreen(props: Props): Node {
-  const { navigation } = props;
+  const { navigation, route } = props;
+  const setupScreenCount = route.params?.setupScreenCount ?? 2;
   const [walletInfo, setWalletInfo] = useState<?WalletInfo>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -91,7 +92,10 @@ export default function WalletGenerateScreen(props: Props): Node {
 
   const handleContinue = () => {
     if (walletInfo?.mnemonic != null && walletInfo.mnemonic.length > 0) {
-      navigation.push('wallet-verify', { mnemonic: walletInfo.mnemonic });
+      navigation.push('wallet-verify', {
+        mnemonic: walletInfo.mnemonic,
+        setupScreenCount: setupScreenCount + 1
+      });
     }
   };
 

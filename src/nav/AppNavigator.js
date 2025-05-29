@@ -97,9 +97,9 @@ export type AppNavigatorParamList = {|
   +'tandapay-settings': void,
   +wallet: void,
   +'wallet-setup': void,
-  +'wallet-generate': void,
-  +'wallet-import': void,
-  +'wallet-verify': {| mnemonic: string |},
+  +'wallet-generate': {| setupScreenCount?: number |} | void,
+  +'wallet-import': {| setupScreenCount?: number |} | void,
+  +'wallet-verify': {| mnemonic: string, setupScreenCount?: number |},
 |};
 
 /**

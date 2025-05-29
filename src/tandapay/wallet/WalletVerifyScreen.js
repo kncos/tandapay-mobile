@@ -13,7 +13,7 @@ import Touchable from '../../common/Touchable';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-verify'>,
-  route: RouteProp<'wallet-verify', {| mnemonic: string |}>,
+  route: RouteProp<'wallet-verify', {| mnemonic: string, setupScreenCount?: number |}>,
 |}>;
 
 const styles = StyleSheet.create({
@@ -89,7 +89,7 @@ const VERIFICATION_POSITIONS = [2, 7, 11]; // 0-indexed
 
 export default function WalletVerifyScreen(props: Props): Node {
   const { navigation, route } = props;
-  const { mnemonic } = route.params;
+  const { mnemonic, setupScreenCount = 3 } = route.params;
 
   const [mnemonicWords] = useState(() => mnemonic.split(' '));
   const [shuffledWords, setShuffledWords] = useState<Array<string>>([]);
@@ -157,11 +157,9 @@ export default function WalletVerifyScreen(props: Props): Node {
           {
             text: 'Continue',
             onPress: () => {
-              // Reset navigation stack to remove all setup screens
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'wallet' }],
-              });
+              // Pop the setup screens to return to the previous navigation state
+              // This preserves the existing chat app navigation history
+              navigation.pop(setupScreenCount);
             },
           },
         ]

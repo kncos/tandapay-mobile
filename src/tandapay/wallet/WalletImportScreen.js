@@ -13,7 +13,7 @@ import { importWallet, validateMnemonic } from './WalletManager';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-import'>,
-  route: RouteProp<'wallet-import', void>,
+  route: RouteProp<'wallet-import', {| setupScreenCount?: number |} | void>,
 |}>;
 
 const styles = StyleSheet.create({
@@ -75,7 +75,8 @@ const styles = StyleSheet.create({
 });
 
 export default function WalletImportScreen(props: Props): Node {
-  const { navigation } = props;
+  const { navigation, route } = props;
+  const setupScreenCount = route.params?.setupScreenCount ?? 2;
   const [mnemonic, setMnemonic] = useState('');
   const [isValid, setIsValid] = useState<?boolean>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -105,11 +106,9 @@ export default function WalletImportScreen(props: Props): Node {
           {
             text: 'OK',
             onPress: () => {
-              // Reset navigation stack to remove all setup screens
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'wallet' }],
-              });
+              // Pop the setup screens to return to the previous navigation state
+              // This preserves the existing chat app navigation history
+              navigation.pop(setupScreenCount);
             },
           },
         ]

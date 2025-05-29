@@ -45,11 +45,11 @@ export default function WalletSetupScreen(props: Props): Node {
   const { navigation } = props;
 
   const handleGenerateWallet = () => {
-    navigation.push('wallet-generate');
+    navigation.push('wallet-generate', { setupScreenCount: 2 });
   };
 
   const handleImportWallet = () => {
-    navigation.push('wallet-import');
+    navigation.push('wallet-import', { setupScreenCount: 2 });
   };
 
   return (
