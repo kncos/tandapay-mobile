@@ -10,7 +10,7 @@ The token system consists of several key components:
 2. **Token Configuration** (`tokenConfig.js`) - Default tokens and validation
 3. **Token Actions** (`tokenActions.js`) - Redux action creators
 4. **Token Selectors** (`tokenSelectors.js`) - Redux state selectors
-5. **Enhanced Web3** (`web3Enhanced.js`) - ERC20 transfer and balance functionality
+5. **Enhanced Web3** (`web3.js`) - ERC20 transfer and balance functionality
 
 ## Features
 
@@ -74,7 +74,7 @@ dispatch(addCustomToken(customToken));
 
 #### Transferring Tokens
 ```javascript
-import { transferToken } from '../web3Enhanced';
+import { transferToken } from '../web3';
 
 const result = await transferToken({
   token: selectedToken,

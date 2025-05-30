@@ -120,10 +120,60 @@ describe('migrations', () => {
     accounts: base62.accounts.map(a => ({ ...a, lastDismissedServerNotifsExpiringBanner: null })),
   };
 
+  // What `base` becomes after migrations up through 67.
+  const base67 = {
+    ...base66,
+    migrations: { version: 67 },
+    tandaPay: {
+      wallet: {
+        address: null,
+        privateKey: null,
+        publicKey: null,
+        mnemonic: null,
+        isImported: false,
+        createdAt: null,
+      },
+      settings: {
+        defaultNetwork: 'sepolia',
+        notificationsEnabled: true,
+        biometricAuthEnabled: false,
+        autoBackupEnabled: true,
+        currency: 'USD',
+        selectedTokenSymbol: 'ETH',
+      },
+      transactions: [],
+      pools: [],
+      tokens: {
+        selectedTokenSymbol: 'ETH',
+        defaultTokens: [
+          {
+            symbol: 'ETH',
+            address: null,
+            name: 'Ethereum',
+            decimals: 18,
+            isDefault: true,
+            isCustom: false,
+          },
+          {
+            symbol: 'USDC',
+            address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+            name: 'USD Coin',
+            decimals: 6,
+            isDefault: true,
+            isCustom: false,
+          },
+        ],
+        customTokens: [],
+        balances: {},
+        lastUpdated: {},
+      },
+    },
+  };
+
   // What `base` becomes after all migrations.
   const endBase = {
-    ...base66,
-    migrations: { version: 66 },
+    ...base67,
+    migrations: { version: 67 },
   };
 
   for (const [desc, before, after] of [

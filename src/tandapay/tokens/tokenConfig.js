@@ -43,22 +43,6 @@ export function getDefaultTokens(network: 'mainnet' | 'sepolia' = 'sepolia'): $R
       isDefault: true,
       isCustom: false,
     },
-    {
-      symbol: 'USDT',
-      address: addresses.USDT,
-      name: 'Tether USD',
-      decimals: 6,
-      isDefault: true,
-      isCustom: false,
-    },
-    {
-      symbol: 'DAI',
-      address: addresses.DAI,
-      name: 'Dai Stablecoin',
-      decimals: 18,
-      isDefault: true,
-      isCustom: false,
-    },
   ];
 }
 

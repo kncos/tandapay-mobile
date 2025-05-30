@@ -55,7 +55,7 @@ describe('Token System Integration', () => {
       const action = selectToken('USDC');
       expect(action).toEqual({
         type: TANDAPAY_TOKEN_SELECT,
-        symbol: 'USDC',
+        tokenSymbol: 'USDC',
       });
     });
 
@@ -78,9 +78,8 @@ describe('Token System Integration', () => {
       const action = updateTokenBalance('ETH', '1.5');
       expect(action).toEqual({
         type: TANDAPAY_TOKEN_UPDATE_BALANCE,
-        symbol: 'ETH',
+        tokenSymbol: 'ETH',
         balance: '1.5',
-        timestamp: expect.any(Number),
       });
     });
   });
