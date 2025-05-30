@@ -7,7 +7,7 @@ import { View, Alert, ActivityIndicator } from 'react-native';
 import { useSelector } from '../../react-redux';
 import { ThemeContext, createStyleSheet } from '../../styles';
 import { getSelectedToken } from './tokenSelectors';
-import { transferToken, estimateTransferGas } from '../web3Enhanced';
+import { transferToken, estimateTransferGas } from '../web3';
 import Screen from '../../common/Screen';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';

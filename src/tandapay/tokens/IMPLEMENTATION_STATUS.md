@@ -64,7 +64,7 @@
 - `/src/tandapay/tokens/tokenConfig.js` - Default token configuration
 - `/src/tandapay/tokens/tokenActions.js` - Redux action creators
 - `/src/tandapay/tokens/tokenSelectors.js` - Redux state selectors
-- `/src/tandapay/web3Enhanced.js` - Enhanced web3 utilities with ERC20 support
+- `/src/tandapay/web3.js` - Enhanced web3 utilities with ERC20 support
 - `/src/tandapay/tokens/__tests__/tokenIntegration-test.js` - Integration tests
 - `/src/tandapay/tokens/README.md` - Comprehensive documentation
 - `/src/tandapay/tokens/TokenManagementScreen.js` - Example token management UI

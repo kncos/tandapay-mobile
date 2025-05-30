@@ -3,6 +3,7 @@ import type { ReadWrite, SubsetProperties } from '../generics';
 import { ZulipVersion } from '../utils/zulipVersion';
 import type { GlobalState } from '../types';
 import { objectFromEntries } from '../jsBackport';
+import { getDefaultTokens } from '../tandapay/tokens/tokenConfig';
 
 // Like GlobalState, but making all properties optional.
 type PartialState = $ReadOnly<$Rest<GlobalState, { ... }>>;
@@ -10,7 +11,7 @@ type PartialState = $ReadOnly<$Rest<GlobalState, { ... }>>;
 // Like GlobalState, but with only the properties from historicalStoreKeys.
 type StoreKeysState = SubsetProperties<
   GlobalState,
-  { migrations: mixed, accounts: mixed, drafts: mixed, outbox: mixed, settings: mixed },
+  { migrations: mixed, accounts: mixed, drafts: mixed, outbox: mixed, settings: mixed, tandaPay: mixed },
 >;
 
 // Like GlobalState, but making optional all except historicalStoreKeys.
@@ -25,7 +26,7 @@ type LessPartialState = $ReadOnly<{ ...$Rest<GlobalState, { ... }>, ...StoreKeys
 // prettier-ignore
 export const historicalStoreKeys: $ReadOnlyArray<$Keys<StoreKeysState>> = [
   // Never edit this list.
-  'migrations', 'accounts', 'drafts', 'outbox', 'settings',
+  'migrations', 'accounts', 'drafts', 'outbox', 'settings', 'tandaPay',
   // Why never edit?  The existing migrations below that refer to
   // `dropCache` are relying on this continuing to have the same value.
   // So if `storeKeys` changes, we'll need a new separate `dropCache` with
@@ -539,6 +540,38 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
   '66': state => ({
     ...state,
     accounts: state.accounts.map(a => ({ ...a, lastDismissedServerNotifsExpiringBanner: null })),
+  }),
+
+  // Add tandaPay state for TandaPay wallet and token management.
+  '67': state => ({
+    ...state,
+    tandaPay: {
+      wallet: {
+        address: null,
+        privateKey: null,
+        publicKey: null,
+        mnemonic: null,
+        isImported: false,
+        createdAt: null,
+      },
+      settings: {
+        defaultNetwork: 'sepolia',
+        notificationsEnabled: true,
+        biometricAuthEnabled: false,
+        autoBackupEnabled: true,
+        currency: 'USD',
+        selectedTokenSymbol: 'ETH',
+      },
+      transactions: [],
+      pools: [],
+      tokens: {
+        selectedTokenSymbol: 'ETH',
+        defaultTokens: getDefaultTokens('sepolia'),
+        customTokens: [],
+        balances: {},
+        lastUpdated: {},
+      },
+    },
   }),
 
   // TIP: When adding a migration, consider just using `dropCache`.

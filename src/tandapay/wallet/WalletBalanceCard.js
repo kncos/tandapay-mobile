@@ -13,7 +13,7 @@ import { HIGHLIGHT_COLOR } from '../../styles/constants';
 import { useSelector, useDispatch } from '../../react-redux';
 import { selectToken, updateTokenBalance } from '../tokens/tokenActions';
 import { getSelectedToken, getAvailableTokens, getTokenBalance, isTokenBalanceStale } from '../tokens/tokenSelectors';
-import { fetchBalance } from '../web3Enhanced';
+import { fetchBalance } from '../web3';
 import { IconEthereum, IconUSDC } from '../../common/Icons';
 
 import type { Token } from '../tokens/tokenTypes';
