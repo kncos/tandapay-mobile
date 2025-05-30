@@ -18,16 +18,16 @@ export type Token = $ReadOnly<{|
 export type TokenState = $ReadOnly<{|
   // Currently selected token symbol
   selectedTokenSymbol: string,
-  
+
   // Default tokens that are always available
   defaultTokens: $ReadOnlyArray<Token>,
-  
+
   // User-added custom tokens
   customTokens: $ReadOnlyArray<Token>,
-  
+
   // Cached balances for tokens (symbol -> balance string)
   balances: $ReadOnly<{ [string]: string }>,
-  
+
   // Last balance update timestamp for each token
   lastUpdated: $ReadOnly<{ [string]: number }>,
 |}>;

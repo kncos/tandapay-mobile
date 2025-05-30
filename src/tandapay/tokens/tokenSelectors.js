@@ -68,7 +68,7 @@ export function isTokenBalanceStale(state: PerAccountState, tokenSymbol: string)
   if (lastUpdated == null) {
     return true;
   }
-  
+
   const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
   return lastUpdated < fiveMinutesAgo;
 }

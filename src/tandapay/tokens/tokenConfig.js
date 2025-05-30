@@ -25,7 +25,7 @@ export const NETWORK_TOKEN_ADDRESSES: NetworkTokenAddresses = {
  */
 export function getDefaultTokens(network: 'mainnet' | 'sepolia' = 'sepolia'): $ReadOnlyArray<Token> {
   const addresses = NETWORK_TOKEN_ADDRESSES[network];
-  
+
   return [
     {
       symbol: 'ETH',
@@ -97,27 +97,27 @@ export function validateCustomToken(token: {|
   if (!token.symbol || token.symbol.length < 1 || token.symbol.length > 10) {
     return { isValid: false, error: 'Symbol must be 1-10 characters' };
   }
-  
+
   // Check if symbol already exists in default tokens
   if (getDefaultTokens().some(t => t.symbol.toLowerCase() === token.symbol.toLowerCase())) {
     return { isValid: false, error: 'Token symbol already exists in default tokens' };
   }
-  
+
   // Check address format (basic Ethereum address validation)
   if (!token.address || !token.address.match(/^0x[a-fA-F0-9]{40}$/)) {
     return { isValid: false, error: 'Invalid Ethereum address format' };
   }
-  
+
   // Check name
   if (!token.name || token.name.length < 1 || token.name.length > 50) {
     return { isValid: false, error: 'Name must be 1-50 characters' };
   }
-  
+
   // Check decimals
   const decimals = token.decimals != null ? token.decimals : 18;
   if (decimals < 0 || decimals > 77) {
     return { isValid: false, error: 'Decimals must be between 0 and 77' };
   }
-  
+
   return { isValid: true };
 }

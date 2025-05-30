@@ -19,12 +19,12 @@ const ERC20_ABI = [
   'function symbol() view returns (string)',
   'function name() view returns (string)',
   'function totalSupply() view returns (uint256)',
-  
+
   // State-changing functions
   'function transfer(address to, uint256 amount) returns (bool)',
   'function approve(address spender, uint256 amount) returns (bool)',
   'function transferFrom(address from, address to, uint256 amount) returns (bool)',
-  
+
   // Events
   'event Transfer(address indexed from, address indexed to, uint256 value)',
   'event Approval(address indexed owner, address indexed spender, uint256 value)',
@@ -56,7 +56,7 @@ export async function fetchBalance(
     if (!address || address === '') {
       return '0';
     }
-    
+
     if (token.address == null) {
       // ETH balance
       const bal = await provider.getBalance(address);
@@ -87,22 +87,22 @@ export async function transferToken(
   try {
     const provider = getProvider(network);
     const wallet = new ethers.Wallet(fromPrivateKey, provider);
-    
+
     if (token.address == null) {
       // ETH transfer
       const tx = await wallet.sendTransaction({
         to: toAddress,
         value: ethers.utils.parseEther(amount),
       });
-      
+
       return { success: true, txHash: tx.hash };
     } else {
       // ERC20 transfer
       const contract = new ethers.Contract(token.address, ERC20_ABI, wallet);
       const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
-      
+
       const tx = await contract.transfer(toAddress, amountInWei);
-      
+
       return { success: true, txHash: tx.hash };
     }
   } catch (error) {
@@ -128,13 +128,13 @@ export async function getTokenInfo(
   try {
     const provider = getProvider(network);
     const contract = new ethers.Contract(contractAddress, ERC20_ABI, provider);
-    
+
     const [symbol, name, decimals] = await Promise.all([
       contract.symbol(),
       contract.name(),
       contract.decimals(),
     ]);
-    
+
     return {
       success: true,
       tokenInfo: { symbol, name, decimals },
@@ -160,7 +160,7 @@ export async function estimateTransferGas(
 ): Promise<{| success: boolean, gasEstimate?: string, gasPrice?: string, error?: string |}> {
   try {
     const provider = getProvider(network);
-    
+
     if (token.address == null) {
       // ETH transfer
       const gasEstimate = await provider.estimateGas({
@@ -168,9 +168,9 @@ export async function estimateTransferGas(
         to: toAddress,
         value: ethers.utils.parseEther(amount),
       });
-      
+
       const gasPrice = await provider.getGasPrice();
-      
+
       return {
         success: true,
         gasEstimate: gasEstimate.toString(),
@@ -180,10 +180,10 @@ export async function estimateTransferGas(
       // ERC20 transfer
       const contract = new ethers.Contract(token.address, ERC20_ABI, provider);
       const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
-      
+
       const gasEstimate = await contract.estimateGas.transfer(toAddress, amountInWei);
       const gasPrice = await provider.getGasPrice();
-      
+
       return {
         success: true,
         gasEstimate: gasEstimate.toString(),
