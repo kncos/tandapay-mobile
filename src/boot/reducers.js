@@ -27,6 +27,7 @@ import { reducer as unread } from '../unread/unreadModel';
 import userGroups from '../user-groups/userGroupsReducer';
 import { reducer as userStatuses } from '../user-statuses/userStatusesModel';
 import users from '../users/usersReducer';
+import tandaPay from '../tandapay/tandaPayReducer';
 
 // The `Object.freeze` is to work around a Flow issue:
 //   https://github.com/facebook/flow/issues/2386#issuecomment-695064325
@@ -99,6 +100,7 @@ export default (globalState: void | GlobalState, origAction: Action): GlobalStat
       userGroups: applyReducer('userGroups', userGroups, undefined, action, undefined),
       userStatuses: applyReducer('userStatuses', userStatuses, undefined, action, undefined),
       users: applyReducer('users', users, undefined, action, undefined),
+      tandaPay: applyReducer('tandaPay', tandaPay, undefined, action, undefined),
     };
   } else if (isPerAccountApplicableAction(origAction)) {
     // Update the per-account state, for this PerAccountApplicableAction.
@@ -134,6 +136,7 @@ export default (globalState: void | GlobalState, origAction: Action): GlobalStat
       userGroups: applyReducer('userGroups', userGroups, state.userGroups, action, state),
       userStatuses: applyReducer('userStatuses', userStatuses, state.userStatuses, action, state),
       users: applyReducer('users', users, state.users, action, state),
+      tandaPay: applyReducer('tandaPay', tandaPay, state.tandaPay, action, state),
     };
 
     // mute must come after streams, for REGISTER_COMPLETE events

@@ -62,6 +62,15 @@ import {
   REGISTER_PUSH_TOKEN_END,
   SET_SILENCE_SERVER_PUSH_SETUP_WARNINGS,
   DISMISS_SERVER_NOTIFS_EXPIRING_BANNER,
+  // TandaPay actions
+  TANDAPAY_WALLET_SET,
+  TANDAPAY_SETTINGS_UPDATE,
+  TANDAPAY_TRANSACTION_ADD,
+  TANDAPAY_POOL_DATA_UPDATE,
+  TANDAPAY_TOKEN_SELECT,
+  TANDAPAY_TOKEN_ADD_CUSTOM,
+  TANDAPAY_TOKEN_REMOVE_CUSTOM,
+  TANDAPAY_TOKEN_UPDATE_BALANCE,
 } from './actionConstants';
 
 import type { UserMessageFlag } from './api/modelTypes';
@@ -652,6 +661,92 @@ type MessageAction = MessageFetchStartAction | MessageFetchErrorAction | Message
 
 type OutboxAction = MessageSendStartAction | MessageSendCompleteAction | DeleteOutboxMessageAction;
 
+type TandaPayWalletSetAction = $ReadOnly<{|
+  type: typeof TANDAPAY_WALLET_SET,
+  walletData: $Shape<{
+    address: string | null,
+    privateKey: string | null,
+    publicKey: string | null,
+    mnemonic: string | null,
+    isImported: boolean,
+    createdAt: number | null,
+  }>,
+|}>;
+
+type TandaPaySettingsUpdateAction = $ReadOnly<{|
+  type: typeof TANDAPAY_SETTINGS_UPDATE,
+  settings: $Shape<{
+    defaultNetwork: string,
+    notificationsEnabled: boolean,
+    biometricAuthEnabled: boolean,
+    autoBackupEnabled: boolean,
+    currency: string,
+    selectedTokenSymbol: string,
+  }>,
+|}>;
+
+type TandaPayTransactionAddAction = $ReadOnly<{|
+  type: typeof TANDAPAY_TRANSACTION_ADD,
+  transaction: $Shape<{
+    id: string,
+    type: 'contribution' | 'claim' | 'withdrawal',
+    amount: string,
+    txHash: string | null,
+    status: 'pending' | 'confirmed' | 'failed',
+    timestamp: number,
+    poolId: string | null,
+  }>,
+|}>;
+
+type TandaPayPoolDataUpdateAction = $ReadOnly<{|
+  type: typeof TANDAPAY_POOL_DATA_UPDATE,
+  poolData: $Shape<{
+    id: string,
+    name: string,
+    memberCount: number,
+    totalPool: string,
+    userContribution: string | null,
+    status: 'active' | 'paused' | 'closed',
+    lastUpdated: number,
+  }>,
+|}>;
+
+type TandaPayTokenSelectAction = $ReadOnly<{|
+  type: typeof TANDAPAY_TOKEN_SELECT,
+  tokenSymbol: string,
+|}>;
+
+type TandaPayTokenAddCustomAction = $ReadOnly<{|
+  type: typeof TANDAPAY_TOKEN_ADD_CUSTOM,
+  token: {|
+    symbol: string,
+    address: string,
+    name: string,
+    decimals?: number,
+  |},
+|}>;
+
+type TandaPayTokenRemoveCustomAction = $ReadOnly<{|
+  type: typeof TANDAPAY_TOKEN_REMOVE_CUSTOM,
+  tokenSymbol: string,
+|}>;
+
+type TandaPayTokenUpdateBalanceAction = $ReadOnly<{|
+  type: typeof TANDAPAY_TOKEN_UPDATE_BALANCE,
+  tokenSymbol: string,
+  balance: string,
+|}>;
+
+type TandaPayAction =
+  | TandaPayWalletSetAction
+  | TandaPaySettingsUpdateAction
+  | TandaPayTransactionAddAction
+  | TandaPayPoolDataUpdateAction
+  | TandaPayTokenSelectAction
+  | TandaPayTokenAddCustomAction
+  | TandaPayTokenRemoveCustomAction
+  | TandaPayTokenUpdateBalanceAction;
+
 //
 // Then, the primary subtypes of `Action`.  Each of these should have some
 // coherent meaning in terms of what kind of state it applies to; and they
@@ -686,6 +781,7 @@ export type PerAccountAction =
   | DismissServerNotifsExpiringBannerAction
   | SetSilenceServerPushSetupWarningsAction
   | ToggleOutboxSendingAction
+  | TandaPayAction
   ;
 
 /** Plain actions applying to other accounts' per-account state. */
@@ -814,6 +910,14 @@ export function isPerAccountApplicableAction(action: Action): boolean {
     case DISMISS_SERVER_NOTIFS_EXPIRING_BANNER:
     case SET_SILENCE_SERVER_PUSH_SETUP_WARNINGS:
     case TOGGLE_OUTBOX_SENDING:
+    case TANDAPAY_WALLET_SET:
+    case TANDAPAY_SETTINGS_UPDATE:
+    case TANDAPAY_TRANSACTION_ADD:
+    case TANDAPAY_POOL_DATA_UPDATE:
+    case TANDAPAY_TOKEN_SELECT:
+    case TANDAPAY_TOKEN_ADD_CUSTOM:
+    case TANDAPAY_TOKEN_REMOVE_CUSTOM:
+    case TANDAPAY_TOKEN_UPDATE_BALANCE:
       (action: PerAccountAction);
       (action: PerAccountApplicableAction);
       return true;

@@ -39,6 +39,7 @@ import type { UnreadState } from './unread/unreadModelTypes';
 import type { UserStatusesState } from './user-statuses/userStatusesCore';
 import type { ServerEmojiData, UserMessageFlag } from './api/modelTypes';
 import type { EmailAddressVisibility } from './api/permissionsTypes';
+import type { TandaPayState } from './tandapay/tandaPayReducer';
 import { typesEquivalent } from './generics';
 
 export type { MuteState } from './mute/muteModelTypes';
@@ -517,6 +518,9 @@ type PerAccountStateImpl = $ReadOnly<{
   userGroups: UserGroupsState,
   userStatuses: UserStatusesState,
   users: UsersState,
+
+  // TandaPay state for the active account
+  tandaPay: TandaPayState,
 
   ...
 }>;

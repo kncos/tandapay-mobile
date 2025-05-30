@@ -57,7 +57,7 @@ export const discardKeys: $ReadOnlyArray<$Keys<GlobalState>> = [
  */
 // prettier-ignore
 export const storeKeys: $ReadOnlyArray<$Keys<GlobalState>> = [
-  'migrations', 'accounts', 'drafts', 'outbox', 'settings',
+  'migrations', 'accounts', 'drafts', 'outbox', 'settings', 'tandaPay',
 ];
 
 /**

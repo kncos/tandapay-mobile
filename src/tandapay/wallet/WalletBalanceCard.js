@@ -10,21 +10,21 @@ import { Picker } from '@react-native-picker/picker';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { HIGHLIGHT_COLOR } from '../../styles/constants';
-import { fetchBalance } from '../web3';
+import { useSelector, useDispatch } from '../../react-redux';
+import { selectToken, updateTokenBalance } from '../tokens/tokenActions';
+import { getSelectedToken, getAvailableTokens, getTokenBalance, isTokenBalanceStale } from '../tokens/tokenSelectors';
+import { fetchBalance } from '../web3Enhanced';
 import { IconEthereum, IconUSDC } from '../../common/Icons';
 
-type Token = {|
-  symbol: string,
-  address: ?string,
-  name: string,
-|};
+import type { Token } from '../tokens/tokenTypes';
 
 type Props = {|
   walletAddress: ?string,
 |};
 
 type TokenPickerProps = {|
-  selectedToken: Token,
+  selectedToken: Token | null,
+  availableTokens: $ReadOnlyArray<Token>,
   onSelect: (Token) => void,
   themeData: $ReadOnly<{|
     backgroundColor: string,
@@ -92,14 +92,7 @@ const styles = StyleSheet.create({
   },
 });
 
-//! this is a temporary hardcoded list of tokens,
-//! the addresses do not reflect the mainnet addresses
-const TOKENS: Array<Token> = [
-  { symbol: 'ETH', address: null, name: 'Ethereum' },
-  { symbol: 'USDC', address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238', name: 'USD Coin' },
-];
-
-function TokenPicker({ selectedToken, onSelect, themeData }: TokenPickerProps): Node {
+function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: TokenPickerProps): Node {
   const getTokenIcon = symbol => {
     if (symbol === 'ETH') {
       return <IconEthereum size={20} color={themeData.color} style={{ marginRight: 6 }} />;
@@ -109,6 +102,11 @@ function TokenPicker({ selectedToken, onSelect, themeData }: TokenPickerProps): 
     }
     return null;
   };
+
+  if (!selectedToken) {
+    return null;
+  }
+
   return (
     <View style={[styles.pickerChip, { backgroundColor: themeData.cardColor, borderColor: HIGHLIGHT_COLOR }]}>
       <Picker
@@ -117,14 +115,14 @@ function TokenPicker({ selectedToken, onSelect, themeData }: TokenPickerProps): 
         mode="dropdown"
         dropdownIconColor={themeData.brandColor ?? '#6492fd'}
         onValueChange={symbol => {
-          const token = TOKENS.find(t => t.symbol === symbol);
+          const token = availableTokens.find(t => t.symbol === symbol);
           if (token) {
             onSelect(token);
           }
         }}
         itemStyle={{ flexDirection: 'row', alignItems: 'center' }}
       >
-        {TOKENS.map(token => (
+        {availableTokens.map(token => (
           <Picker.Item
             key={token.symbol}
             label={`  ${token.symbol}`}
@@ -162,27 +160,53 @@ function getFontSizeForStringLength(str: ?string, {
 }
 
 export default function WalletBalanceCard({ walletAddress }: Props): Node {
-  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS[0]);
-  const [balance, setBalance] = useState<?string>(null);
+  const dispatch = useDispatch();
+  const selectedToken = useSelector(getSelectedToken);
+  const availableTokens = useSelector(getAvailableTokens);
+  const balance = useSelector(state => selectedToken ? getTokenBalance(state, selectedToken.symbol) : null);
+  const network = useSelector(state => state.tandaPay.settings.defaultNetwork === 'mainnet' ? 'mainnet' : 'sepolia');
+
   const [loading, setLoading] = useState(false);
   const themeData = useContext(ThemeContext);
 
+  // Check if balance needs to be fetched
+  const isBalanceStale = useSelector(state =>
+    selectedToken ? isTokenBalanceStale(state, selectedToken.symbol) : true
+  );
+
   useEffect(() => {
     let isMounted = true;
-    if (walletAddress == null || walletAddress === '') {
-      setBalance('0');
-      setLoading(false);
+
+    if (walletAddress == null || walletAddress === '' || !selectedToken) {
+      // Clear balance for empty wallet or no selected token
+      if (selectedToken) {
+        dispatch(updateTokenBalance(selectedToken.symbol, '0'));
+      }
       return;
     }
-    setLoading(true);
-    fetchBalance(selectedToken, walletAddress).then(bal => {
-      if (isMounted) {
-        setBalance(bal);
-        setLoading(false);
-      }
-    });
+
+    // Only fetch if balance is stale or missing
+    if (isBalanceStale) {
+      setLoading(true);
+      fetchBalance(selectedToken, walletAddress, network).then(bal => {
+        if (isMounted && selectedToken) {
+          dispatch(updateTokenBalance(selectedToken.symbol, bal));
+          setLoading(false);
+        }
+      }).catch(error => {
+        if (isMounted) {
+          // Log error but don't show to user in this component
+          setLoading(false);
+        }
+      });
+    }
+
     return () => { isMounted = false; };
-  }, [selectedToken, walletAddress]);
+  }, [dispatch, selectedToken, walletAddress, isBalanceStale, network]);
+
+  const handleTokenSelect = (token: Token) => {
+    dispatch(selectToken(token.symbol));
+  };
 
   return (
     <View style={[styles.balanceCard, { backgroundColor: themeData.backgroundColor, borderColor: HIGHLIGHT_COLOR }]}>
@@ -196,14 +220,15 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
               style={[styles.hugeBalanceText, { fontSize: getFontSizeForStringLength(balance) }]}
               numberOfLines={2} // allow up to 2 lines, no ellipsis
             >
-              {balance !== null ? balance : '--'}
+              {balance !== null && balance !== undefined ? balance : '--'}
             </ZulipText>
           )}
         </View>
         <View style={styles.pickerContainer}>
           <TokenPicker
             selectedToken={selectedToken}
-            onSelect={setSelectedToken}
+            availableTokens={availableTokens}
+            onSelect={handleTokenSelect}
             themeData={themeData}
           />
         </View>
