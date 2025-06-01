@@ -2,16 +2,18 @@
 
 import React, { useState } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
-import type { RouteProp } from '../../react-navigation';
-import type { AppNavigationProp } from '../../nav/AppNavigator';
-import Screen from '../../common/Screen';
-import ZulipButton from '../../common/ZulipButton';
-import ZulipText from '../../common/ZulipText';
-import { generateWallet } from './WalletManager';
-import type { WalletInfo } from './WalletManager';
+import type { RouteProp } from '../../../react-navigation';
+import type { AppNavigationProp } from '../../../nav/AppNavigator';
+import Screen from '../../../common/Screen';
+import ZulipButton from '../../../common/ZulipButton';
+import ZulipText from '../../../common/ZulipText';
+import { generateWallet } from '../WalletManager';
+import type { WalletInfo } from '../WalletManager';
+import TandaPayStyles from '../../styles';
+import { HALF_COLOR, kWarningColor } from '../../../styles/constants';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-generate'>,
@@ -22,10 +24,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
   },
   title: {
     fontSize: 20,
@@ -40,7 +38,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   mnemonicContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: HALF_COLOR,
     padding: 16,
     borderRadius: 8,
     marginBottom: 24,
@@ -52,16 +50,10 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 14,
-    color: '#ff6b6b',
+    color: kWarningColor,
     textAlign: 'center',
     marginBottom: 24,
     fontWeight: '500',
-  },
-  buttonContainer: {
-    marginBottom: 12,
-  },
-  buttonSpacing: {
-    marginBottom: 12,
   },
   loadingContainer: {
     flex: 1,
@@ -77,17 +69,21 @@ export default function WalletGenerateScreen(props: Props): Node {
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
 
-  const handleGenerateWallet = async () => {
+  const handleGenerateWallet = () => {
     setIsGenerating(true);
-    try {
-      const newWallet = await generateWallet();
-      setWalletInfo(newWallet);
-      setHasGenerated(true);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate wallet. Please try again.');
-    } finally {
-      setIsGenerating(false);
-    }
+
+    // Use setTimeout to ensure state update happens before async operation
+    setTimeout(async () => {
+      try {
+        const newWallet = await generateWallet();
+        setWalletInfo(newWallet);
+        setHasGenerated(true);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to generate wallet. Please try again.');
+      } finally {
+        setIsGenerating(false);
+      }
+    }, 0);
   };
 
   const handleContinue = () => {
@@ -106,32 +102,21 @@ export default function WalletGenerateScreen(props: Props): Node {
     }
   };
 
-  if (isGenerating) {
-    return (
-      <Screen title="Generate Wallet">
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
-          <ZulipText text="Generating secure wallet..." style={{ marginTop: 16 }} />
-        </View>
-      </Screen>
-    );
-  }
-
   if (!hasGenerated) {
     return (
       <Screen title="Generate Wallet">
         <View style={styles.container}>
-          <View style={styles.content}>
-            <ZulipText style={styles.title} text="Create New Wallet" />
-            <ZulipText
-              style={styles.description}
-              text="A new wallet will be generated with a 12-word recovery phrase. This phrase is the only way to recover your wallet if you lose access to this device."
-            />
-            <ZulipButton
-              text="Generate Wallet"
-              onPress={handleGenerateWallet}
-            />
-          </View>
+          <ZulipText style={styles.title} text="Create New Wallet" />
+          <ZulipText
+            style={styles.description}
+            text="A new wallet will be generated with a 12-word recovery phrase. This phrase is the only way to recover your wallet if you lose access to this device."
+          />
+          <ZulipButton
+            text="Generate Wallet"
+            onPress={handleGenerateWallet}
+            progress={isGenerating}
+            disabled={isGenerating}
+          />
         </View>
       </Screen>
     );
@@ -157,15 +142,17 @@ export default function WalletGenerateScreen(props: Props): Node {
           text="⚠️ Never share your recovery phrase with anyone. Store it in a safe place offline."
         />
 
-        <View style={styles.buttonContainer}>
-          <View style={styles.buttonSpacing}>
-            <ZulipButton
-              secondary
-              text="Copy to Clipboard"
-              onPress={handleCopyMnemonic}
-            />
-          </View>
+        <View style={TandaPayStyles.buttonRow}>
           <ZulipButton
+            style={TandaPayStyles.button}
+            secondary
+            text="Copy to Clipboard"
+            onPress={handleCopyMnemonic}
+          />
+        </View>
+        <View style={TandaPayStyles.buttonRow}>
+          <ZulipButton
+            style={TandaPayStyles.button}
             text="I've Written It Down"
             onPress={handleContinue}
           />

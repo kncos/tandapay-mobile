@@ -4,12 +4,12 @@ import React, { useState } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, TextInput, Alert } from 'react-native';
 
-import type { RouteProp } from '../../react-navigation';
-import type { AppNavigationProp } from '../../nav/AppNavigator';
-import Screen from '../../common/Screen';
-import ZulipButton from '../../common/ZulipButton';
-import ZulipText from '../../common/ZulipText';
-import { importWallet, validateMnemonic } from './WalletManager';
+import type { RouteProp } from '../../../react-navigation';
+import type { AppNavigationProp } from '../../../nav/AppNavigator';
+import Screen from '../../../common/Screen';
+import ZulipButton from '../../../common/ZulipButton';
+import ZulipText from '../../../common/ZulipText';
+import { importWallet, validateMnemonic } from '../WalletManager';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-import'>,

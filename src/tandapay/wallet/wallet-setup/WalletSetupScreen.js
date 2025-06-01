@@ -4,11 +4,12 @@ import React from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import type { RouteProp } from '../../react-navigation';
-import type { AppNavigationProp } from '../../nav/AppNavigator';
-import Screen from '../../common/Screen';
-import ZulipButton from '../../common/ZulipButton';
-import ZulipText from '../../common/ZulipText';
+import type { RouteProp } from '../../../react-navigation';
+import type { AppNavigationProp } from '../../../nav/AppNavigator';
+import Screen from '../../../common/Screen';
+import ZulipButton from '../../../common/ZulipButton';
+import ZulipText from '../../../common/ZulipText';
+import TandaPayStyles from '../../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-setup'>,
@@ -30,14 +31,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 16,
     lineHeight: 24,
   },
   buttonContainer: {
     marginVertical: 16,
-  },
-  button: {
-    marginBottom: 12,
   },
 });
 
@@ -63,13 +61,15 @@ export default function WalletSetupScreen(props: Props): Node {
 
         <View style={styles.buttonContainer}>
           <ZulipButton
+            style={TandaPayStyles.button}
             text="Create New Wallet"
             onPress={handleGenerateWallet}
           />
           <ZulipButton
-            secondary
+            style={TandaPayStyles.button}
             text="Import Existing Wallet"
             onPress={handleImportWallet}
+            secondary
           />
         </View>
       </View>

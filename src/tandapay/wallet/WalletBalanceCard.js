@@ -9,7 +9,7 @@ import { Picker } from '@react-native-picker/picker';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
-import { HIGHLIGHT_COLOR } from '../../styles/constants';
+import { BRAND_COLOR, HIGHLIGHT_COLOR } from '../../styles/constants';
 import { useSelector, useDispatch } from '../../react-redux';
 import { selectToken, updateTokenBalance } from '../tokens/tokenActions';
 import { getSelectedToken, getAvailableTokens, getTokenBalance, isTokenBalanceStale } from '../tokens/tokenSelectors';
@@ -113,7 +113,7 @@ function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: To
         selectedValue={selectedToken.symbol}
         style={styles.picker}
         mode="dropdown"
-        dropdownIconColor={themeData.brandColor ?? '#6492fd'}
+        dropdownIconColor={BRAND_COLOR}
         onValueChange={symbol => {
           const token = availableTokens.find(t => t.symbol === symbol);
           if (token) {

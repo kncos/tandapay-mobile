@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="primaryColor">#ffffff</color>
-    <color name="primaryColorDark">#d7ccc8</color>
+    <color name="primaryColorDark">#00B558</color>
     <!--  This should agree with `BRAND_COLOR` in the JS code.  -->
-    <color name="brandColor">#6492fe</color>
+    <color name="brandColor">#11d99b</color>
 </resources>
