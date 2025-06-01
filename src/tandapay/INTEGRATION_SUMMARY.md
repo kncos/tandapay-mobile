@@ -62,14 +62,14 @@ import { getTandaPayWallet, setTandaPayWallet } from '../tandapay/tandaPaySelect
 function MyComponent() {
   const wallet = useSelector(getTandaPayWallet);
   const dispatch = useDispatch();
-  
+
   const setupWallet = () => {
     dispatch(setTandaPayWallet({
       address: '0x123...',
       isImported: false,
     }));
   };
-  
+
   return <div>Wallet: {wallet.address}</div>;
 }
 ```

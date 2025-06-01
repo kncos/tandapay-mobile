@@ -6,7 +6,7 @@
 // import Clipboard from '@react-native-clipboard/clipboard';
 // // $FlowFixMe[untyped-import] - react-native-qrcode-svg is not typed
 // import QRCode from 'react-native-qrcode-svg';
-// 
+//
 // import type { RouteProp } from '../../react-navigation';
 // import type { AppNavigationProp } from '../../nav/AppNavigator';
 // import Screen from '../../common/Screen';
@@ -14,12 +14,12 @@
 // import ZulipText from '../../common/ZulipText';
 // import { HALF_COLOR } from '../../styles';
 // import { getWalletAddress } from './WalletManager';
-// 
+//
 // type Props = $ReadOnly<{|
 //   navigation: AppNavigationProp<'wallet-receive'>,
 //   route: RouteProp<'wallet-receive', void>,
 // |}>;
-// 
+//
 // const styles = StyleSheet.create({
 //   container: {
 //     flex: 1,
@@ -83,12 +83,12 @@
 //     fontWeight: 'bold',
 //   },
 // });
-// 
+//
 // export default function WalletReceiveScreen(props: Props): Node {
 //   const { navigation } = props;
 //   const [walletAddress, setWalletAddress] = useState<?string>(null);
 //   const [loading, setLoading] = useState(true);
-// 
+//
 //   useEffect(() => {
 //     const loadWalletAddress = async () => {
 //       try {
@@ -100,10 +100,10 @@
 //         setLoading(false);
 //       }
 //     };
-// 
+//
 //     loadWalletAddress();
 //   }, []);
-// 
+//
 //   const handleCopyAddress = async () => {
 //     if (walletAddress != null && walletAddress !== '') {
 //       await Clipboard.setString(walletAddress);
@@ -114,7 +114,7 @@
 //       );
 //     }
 //   };
-// 
+//
 //   const handleShareAddress = async () => {
 //     if (walletAddress != null && walletAddress !== '') {
 //       try {
@@ -127,7 +127,7 @@
 //       }
 //     }
 //   };
-// 
+//
 //   const formatAddress = (address: string): string => {
 //     // Format address with line breaks for better readability
 //     if (address.length > 20) {
@@ -139,7 +139,7 @@
 //     }
 //     return address;
 //   };
-// 
+//
 //   if (loading) {
 //     return (
 //       <Screen title="Receive">
@@ -149,7 +149,7 @@
 //       </Screen>
 //     );
 //   }
-// 
+//
 //   if (walletAddress == null || walletAddress === '') {
 //     return (
 //       <Screen title="Receive">
@@ -164,7 +164,7 @@
 //       </Screen>
 //     );
 //   }
-// 
+//
 //   return (
 //     <Screen title="Receive">
 //       <View style={styles.container}>
@@ -172,7 +172,7 @@
 //           style={styles.instructions}
 //           text="Share your wallet address or QR code to receive cryptocurrency payments."
 //         />
-// 
+//
 //         <View style={styles.qrContainer}>
 //           <QRCode
 //             value={walletAddress}
@@ -185,14 +185,14 @@
 //             style={styles.qrCodeTitle}
 //           />
 //         </View>
-// 
+//
 //         <View style={styles.addressContainer}>
 //           <ZulipText
 //             style={styles.addressText}
 //             text={formatAddress(walletAddress)}
 //           />
 //         </View>
-// 
+//
 //         <View style={styles.buttonContainer}>
 //           <ZulipButton
 //             style={styles.button}
@@ -206,7 +206,7 @@
 //             onPress={handleShareAddress}
 //           />
 //         </View>
-// 
+//
 //         <ZulipText
 //           text="⚠️ Only send Ethereum and ERC-20 tokens to this address"
 //           style={styles.warningText}
@@ -215,4 +215,4 @@
 //     </Screen>
 //   );
 // }
-// 
+//

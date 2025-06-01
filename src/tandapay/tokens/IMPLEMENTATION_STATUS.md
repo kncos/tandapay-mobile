@@ -10,7 +10,7 @@
 - **Custom Token Support**: Users can add/remove custom ERC20 tokens
 - **Balance Caching**: Token balances cached with 60-second staleness detection
 
-### Web3 Integration  
+### Web3 Integration
 - **ERC20 Support**: Full ERC20 token transfer functionality using ethers.js
 - **Multi-Network**: Support for mainnet and sepolia networks
 - **Gas Estimation**: Automatic gas cost estimation for transfers
@@ -25,7 +25,7 @@
 
 ### Action System
 - `TANDAPAY_TOKEN_SELECT` - Select different tokens
-- `TANDAPAY_TOKEN_ADD_CUSTOM` - Add user-defined tokens  
+- `TANDAPAY_TOKEN_ADD_CUSTOM` - Add user-defined tokens
 - `TANDAPAY_TOKEN_REMOVE_CUSTOM` - Remove custom tokens
 - `TANDAPAY_TOKEN_UPDATE_BALANCE` - Cache balance updates
 

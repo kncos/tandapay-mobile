@@ -153,7 +153,7 @@ src/tandapay/tokens/
    ```javascript
    // Old
    const TOKENS = [{ symbol: 'ETH', ... }];
-   
+
    // New
    const tokens = useSelector(getAvailableTokens);
    ```
@@ -162,7 +162,7 @@ src/tandapay/tokens/
    ```javascript
    // Old
    setSelectedToken(token);
-   
+
    // New
    dispatch(selectToken(token.symbol));
    ```
@@ -171,7 +171,7 @@ src/tandapay/tokens/
    ```javascript
    // Old
    fetchBalance(token, address).then(setBalance);
-   
+
    // New
    const cachedBalance = useSelector(state => getTokenBalance(state, token.symbol));
    // Auto-refresh logic handles stale data

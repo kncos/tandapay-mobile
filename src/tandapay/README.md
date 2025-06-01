@@ -81,11 +81,11 @@ type TandaPayState = {
 ### Action Creators
 
 ```javascript
-import { 
-  setTandaPayWallet, 
-  updateTandaPaySettings, 
+import {
+  setTandaPayWallet,
+  updateTandaPaySettings,
   addTandaPayTransaction,
-  updateTandaPayPoolData 
+  updateTandaPayPoolData
 } from '../tandapay/tandaPayActions';
 
 // Set wallet data
@@ -114,11 +114,11 @@ dispatch(addTandaPayTransaction({
 ### Selectors
 
 ```javascript
-import { 
-  getTandaPayWallet, 
-  getTandaPaySettings, 
+import {
+  getTandaPayWallet,
+  getTandaPaySettings,
   getTandaPayTransactions,
-  getTandaPayActivePools 
+  getTandaPayActivePools
 } from '../tandapay/tandaPaySelectors';
 
 // In your React component
