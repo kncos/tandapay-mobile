@@ -33,10 +33,18 @@ const styles = StyleSheet.create({
 });
 
 function SendReceiveButtonRow() {
+  const navigation = useNavigation();
   return (
     <View style={TandaPayStyles.buttonRow}>
       <ZulipButton style={TandaPayStyles.button} secondary text="Send" onPress={() => {}} />
-      <ZulipButton style={TandaPayStyles.button} secondary text="Receive" onPress={() => {}} />
+      <ZulipButton
+        style={TandaPayStyles.button}
+        secondary
+        text="Receive"
+        onPress={() => {
+          navigation.push('wallet-receive');
+        }}
+      />
     </View>
   );
 }
