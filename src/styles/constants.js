@@ -12,7 +12,13 @@ export const NAVBAR_SIZE = 58;
 //  * in our WebView's CSS;
 //  * under `android/` (search for "BRAND_COLOR");
 //  * in `ios/**/Brand.colorset/Contents.json`.
-export const BRAND_COLOR = 'hsl(222, 99%, 69%)';
+
+// TandaPay brand color
+export const BRAND_COLOR = '#00B558';
+
+// Former zulip brand color:
+// export const BRAND_COLOR = 'hsl(222, 99%, 69%)';
+
 export const BORDER_COLOR = BRAND_COLOR;
 export const HIGHLIGHT_COLOR: string = Color(BRAND_COLOR).fade(0.5).toString();
 
@@ -21,3 +27,5 @@ export const QUARTER_COLOR = 'hsla(0, 0%, 50%, 0.25)';
 
 // Material warning color
 export const kWarningColor = 'hsl(40, 100%, 60%)';
+// Material error color
+export const kErrorColor = 'hsl(0, 100%, 60%)';
