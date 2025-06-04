@@ -32,8 +32,8 @@ const makeGetText = (intl: IntlShape): GetText => {
         // If you see this in dev, it means there's a user-facing
         // string that hasn't been added to
         // static/translations/messages_en.json. Please add it! :)
-        defaultMessage:
-          process.env.NODE_ENV === 'development' ? `UNTRANSLATED—${text}—UNTRANSLATED` : text,
+        defaultMessage: text,
+          // process.env.NODE_ENV === 'development' ? `UNTRANSLATED—${text}—UNTRANSLATED` : text,
       },
       values,
     );
