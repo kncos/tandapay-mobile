@@ -5,6 +5,10 @@ import type { Node } from 'react';
 import { View, StyleSheet, Alert, Share } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
+// suppress flow error for react-native-qrcode-svg
+// $FlowFixMe[untyped-import]
+import QRCode from 'react-native-qrcode-svg';
+
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
@@ -61,6 +65,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
+// QRcode component for wallet address
+function QRCodeComponent({ value }: { value: string }) {
+  return (
+    <View style={{ marginVertical: 20 }}>
+      <QRCode
+        value={value}
+        size={200}
+        backgroundColor="transparent"
+        color="#000"
+      />
+    </View>
+  );
+}
 
 export default function WalletReceiveScreen(props: Props): Node {
   const { navigation } = props;
@@ -150,6 +168,8 @@ export default function WalletReceiveScreen(props: Props): Node {
           style={styles.instructions}
           text="Share your wallet address to receive cryptocurrency payments."
         />
+
+        <QRCodeComponent value={walletAddress} />
 
         <View style={styles.addressContainer}>
           <ZulipText
