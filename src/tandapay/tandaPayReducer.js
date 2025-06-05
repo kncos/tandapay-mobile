@@ -2,10 +2,7 @@
 import type { Action } from '../types';
 import {
   RESET_ACCOUNT_DATA,
-  TANDAPAY_WALLET_SET,
   TANDAPAY_SETTINGS_UPDATE,
-  TANDAPAY_TRANSACTION_ADD,
-  TANDAPAY_POOL_DATA_UPDATE,
   TANDAPAY_TOKEN_SELECT,
   TANDAPAY_TOKEN_ADD_CUSTOM,
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
@@ -14,68 +11,20 @@ import {
 import type { TokenState } from './tokens/tokenTypes';
 import { getDefaultTokens, validateCustomToken } from './tokens/tokenConfig';
 
-export type TandaPayWalletState = $ReadOnly<{|
-  address: string | null,
-  privateKey: string | null, // This should be encrypted in production
-  publicKey: string | null,
-  mnemonic: string | null, // This should be encrypted in production
-  isImported: boolean,
-  createdAt: number | null,
-|}>;
-
+// Simplified settings state - only keep what's actually used for token functionality
 export type TandaPaySettingsState = $ReadOnly<{|
   defaultNetwork: string,
-  notificationsEnabled: boolean,
-  biometricAuthEnabled: boolean,
-  autoBackupEnabled: boolean,
-  currency: string,
   // Token selection persistence
   selectedTokenSymbol: string,
 |}>;
 
-export type TandaPayTransactionState = $ReadOnly<{|
-  id: string,
-  type: 'contribution' | 'claim' | 'withdrawal',
-  amount: string,
-  txHash: string | null,
-  status: 'pending' | 'confirmed' | 'failed',
-  timestamp: number,
-  poolId: string | null,
-|}>;
-
-export type TandaPayPoolState = $ReadOnly<{|
-  id: string,
-  name: string,
-  memberCount: number,
-  totalPool: string,
-  userContribution: string | null,
-  status: 'active' | 'paused' | 'closed',
-  lastUpdated: number,
-|}>;
-
 export type TandaPayState = $ReadOnly<{|
-  wallet: TandaPayWalletState,
   settings: TandaPaySettingsState,
-  transactions: $ReadOnlyArray<TandaPayTransactionState>,
-  pools: $ReadOnlyArray<TandaPayPoolState>,
   tokens: TokenState,
 |}>;
 
-const initialWalletState: TandaPayWalletState = {
-  address: null,
-  privateKey: null,
-  publicKey: null,
-  mnemonic: null,
-  isImported: false,
-  createdAt: null,
-};
-
 const initialSettingsState: TandaPaySettingsState = {
   defaultNetwork: 'sepolia', // Changed to sepolia for testing
-  notificationsEnabled: true,
-  biometricAuthEnabled: false,
-  autoBackupEnabled: true,
-  currency: 'USD',
   selectedTokenSymbol: 'ETH', // Default to ETH
 };
 
@@ -88,10 +37,7 @@ const initialTokenState: TokenState = {
 };
 
 const initialState: TandaPayState = {
-  wallet: initialWalletState,
   settings: initialSettingsState,
-  transactions: [],
-  pools: [],
   tokens: initialTokenState,
 };
 
@@ -99,27 +45,20 @@ const initialState: TandaPayState = {
 export default (state: TandaPayState = initialState, action: Action): TandaPayState => {
   switch (action.type) {
     case RESET_ACCOUNT_DATA:
-      // Reset only transaction and pool data, keep wallet, settings, and tokens
+      // Reset to initial state but preserve any custom tokens that were added
       return {
-        ...state,
-        transactions: [],
-        pools: [],
-      };
-
-    case TANDAPAY_WALLET_SET:
-      return {
-        ...state,
-        wallet: {
-          ...state.wallet,
-          ...action.walletData,
-          createdAt: action.walletData.createdAt != null ? action.walletData.createdAt : Date.now(),
+        ...initialState,
+        tokens: {
+          ...initialState.tokens,
+          customTokens: state.tokens.customTokens,
         },
       };
 
     case TANDAPAY_SETTINGS_UPDATE: {
-      const updatedSettings = {
-        ...state.settings,
-        ...action.settings,
+      // Only allow updating fields that exist in the simplified settings state
+      const updatedSettings: TandaPaySettingsState = {
+        defaultNetwork: action.settings.defaultNetwork != null ? action.settings.defaultNetwork : state.settings.defaultNetwork,
+        selectedTokenSymbol: action.settings.selectedTokenSymbol != null ? action.settings.selectedTokenSymbol : state.settings.selectedTokenSymbol,
       };
 
       // If selectedTokenSymbol is being updated, also update the tokens state
@@ -224,22 +163,6 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
             [action.tokenSymbol]: Date.now(),
           },
         },
-      };
-
-    case TANDAPAY_TRANSACTION_ADD:
-      return {
-        ...state,
-        transactions: [action.transaction, ...state.transactions],
-      };
-
-    case TANDAPAY_POOL_DATA_UPDATE:
-      return {
-        ...state,
-        pools: state.pools.map(pool =>
-          pool.id === action.poolData.id
-            ? { ...pool, ...action.poolData, lastUpdated: Date.now() }
-            : pool
-        ),
       };
 
     default:

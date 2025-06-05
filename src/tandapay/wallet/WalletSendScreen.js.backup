@@ -1,0 +1,43 @@
+/* @flow strict-local */
+
+import React from 'react';
+import type { Node } from 'react';
+import { View, StyleSheet } from 'react-native';
+
+import type { RouteProp } from '../../react-navigation';
+import type { AppNavigationProp } from '../../nav/AppNavigator';
+import Screen from '../../common/Screen';
+import ZulipText from '../../common/ZulipText';
+
+type Props = $ReadOnly<{|
+  navigation: AppNavigationProp<'wallet-send'>,
+  route: RouteProp<'wallet-send', void>,
+|}>;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  input: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  button: {
+    width: '100%',
+  },
+});
+
+export default function WalletSendScreen(props: Props): Node {
+  return (
+    <Screen title="Send Tokens" canGoBack>
+      <View style={styles.container}>
+        <ZulipText>
+          Hello, world
+        </ZulipText>
+      </View>
+    </Screen>
+  );
+}

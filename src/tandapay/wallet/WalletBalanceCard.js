@@ -14,7 +14,6 @@ import { useSelector, useDispatch } from '../../react-redux';
 import { selectToken, updateTokenBalance } from '../tokens/tokenActions';
 import { getSelectedToken, getAvailableTokens, getTokenBalance, isTokenBalanceStale } from '../tokens/tokenSelectors';
 import { fetchBalance } from '../web3';
-import { IconEthereum, IconUSDC } from '../../common/Icons';
 
 import type { Token } from '../tokens/tokenTypes';
 
@@ -93,16 +92,6 @@ const styles = StyleSheet.create({
 });
 
 function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: TokenPickerProps): Node {
-  const getTokenIcon = symbol => {
-    if (symbol === 'ETH') {
-      return <IconEthereum size={20} color={themeData.color} style={{ marginRight: 6 }} />;
-    }
-    if (symbol === 'USDC') {
-      return <IconUSDC size={20} color={themeData.color} style={{ marginRight: 6 }} />;
-    }
-    return null;
-  };
-
   if (!selectedToken) {
     return null;
   }
@@ -131,9 +120,6 @@ function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: To
           />
         ))}
       </Picker>
-      <View style={{ position: 'absolute', left: 12, top: 10, flexDirection: 'row', alignItems: 'center' }}>
-        {getTokenIcon(selectedToken.symbol)}
-      </View>
     </View>
   );
 }

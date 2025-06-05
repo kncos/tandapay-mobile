@@ -138,11 +138,15 @@ export default function WalletScreen(props: Props): Node {
   );
 
   if (loading) {
-    return <WalletLoading />;
+    return (
+      <WalletLoading />
+    );
   }
 
   if (!walletExists || walletAddress == null || walletAddress === '') {
-    return <WalletSetupScreen />;
+    return (
+      <WalletSetupScreen />
+    );
   }
 
   return (

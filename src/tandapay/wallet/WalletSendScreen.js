@@ -75,7 +75,7 @@ export default function WalletSendScreen(props: Props): Node {
 
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
-  const [gasEstimate, setGasEstimate] = useState(null);
+  const [gasEstimate, setGasEstimate] = useState<?{| gasLimit: string, gasPrice: string, estimatedCost: string |}>(null);
   const [loading, setLoading] = useState(false);
   const [estimating, setEstimating] = useState(false);
   const [walletInstance, setWalletInstance] = useState(null);
@@ -104,7 +104,7 @@ export default function WalletSendScreen(props: Props): Node {
   const handleAddressChange = (address: string) => {
     setToAddress(address);
     setAddressError('');
-    
+
     if (address.length > 0 && !validateAddress(address)) {
       setAddressError('Invalid Ethereum address format');
     }
@@ -142,10 +142,12 @@ export default function WalletSendScreen(props: Props): Node {
       );
 
       if (result.success && result.gasEstimate != null && result.gasPrice != null) {
-        const estimatedCost = ((parseFloat(result.gasEstimate) * parseFloat(result.gasPrice)) / 1e9).toFixed(8);
+        const gasLimitValue = result.gasEstimate;
+        const gasPriceValue = result.gasPrice;
+        const estimatedCost = ((parseFloat(gasLimitValue) * parseFloat(gasPriceValue)) / 1e9).toFixed(8);
         setGasEstimate({
-          gasLimit: result.gasEstimate,
-          gasPrice: result.gasPrice,
+          gasLimit: gasLimitValue,
+          gasPrice: gasPriceValue,
           estimatedCost,
         });
       } else {
@@ -176,11 +178,7 @@ export default function WalletSendScreen(props: Props): Node {
 
     Alert.alert(
       'Confirm Transaction',
-      `Send ${amount} ${selectedToken?.symbol || 'tokens'} to ${toAddress}?
-
-Estimated Gas: ${gasEstimate.gasLimit} units
-Gas Price: ${gasEstimate.gasPrice} gwei
-Estimated Cost: ${gasEstimate.estimatedCost} ETH`,
+      `Send ${amount} ${selectedToken?.symbol || 'tokens'} to ${toAddress}?\n\nEstimated Gas: ${gasEstimate.gasLimit} units\nGas Price: ${gasEstimate.gasPrice} gwei\nEstimated Cost: ${gasEstimate.estimatedCost} ETH`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -195,6 +193,10 @@ Estimated Cost: ${gasEstimate.estimatedCost} ETH`,
                 throw new Error('Unable to access wallet private key');
               }
 
+              if (!selectedToken) {
+                throw new Error('No token selected');
+              }
+
               const result = await transferToken(
                 selectedToken,
                 wallet.privateKey,
@@ -206,11 +208,7 @@ Estimated Cost: ${gasEstimate.estimatedCost} ETH`,
               if (result.success && result.txHash != null) {
                 Alert.alert(
                   'Transaction Sent!',
-                  `Your transaction has been submitted to the network.
-                  
-Transaction Hash: ${result.txHash}
-
-It may take a few minutes to confirm.`,
+                  `Your transaction has been submitted to the network.\n\nTransaction Hash: ${result.txHash}\n\nIt may take a few minutes to confirm.`,
                   [{ text: 'OK', onPress: () => navigation.goBack() }],
                 );
               } else {
@@ -257,7 +255,9 @@ It may take a few minutes to confirm.`,
         {/* Token Info */}
         <View style={[styles.tokenInfo, { backgroundColor: themeData.cardColor }]}>
           <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
-            Sending {selectedToken.symbol}
+            Sending
+            {' '}
+            {selectedToken.symbol}
           </ZulipText>
           <ZulipText style={{ opacity: 0.7, fontSize: 14 }}>
             {selectedToken.name}
@@ -305,17 +305,29 @@ It may take a few minutes to confirm.`,
 
             <View style={styles.row}>
               <ZulipText style={styles.label}>Gas Limit:</ZulipText>
-              <ZulipText>{gasEstimate.gasLimit} units</ZulipText>
+              <ZulipText>
+                {gasEstimate.gasLimit}
+                {' '}
+                units
+              </ZulipText>
             </View>
 
             <View style={styles.row}>
               <ZulipText style={styles.label}>Gas Price:</ZulipText>
-              <ZulipText>{gasEstimate.gasPrice} gwei</ZulipText>
+              <ZulipText>
+                {gasEstimate.gasPrice}
+                {' '}
+                gwei
+              </ZulipText>
             </View>
 
             <View style={styles.row}>
               <ZulipText style={styles.label}>Estimated Cost:</ZulipText>
-              <ZulipText>{gasEstimate.estimatedCost} ETH</ZulipText>
+              <ZulipText>
+                {gasEstimate.estimatedCost}
+                {' '}
+                ETH
+              </ZulipText>
             </View>
           </View>
         )}
@@ -326,7 +338,7 @@ It may take a few minutes to confirm.`,
             disabled={!isFormValid}
             text={loading ? 'Sending...' : `Send ${selectedToken.symbol}`}
             onPress={handleSend}
-            style={{ 
+            style={{
               backgroundColor: loading ? '#999' : '#4CAF50',
               marginTop: 16,
             }}
