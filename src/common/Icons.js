@@ -128,3 +128,4 @@ export const IconTandaPayInfo: SpecificIconType = makeIcon(Feather, 'info');
 // Use 'circle' for ETH and 'usd' for USDC as closest FontAwesome matches
 export const IconEthereum: SpecificIconType = makeIcon(FontAwesome, 'circle');
 export const IconUSDC: SpecificIconType = makeIcon(FontAwesome, 'usd');
+export const IconRefresh: SpecificIconType = makeIcon(Feather, 'rotate-cw');

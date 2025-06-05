@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useContext, useCallback, useMemo } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 
@@ -81,36 +81,48 @@ export default function WalletSendScreen(props: Props): Node {
   const [walletInstance, setWalletInstance] = useState(null);
   const [addressError, setAddressError] = useState('');
 
-  // Load wallet instance on mount
-  useEffect(() => {
-    const loadWallet = async () => {
-      try {
-        const wallet = await getWalletInstance();
-        setWalletInstance(wallet);
-      } catch (error) {
-        Alert.alert('Error', 'Failed to load wallet. Please try again.');
-        navigation.goBack();
-      }
-    };
-    loadWallet();
-  }, [navigation]);
+  // Load wallet instance lazily (only when needed)
+  const getWallet = useCallback(async () => {
+    if (walletInstance) {
+      return walletInstance;
+    }
+
+    try {
+      const wallet = await getWalletInstance();
+      setWalletInstance(wallet);
+      return wallet;
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load wallet. Please try again.');
+      navigation.goBack();
+      return null;
+    }
+  }, [walletInstance, navigation]);
 
   // Validate Ethereum address
-  const validateAddress = (address: string): boolean => {
+  const validateAddress = useCallback((address: string): boolean => {
     const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
     return ethAddressRegex.test(address);
-  };
+  }, []);
 
-  const handleAddressChange = (address: string) => {
+  const handleAddressChange = useCallback((address: string) => {
     setToAddress(address);
     setAddressError('');
 
     if (address.length > 0 && !validateAddress(address)) {
       setAddressError('Invalid Ethereum address format');
     }
-  };
+  }, [validateAddress]);
 
-  const handleEstimateGas = async () => {
+  const handleAmountChange = useCallback((value: string) => {
+    setAmount(value);
+  }, []);
+
+  // Memoize form validation to prevent unnecessary re-renders
+  const isFormValid = useMemo(() =>
+    toAddress.trim() && amount.trim() && !loading && !addressError,
+  [toAddress, amount, loading, addressError]);
+
+  const handleEstimateGas = useCallback(async () => {
     if (!toAddress.trim() || !amount.trim()) {
       Alert.alert('Missing Information', 'Please enter recipient address and amount.');
       return;
@@ -121,7 +133,8 @@ export default function WalletSendScreen(props: Props): Node {
       return;
     }
 
-    if (!walletInstance?.address) {
+    const wallet = await getWallet();
+    if (!wallet?.address) {
       Alert.alert('Error', 'Wallet not loaded properly. Please try again.');
       return;
     }
@@ -135,7 +148,7 @@ export default function WalletSendScreen(props: Props): Node {
     try {
       const result = await estimateTransferGas(
         selectedToken,
-        walletInstance.address,
+        wallet.address,
         toAddress.trim(),
         amount.trim(),
         'sepolia', // Using testnet for now
@@ -158,9 +171,9 @@ export default function WalletSendScreen(props: Props): Node {
     } finally {
       setEstimating(false);
     }
-  };
+  }, [toAddress, amount, validateAddress, getWallet, selectedToken]);
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!toAddress.trim() || !amount.trim()) {
       Alert.alert('Missing Information', 'Please enter recipient address and amount.');
       return;
@@ -188,7 +201,7 @@ export default function WalletSendScreen(props: Props): Node {
             setLoading(true);
             try {
               // Get wallet private key for transaction
-              const wallet = await getWalletInstance();
+              const wallet = await getWallet();
               if (!wallet?.privateKey) {
                 throw new Error('Unable to access wallet private key');
               }
@@ -223,7 +236,7 @@ export default function WalletSendScreen(props: Props): Node {
         },
       ],
     );
-  };
+  }, [toAddress, amount, gasEstimate, validateAddress, selectedToken, navigation, getWallet]);
 
   // Return early if no token is selected
   if (!selectedToken) {
@@ -242,8 +255,6 @@ export default function WalletSendScreen(props: Props): Node {
       </Screen>
     );
   }
-
-  const isFormValid = toAddress.trim() && amount.trim() && !loading && !addressError;
 
   return (
     <Screen title="Send" canGoBack>
@@ -284,7 +295,7 @@ export default function WalletSendScreen(props: Props): Node {
             style={styles.input}
             placeholder={`Amount in ${selectedToken.symbol}`}
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={handleAmountChange}
             keyboardType="numeric"
           />
 

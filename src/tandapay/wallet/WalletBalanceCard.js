@@ -1,6 +1,6 @@
 // @flow strict-local
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useContext } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 
@@ -8,12 +8,15 @@ import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
 import ZulipText from '../../common/ZulipText';
+import Touchable from '../../common/Touchable';
+import { IconRefresh } from '../../common/Icons';
+import AnimatedRotateComponent from '../../animation/AnimatedRotateComponent';
 import { ThemeContext } from '../../styles';
 import { BRAND_COLOR, HIGHLIGHT_COLOR } from '../../styles/constants';
 import { useSelector, useDispatch } from '../../react-redux';
-import { selectToken, updateTokenBalance } from '../tokens/tokenActions';
-import { getSelectedToken, getAvailableTokens, getTokenBalance, isTokenBalanceStale } from '../tokens/tokenSelectors';
-import { fetchBalance } from '../web3';
+import { selectToken } from '../tokens/tokenActions';
+import { getSelectedToken, getAvailableTokens } from '../tokens/tokenSelectors';
+import { useUpdateBalance } from './hooks/useUpdateBalance';
 
 import type { Token } from '../tokens/tokenTypes';
 
@@ -54,9 +57,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   pickerContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    position: 'relative',
+  },
+  refreshButton: {
+    marginLeft: 12,
+    marginTop: 18,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignSelf: 'center',
   },
   pickerChip: {
     borderRadius: 18,
@@ -149,46 +164,10 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
   const dispatch = useDispatch();
   const selectedToken = useSelector(getSelectedToken);
   const availableTokens = useSelector(getAvailableTokens);
-  const balance = useSelector(state => selectedToken ? getTokenBalance(state, selectedToken.symbol) : null);
-  const network = useSelector(state => state.tandaPay.settings.defaultNetwork === 'mainnet' ? 'mainnet' : 'sepolia');
-
-  const [loading, setLoading] = useState(false);
   const themeData = useContext(ThemeContext);
 
-  // Check if balance needs to be fetched
-  const isBalanceStale = useSelector(state =>
-    selectedToken ? isTokenBalanceStale(state, selectedToken.symbol) : true
-  );
-
-  useEffect(() => {
-    let isMounted = true;
-
-    if (walletAddress == null || walletAddress === '' || !selectedToken) {
-      // Clear balance for empty wallet or no selected token
-      if (selectedToken) {
-        dispatch(updateTokenBalance(selectedToken.symbol, '0'));
-      }
-      return;
-    }
-
-    // Only fetch if balance is stale or missing
-    if (isBalanceStale) {
-      setLoading(true);
-      fetchBalance(selectedToken, walletAddress, network).then(bal => {
-        if (isMounted && selectedToken) {
-          dispatch(updateTokenBalance(selectedToken.symbol, bal));
-          setLoading(false);
-        }
-      }).catch(error => {
-        if (isMounted) {
-          // Log error but don't show to user in this component
-          setLoading(false);
-        }
-      });
-    }
-
-    return () => { isMounted = false; };
-  }, [dispatch, selectedToken, walletAddress, isBalanceStale, network]);
+  // Use the custom hook for balance management
+  const { balance, loading, refreshBalance } = useUpdateBalance(selectedToken, walletAddress);
 
   const handleTokenSelect = (token: Token) => {
     dispatch(selectToken(token.symbol));
@@ -217,6 +196,25 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
             onSelect={handleTokenSelect}
             themeData={themeData}
           />
+          <Touchable
+            style={styles.refreshButton}
+            onPress={refreshBalance}
+            accessibilityLabel="Refresh balance"
+          >
+            {loading ? (
+              <AnimatedRotateComponent>
+                <IconRefresh
+                  size={20}
+                  color={themeData.color}
+                />
+              </AnimatedRotateComponent>
+            ) : (
+              <IconRefresh
+                size={20}
+                color={BRAND_COLOR}
+              />
+            )}
+          </Touchable>
         </View>
       </View>
     </View>
