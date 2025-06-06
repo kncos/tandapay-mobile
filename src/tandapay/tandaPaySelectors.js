@@ -12,7 +12,6 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
     return {
       settings: {
         selectedNetwork: 'sepolia',
-        selectedTokenSymbol: 'ETH',
         customRpcConfig: null,
       },
       tokens: {
@@ -34,7 +33,6 @@ export const getTandaPaySettings = (state: PerAccountState): TandaPaySettingsSta
     // Return default settings if state is not initialized
     return {
       selectedNetwork: 'sepolia',
-      selectedTokenSymbol: 'ETH',
       customRpcConfig: null,
     };
   }
@@ -60,5 +58,15 @@ export const getTandaPayCustomRpcConfig = (state: PerAccountState): ?{|
     return getTandaPaySettings(state).customRpcConfig;
   } catch (error) {
     return null;
+  }
+};
+
+// Token selectors
+export const getTandaPaySelectedTokenSymbol = (state: PerAccountState): string => {
+  try {
+    const tandaPayState = getTandaPayState(state);
+    return tandaPayState.tokens.selectedTokenSymbol || 'ETH';
+  } catch (error) {
+    return 'ETH';
   }
 };

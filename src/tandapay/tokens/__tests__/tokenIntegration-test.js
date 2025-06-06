@@ -120,7 +120,6 @@ describe('Token System Integration', () => {
           },
         },
         settings: {
-          selectedTokenSymbol: 'USDC',
           selectedNetwork: 'sepolia',
         },
       },

@@ -10,12 +10,13 @@ import {
 } from '../actionConstants';
 import type { TokenState } from './tokens/tokenTypes';
 import { getDefaultTokens, validateCustomToken } from './tokens/tokenConfig';
+import {
+  validateTandaPaySettings
+} from './stateValidation';
 
-// Enhanced settings state with network customization support
+// Enhanced settings state with network customization support (removed duplicate selectedTokenSymbol)
 export type TandaPaySettingsState = $ReadOnly<{|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
-  // Token selection persistence
-  selectedTokenSymbol: string,
   // Custom RPC configuration
   customRpcConfig: ?{|
     name: string,
@@ -32,7 +33,6 @@ export type TandaPayState = $ReadOnly<{|
 
 const initialSettingsState: TandaPaySettingsState = {
   selectedNetwork: 'sepolia', // Changed to sepolia for testing
-  selectedTokenSymbol: 'ETH', // Default to ETH
   customRpcConfig: null, // No custom RPC by default
 };
 
@@ -63,47 +63,46 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
       };
 
     case TANDAPAY_SETTINGS_UPDATE: {
-      // Only allow updating fields that exist in the enhanced settings state
+      // Validate the incoming settings update
+      const validation = validateTandaPaySettings({
+        selectedNetwork: action.settings.selectedNetwork,
+        customRpcConfig: action.settings.customRpcConfig,
+      });
+
+      if (!validation.isValid) {
+        return state; // Return unchanged state for invalid updates
+      }
+
+      // Only allow updating fields that exist in the settings state
       const updatedSettings: TandaPaySettingsState = {
         selectedNetwork: action.settings.selectedNetwork != null ? action.settings.selectedNetwork : state.settings.selectedNetwork,
-        selectedTokenSymbol: action.settings.selectedTokenSymbol != null ? action.settings.selectedTokenSymbol : state.settings.selectedTokenSymbol,
         customRpcConfig: action.settings.customRpcConfig !== undefined ? action.settings.customRpcConfig : state.settings.customRpcConfig,
       };
-
-      // If selectedTokenSymbol is being updated, also update the tokens state
-      let updatedTokens = state.tokens;
-      if (action.settings.selectedTokenSymbol != null) {
-        updatedTokens = {
-          ...state.tokens,
-          selectedTokenSymbol: action.settings.selectedTokenSymbol,
-        };
-      }
 
       return {
         ...state,
         settings: updatedSettings,
-        tokens: updatedTokens,
       };
     }
 
-    case TANDAPAY_TOKEN_SELECT:
+    case TANDAPAY_TOKEN_SELECT: {
+      // Validate token symbol
+      if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
+        return state;
+      }
+
       return {
         ...state,
         tokens: {
           ...state.tokens,
           selectedTokenSymbol: action.tokenSymbol,
         },
-        settings: {
-          ...state.settings,
-          selectedTokenSymbol: action.tokenSymbol,
-        },
       };
+    }
 
     case TANDAPAY_TOKEN_ADD_CUSTOM: {
       const validation = validateCustomToken(action.token);
       if (!validation.isValid) {
-        // In a real app, you might want to handle this error differently
-        // For now, just return the unchanged state
         return state;
       }
 
@@ -122,7 +121,7 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
       );
 
       if (existingCustomToken) {
-        return state; // Token already exists
+        return state;
       }
 
       return {
@@ -134,7 +133,12 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
       };
     }
 
-    case TANDAPAY_TOKEN_REMOVE_CUSTOM:
+    case TANDAPAY_TOKEN_REMOVE_CUSTOM: {
+      // Validate token symbol
+      if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
+        return state;
+      }
+
       return {
         ...state,
         tokens: {
@@ -157,8 +161,18 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
           }, {}),
         },
       };
+    }
 
-    case TANDAPAY_TOKEN_UPDATE_BALANCE:
+    case TANDAPAY_TOKEN_UPDATE_BALANCE: {
+      // Validate inputs
+      if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
+        return state;
+      }
+
+      if (typeof action.balance !== 'string') {
+        return state;
+      }
+
       return {
         ...state,
         tokens: {
@@ -173,6 +187,7 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
           },
         },
       };
+    }
 
     default:
       return state;

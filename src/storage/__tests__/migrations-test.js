@@ -125,24 +125,46 @@ describe('migrations', () => {
     ...base66,
     migrations: { version: 67 },
     tandaPay: {
-      wallet: {
-        address: null,
-        privateKey: null,
-        publicKey: null,
-        mnemonic: null,
-        isImported: false,
-        createdAt: null,
-      },
       settings: {
         selectedNetwork: 'sepolia',
-        notificationsEnabled: true,
-        biometricAuthEnabled: false,
-        autoBackupEnabled: true,
-        currency: 'USD',
-        selectedTokenSymbol: 'ETH',
+        customRpcConfig: null,
       },
-      transactions: [],
-      pools: [],
+      tokens: {
+        selectedTokenSymbol: 'ETH',
+        defaultTokens: [
+          {
+            symbol: 'ETH',
+            address: null,
+            name: 'Ethereum',
+            decimals: 18,
+            isDefault: true,
+            isCustom: false,
+          },
+          {
+            symbol: 'USDC',
+            address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+            name: 'USD Coin',
+            decimals: 6,
+            isDefault: true,
+            isCustom: false,
+          },
+        ],
+        customTokens: [],
+        balances: {},
+        lastUpdated: {},
+      },
+    },
+  };
+
+  // What `base` becomes after migrations up through 68.
+  const base68 = {
+    ...base67,
+    migrations: { version: 68 },
+    tandaPay: {
+      settings: {
+        selectedNetwork: 'sepolia',
+        customRpcConfig: null,
+      },
       tokens: {
         selectedTokenSymbol: 'ETH',
         defaultTokens: [
@@ -172,8 +194,8 @@ describe('migrations', () => {
 
   // What `base` becomes after all migrations.
   const endBase = {
-    ...base67,
-    migrations: { version: 67 },
+    ...base68,
+    migrations: { version: 68 },
   };
 
   for (const [desc, before, after] of [

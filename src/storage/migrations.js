@@ -548,7 +548,6 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
     tandaPay: {
       settings: {
         selectedNetwork: 'sepolia',
-        selectedTokenSymbol: 'ETH',
         customRpcConfig: null,
       },
       tokens: {
@@ -560,6 +559,28 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
       },
     },
   }),
+
+  // Remove duplicate selectedTokenSymbol from settings state
+  '68': state => {
+    if (!state.tandaPay || !state.tandaPay.settings) {
+      return state;
+    }
+
+    // Create clean settings without selectedTokenSymbol if it exists
+    const settings = state.tandaPay.settings;
+    const cleanSettings = {
+      selectedNetwork: settings.selectedNetwork || 'sepolia',
+      customRpcConfig: settings.customRpcConfig || null,
+    };
+
+    return {
+      ...state,
+      tandaPay: {
+        ...state.tandaPay,
+        settings: cleanSettings,
+      },
+    };
+  },
 
   // TIP: When adding a migration, consider just using `dropCache`.
   //   (See its jsdoc for guidance on when that's the right answer.)
