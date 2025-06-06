@@ -63,6 +63,7 @@ import WalletSetupScreen from '../tandapay/wallet/wallet-setup/WalletSetupScreen
 import WalletGenerateScreen from '../tandapay/wallet/wallet-setup/WalletGenerateScreen';
 import WalletImportScreen from '../tandapay/wallet/wallet-setup/WalletImportScreen';
 import WalletVerifyScreen from '../tandapay/wallet/wallet-setup/WalletVerifyScreen';
+import TokenManagementScreen from '../tandapay/tokens/TokenManagementScreen';
 
 export type AppNavigatorParamList = {|
   +'account-pick': RouteParamsOf<typeof AccountPickScreen>,
@@ -99,6 +100,7 @@ export type AppNavigatorParamList = {|
   +'tandapay-actions': void,
   +'tandapay-settings': void,
   +'tandapay-network-settings': void,
+  +'token-management': void,
   +wallet: void,
   +'wallet-send': void,
   +'wallet-receive': void,
@@ -226,6 +228,10 @@ export default function AppNavigator(props: Props): Node {
       <Stack.Screen
         name="tandapay-network-settings"
         component={useHaveServerDataGate(TandaPayNetworkSettingsScreen)}
+      />
+      <Stack.Screen
+        name="token-management"
+        component={useHaveServerDataGate(TokenManagementScreen)}
       />
       <Stack.Screen name="wallet" component={useHaveServerDataGate(WalletScreen)} />
       <Stack.Screen name="wallet-send" component={useHaveServerDataGate(WalletSendScreen)} />

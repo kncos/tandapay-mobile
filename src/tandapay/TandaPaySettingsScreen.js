@@ -11,7 +11,7 @@ import SwitchRow from '../common/SwitchRow';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
 import ZulipButton from '../common/ZulipButton';
-import { IconWallet, IconNotifications, IconSmartphone, IconLanguage } from '../common/Icons';
+import { IconWallet, IconNotifications, IconSmartphone, IconLanguage, IconPlusCircle } from '../common/Icons';
 import { deleteWallet } from './wallet/WalletManager';
 
 type Props = $ReadOnly<{|
@@ -21,20 +21,6 @@ type Props = $ReadOnly<{|
 
 export default function TandaPaySettingsScreen(props: Props): Node {
   const { navigation } = props;
-
-  // Example settings state - replace with actual state management
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-
-  const handleAutoSyncChange = useCallback((value: boolean) => {
-    setAutoSyncEnabled(value);
-    // TODO: Implement actual setting persistence
-  }, []);
-
-  const handleNotificationsChange = useCallback((value: boolean) => {
-    setNotificationsEnabled(value);
-    // TODO: Implement actual setting persistence
-  }, []);
 
   const handleDeleteWallet = useCallback(async () => {
     Alert.alert(
@@ -75,16 +61,6 @@ export default function TandaPaySettingsScreen(props: Props): Node {
 
   return (
     <Screen title="TandaPay Settings">
-      <SwitchRow
-        label="Auto-sync with blockchain"
-        value={autoSyncEnabled}
-        onValueChange={handleAutoSyncChange}
-      />
-      <SwitchRow
-        label="TandaPay notifications"
-        value={notificationsEnabled}
-        onValueChange={handleNotificationsChange}
-      />
       <NavRow
         leftElement={{ type: 'icon', Component: IconWallet }}
         title="Wallet Settings"
@@ -94,21 +70,20 @@ export default function TandaPaySettingsScreen(props: Props): Node {
         subtitle="Manage your crypto wallet preferences"
       />
       <NavRow
-        leftElement={{ type: 'icon', Component: IconNotifications }}
-        title="Notification Preferences"
-        onPress={() => {
-          // TODO: Navigate to TandaPay-specific notification settings
-          navigation.push('notifications');
-        }}
-        subtitle="Configure TandaPay alert settings"
-      />
-      <NavRow
         leftElement={{ type: 'icon', Component: IconLanguage }}
         title="Network Settings"
         onPress={() => {
           navigation.push('tandapay-network-settings');
         }}
         subtitle="Configure blockchain network and RPC settings"
+      />
+      <NavRow
+        leftElement={{ type: 'icon', Component: IconPlusCircle }}
+        title="Manage Tokens"
+        onPress={() => {
+          navigation.push('token-management');
+        }}
+        subtitle="Add custom tokens and manage available tokens"
       />
       <TextRow
         icon={{ Component: IconSmartphone }}

@@ -35,12 +35,6 @@ export default function TandaPayActionsScreen(props: Props): Node {
   return (
     <Screen title="TandaPay Actions">
       <NavRow
-        leftElement={{ type: 'icon', Component: IconTandaPayInfo }}
-        title="Test Contract"
-        onPress={() => {}}
-        subtitle=""
-      />
-      <NavRow
         leftElement={{ type: 'icon', Component: IconGroup }}
         title="Join Group"
         onPress={handleJoinGroup}

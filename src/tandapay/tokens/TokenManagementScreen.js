@@ -14,10 +14,13 @@ import Screen from '../../common/Screen';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import Input from '../../common/Input';
+import type { AppNavigationProp } from '../../nav/AppNavigator';
+import type { RouteProp } from '../../react-navigation';
 
-type Props = {|
-  navigation: {| navigate: (string, ?{}) => void |},
-|};
+type Props = $ReadOnly<{|
+  navigation: AppNavigationProp<'token-management'>,
+  route: RouteProp<'token-management', void>,
+|}>;
 
 const styles = createStyleSheet({
   container: {
@@ -63,7 +66,7 @@ const styles = createStyleSheet({
   },
 });
 
-export default function TokenManagementScreen({ navigation }: Props): Node {
+export default function TokenManagementScreen(props: Props): Node {
   const dispatch = useDispatch();
   const themeData = useContext(ThemeContext);
   const availableTokens = useSelector(getAvailableTokens);
