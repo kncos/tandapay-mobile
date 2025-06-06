@@ -32,6 +32,13 @@ export default function TandaPayInfoScreen(props: Props): Node {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true; // Track component mount state
+    let timeoutId = null;
+
+    // Reset loading state when network changes
+    setLoading(true);
+    setError(null);
+
     const fetchBlockchainData = async () => {
       try {
         // Use centralized provider management with selected network
@@ -43,19 +50,41 @@ export default function TandaPayInfoScreen(props: Props): Node {
           (provider: any).getBlockNumber(),
         ]);
 
-        setBlockchainData({
-          balance: ethers.utils.formatEther(balance),
-          blockNumber: blockNumber.toString(),
-        });
-        setError(null);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setBlockchainData({
+            balance: ethers.utils.formatEther(balance),
+            blockNumber: blockNumber.toString(),
+          });
+          setError(null);
+        }
       } catch (e) {
-        setError(e.message);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setError(e.message);
+        }
       } finally {
-        setLoading(false);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchBlockchainData();
+    // Add a small delay to prevent rapid API calls during network switching
+    timeoutId = setTimeout(() => {
+      if (isMounted) {
+        fetchBlockchainData();
+      }
+    }, 100);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [selectedNetwork]);
 
   const handleViewContract = useCallback(() => {

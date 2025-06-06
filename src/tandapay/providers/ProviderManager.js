@@ -17,8 +17,6 @@ type NetworkConfig = {|
   blockExplorerUrl?: string,
 |};
 
-type SupportedNetwork = 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom';
-
 const NETWORK_CONFIGS: {|
   mainnet: NetworkConfig,
   sepolia: NetworkConfig,
@@ -53,9 +51,40 @@ const NETWORK_CONFIGS: {|
 
 /**
  * Provider cache to avoid creating multiple instances
+ * Implements LRU cache with size limit to prevent memory leaks
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
 const providerCache: Map<string, any> = new Map();
+const MAX_CACHE_SIZE = 10; // Limit to prevent memory leaks
+const cacheAccessOrder: Array<string> = []; // Track access order for LRU
+
+/**
+ * Update cache access order for LRU eviction
+ */
+function updateCacheAccess(key: string): void {
+  const existingIndex = cacheAccessOrder.indexOf(key);
+  if (existingIndex > -1) {
+    cacheAccessOrder.splice(existingIndex, 1);
+  }
+  cacheAccessOrder.push(key);
+}
+
+/**
+ * Evict least recently used cache entries if over limit
+ */
+function evictLRUIfNeeded(): void {
+  while (providerCache.size >= MAX_CACHE_SIZE && cacheAccessOrder.length > 0) {
+    const oldestKey = cacheAccessOrder.shift();
+    if (oldestKey && providerCache.has(oldestKey)) {
+      const provider = providerCache.get(oldestKey);
+      // Cleanup provider connections if method exists
+      if (provider && typeof provider.removeAllListeners === 'function') {
+        provider.removeAllListeners();
+      }
+      providerCache.delete(oldestKey);
+    }
+  }
+}
 
 /**
  * Get provider instance for a specific network or custom configuration
@@ -80,11 +109,16 @@ export function createProvider(
   }
 
   if (providerCache.has(cacheKey)) {
+    updateCacheAccess(cacheKey);
     return providerCache.get(cacheKey);
   }
 
+  // Evict old entries before adding new one
+  evictLRUIfNeeded();
+
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
   providerCache.set(cacheKey, provider);
+  updateCacheAccess(cacheKey);
   return provider;
 }
 
@@ -92,7 +126,25 @@ export function createProvider(
  * Clear provider cache (useful for testing or network switching)
  */
 export function clearProviderCache(): void {
+  // Cleanup all providers before clearing
+  providerCache.forEach((provider) => {
+    if (provider && typeof provider.removeAllListeners === 'function') {
+      provider.removeAllListeners();
+    }
+  });
   providerCache.clear();
+  cacheAccessOrder.length = 0; // Clear access order tracking
+}
+
+/**
+ * Get cache statistics for monitoring
+ */
+export function getCacheStats(): {| size: number, maxSize: number, keys: Array<string> |} {
+  return {
+    size: providerCache.size,
+    maxSize: MAX_CACHE_SIZE,
+    keys: Array.from(providerCache.keys()),
+  };
 }
 
 /**
