@@ -15,9 +15,12 @@
          https://chat.zulip.org/#narrow/stream/243-mobile-team/topic/react-native-image-picker.20upgrade/near/1267245,
          https://github.com/react-native-image-picker/react-native-image-picker/commit/839d2afe1,
          and https://issuetracker.google.com/issues/37063818 -->
+    <!-- Temporarily enabling camera permission for QR code scanning functionality -->
+    <!--
     <uses-permission
         android:name="android.permission.CAMERA"
         tools:node="remove" />
+    -->
 
     <!-- We shouldn't need these two elements in our merged manifest when we
          stop supporting Android 9 (SDK version 28); see

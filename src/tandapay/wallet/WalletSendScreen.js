@@ -2,10 +2,14 @@
 
 import React, { useState, useContext, useCallback, useMemo } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, Modal } from 'react-native';
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
+// $FlowFixMe[untyped-import]
+import { BarCodeScanner } from 'expo-barcode-scanner';
+// $FlowFixMe[untyped-import]
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
@@ -19,6 +23,7 @@ import { getSelectedToken } from '../tokens/tokenSelectors';
 import { getTandaPaySelectedNetwork } from '../tandaPaySelectors';
 import { transferToken, estimateTransferGas } from '../web3';
 import { getWalletInstance } from './WalletManager';
+import { BRAND_COLOR } from '../../styles/constants';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-send'>,
@@ -70,6 +75,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  addressInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addressInput: {
+    flex: 1,
+    marginRight: 8,
+  },
+  qrButton: {
+    padding: 10,
+    borderRadius: 4,
+    backgroundColor: BRAND_COLOR,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrButtonIcon: {
+    color: 'white',
+  },
+  scannerModal: {
+    flex: 1,
+    backgroundColor: 'black',
+  },
+  scannerContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  scannerCloseButton: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 25,
+    padding: 10,
+    zIndex: 1,
+  },
 });
 
 export default function WalletSendScreen(props: Props): Node {
@@ -85,6 +127,8 @@ export default function WalletSendScreen(props: Props): Node {
   const [estimating, setEstimating] = useState(false);
   const [walletInstance, setWalletInstance] = useState(null);
   const [addressError, setAddressError] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+  const [hasPermission, setHasPermission] = useState(null);
 
   // Load wallet instance lazily (only when needed)
   const getWallet = useCallback(async () => {
@@ -112,6 +156,42 @@ export default function WalletSendScreen(props: Props): Node {
       return false;
     }
   }, []);
+
+  // Request camera permission and open QR scanner
+  const handleOpenScanner = useCallback(async () => {
+    const { status } = await BarCodeScanner.requestPermissionsAsync();
+    setHasPermission(status === 'granted');
+
+    if (status === 'granted') {
+      setShowScanner(true);
+    } else {
+      Alert.alert('Camera Permission', 'Camera permission is required to scan QR codes.');
+    }
+  }, []);
+
+  // Handle QR code scan result
+  const handleBarCodeScanned = useCallback(({ type, data }) => {
+    setShowScanner(false);
+
+    // Extract address from QR code data
+    let scannedAddress = data;
+
+    // Handle ethereum: URI format
+    if (data.startsWith('ethereum:')) {
+      const match = data.match(/ethereum:([0-9a-fA-F]{40})/);
+      if (match) {
+        scannedAddress = `0x${match[1]}`;
+      }
+    }
+
+    // Validate the scanned address
+    if (validateAddress(scannedAddress)) {
+      setToAddress(scannedAddress);
+      setAddressError('');
+    } else {
+      Alert.alert('Invalid QR Code', 'The scanned QR code does not contain a valid Ethereum address.');
+    }
+  }, [validateAddress]);
 
   const handleAddressChange = useCallback((address: string) => {
     setToAddress(address);
@@ -337,14 +417,19 @@ export default function WalletSendScreen(props: Props): Node {
         {/* Send Form */}
         <View style={styles.section}>
           <ZulipText style={styles.label}>Recipient Address</ZulipText>
-          <Input
-            style={styles.input}
-            placeholder="0x..."
-            value={toAddress}
-            onChangeText={handleAddressChange}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.addressInputRow}>
+            <Input
+              style={[styles.input, styles.addressInput]}
+              placeholder="0x..."
+              value={toAddress}
+              onChangeText={handleAddressChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity style={styles.qrButton} onPress={handleOpenScanner}>
+              <Icon name="qr-code-scanner" size={20} style={styles.qrButtonIcon} />
+            </TouchableOpacity>
+          </View>
           {addressError ? (
             <ZulipText style={styles.errorText}>{addressError}</ZulipText>
           ) : null}
@@ -427,6 +512,36 @@ export default function WalletSendScreen(props: Props): Node {
             </ZulipText>
           </View>
         )}
+
+        {/* QR Scanner Modal */}
+        <Modal
+          animationType="slide"
+          transparent={false}
+          visible={showScanner}
+          onRequestClose={() => setShowScanner(false)}
+        >
+          <View style={styles.scannerModal}>
+            <TouchableOpacity
+              style={styles.scannerCloseButton}
+              onPress={() => setShowScanner(false)}
+            >
+              <Icon name="close" size={24} color="white" />
+            </TouchableOpacity>
+
+            <View style={styles.scannerContainer}>
+              {hasPermission === null ? (
+                <ZulipText>Requesting camera permission...</ZulipText>
+              ) : hasPermission === false ? (
+                <ZulipText>No camera access. Please grant camera permission in settings.</ZulipText>
+              ) : (
+                <BarCodeScanner
+                  onBarCodeScanned={handleBarCodeScanned}
+                  style={{ flex: 1 }}
+                />
+              )}
+            </View>
+          </View>
+        </Modal>
       </View>
     </Screen>
   );

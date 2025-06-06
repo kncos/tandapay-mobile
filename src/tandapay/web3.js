@@ -51,7 +51,7 @@ function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'pol
       if (perAccountState) {
         const selectedNetwork = getTandaPaySelectedNetwork(perAccountState);
         const customRpcConfig = perAccountState.tandaPay.settings.customRpcConfig;
-        
+
         if (selectedNetwork) {
           network = selectedNetwork;
           customConfig = customRpcConfig;
