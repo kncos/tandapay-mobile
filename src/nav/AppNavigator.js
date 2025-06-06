@@ -55,6 +55,7 @@ import TandaPayMenuScreen from '../tandapay/TandaPayMenuScreen';
 import TandaPayInfoScreen from '../tandapay/TandaPayInfoScreen';
 import TandaPayActionsScreen from '../tandapay/TandaPayActionsScreen';
 import TandaPaySettingsScreen from '../tandapay/TandaPaySettingsScreen';
+import TandaPayNetworkSettingsScreen from '../tandapay/TandaPayNetworkSettingsScreen';
 import WalletScreen from '../tandapay/wallet/WalletScreen';
 import WalletSendScreen from '../tandapay/wallet/WalletSendScreen';
 import WalletReceiveScreen from '../tandapay/wallet/WalletReceiveScreen';
@@ -97,6 +98,7 @@ export type AppNavigatorParamList = {|
   +'tandapay-info': void,
   +'tandapay-actions': void,
   +'tandapay-settings': void,
+  +'tandapay-network-settings': void,
   +wallet: void,
   +'wallet-send': void,
   +'wallet-receive': void,
@@ -220,6 +222,10 @@ export default function AppNavigator(props: Props): Node {
       <Stack.Screen
         name="tandapay-settings"
         component={useHaveServerDataGate(TandaPaySettingsScreen)}
+      />
+      <Stack.Screen
+        name="tandapay-network-settings"
+        component={useHaveServerDataGate(TandaPayNetworkSettingsScreen)}
       />
       <Stack.Screen name="wallet" component={useHaveServerDataGate(WalletScreen)} />
       <Stack.Screen name="wallet-send" component={useHaveServerDataGate(WalletSendScreen)} />

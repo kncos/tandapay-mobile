@@ -658,20 +658,26 @@ type MessageAction = MessageFetchStartAction | MessageFetchErrorAction | Message
 
 type OutboxAction = MessageSendStartAction | MessageSendCompleteAction | DeleteOutboxMessageAction;
 
-type TandaPaySettingsUpdateAction = $ReadOnly<{|
+export type TandaPaySettingsUpdateAction = $ReadOnly<{|
   type: typeof TANDAPAY_SETTINGS_UPDATE,
   settings: $Shape<{
-    selectedNetwork: 'mainnet' | 'sepolia',
+    selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
     selectedTokenSymbol: string,
+    customRpcConfig: ?{|
+      name: string,
+      rpcUrl: string,
+      chainId: number,
+      blockExplorerUrl?: string,
+    |},
   }>,
 |}>;
 
-type TandaPayTokenSelectAction = $ReadOnly<{|
+export type TandaPayTokenSelectAction = $ReadOnly<{|
   type: typeof TANDAPAY_TOKEN_SELECT,
   tokenSymbol: string,
 |}>;
 
-type TandaPayTokenAddCustomAction = $ReadOnly<{|
+export type TandaPayTokenAddCustomAction = $ReadOnly<{|
   type: typeof TANDAPAY_TOKEN_ADD_CUSTOM,
   token: {|
     symbol: string,

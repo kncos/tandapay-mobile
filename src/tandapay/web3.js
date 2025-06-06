@@ -39,9 +39,10 @@ const ERC20_ABI = [
  * Falls back to parameter or default if Redux state is unavailable
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
-function getProvider(networkOverride?: 'mainnet' | 'sepolia'): any {
+function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'): any {
   // Try to get network from Redux state first
-  let network: 'mainnet' | 'sepolia' = 'sepolia'; // default fallback
+  let network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'; // default fallback
+  let customConfig = null;
 
   try {
     if (store) {
@@ -49,8 +50,11 @@ function getProvider(networkOverride?: 'mainnet' | 'sepolia'): any {
       const perAccountState = tryGetActiveAccountState(globalState);
       if (perAccountState) {
         const selectedNetwork = getTandaPaySelectedNetwork(perAccountState);
+        const customRpcConfig = perAccountState.tandaPay.settings.customRpcConfig;
+        
         if (selectedNetwork) {
           network = selectedNetwork;
+          customConfig = customRpcConfig;
         }
       }
     }
@@ -62,9 +66,21 @@ function getProvider(networkOverride?: 'mainnet' | 'sepolia'): any {
   // Allow override parameter to take precedence
   if (networkOverride) {
     network = networkOverride;
+    // If overriding with custom, we need the custom config from Redux
+    if (networkOverride === 'custom' && !customConfig) {
+      throw new Error('Custom network override requires customRpcConfig in Redux state');
+    }
   }
 
-  return createProvider(network);
+  // Handle custom network requirement
+  if (network === 'custom') {
+    if (!customConfig) {
+      throw new Error('Custom network requires customRpcConfig in Redux state');
+    }
+    return createProvider(network, customConfig);
+  } else {
+    return createProvider(network);
+  }
 }
 
 /**
@@ -75,7 +91,7 @@ function getProvider(networkOverride?: 'mainnet' | 'sepolia'): any {
 export async function fetchBalance(
   token: Token,
   address: string,
-  network?: 'mainnet' | 'sepolia'
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<string> {
   const provider = getProvider(network);
 
@@ -109,7 +125,7 @@ export async function transferToken(
   fromPrivateKey: string,
   toAddress: string,
   amount: string,
-  network?: 'mainnet' | 'sepolia'
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<{| success: boolean, txHash?: string, error?: string |}> {
   try {
     const provider = getProvider(network);
@@ -146,7 +162,7 @@ export async function transferToken(
  */
 export async function getTokenInfo(
   contractAddress: string,
-  network?: 'mainnet' | 'sepolia'
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<{|
   success: boolean,
   tokenInfo?: {| symbol: string, name: string, decimals: number |},
@@ -183,7 +199,7 @@ export async function estimateTransferGas(
   fromAddress: string,
   toAddress: string,
   amount: string,
-  network?: 'mainnet' | 'sepolia'
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<{| success: boolean, gasEstimate?: string, gasPrice?: string, error?: string |}> {
   try {
     const provider = getProvider(network);
@@ -230,7 +246,7 @@ export async function estimateTransferGas(
  * Get current network gas price
  */
 export async function getGasPrice(
-  network?: 'mainnet' | 'sepolia'
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<string> {
   try {
     const provider = getProvider(network);

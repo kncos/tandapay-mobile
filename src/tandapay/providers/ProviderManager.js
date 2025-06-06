@@ -14,18 +14,40 @@ type NetworkConfig = {|
   name: string,
   rpcUrl: string,
   chainId: number,
+  blockExplorerUrl?: string,
 |};
 
-const NETWORK_CONFIGS: {| mainnet: NetworkConfig, sepolia: NetworkConfig |} = {
+type SupportedNetwork = 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom';
+
+const NETWORK_CONFIGS: {|
+  mainnet: NetworkConfig,
+  sepolia: NetworkConfig,
+  arbitrum: NetworkConfig,
+  polygon: NetworkConfig
+|} = {
   mainnet: {
-    name: 'mainnet',
-    rpcUrl: 'https://eth.merkle.io', // Using same API key for now
+    name: 'Ethereum Mainnet',
+    rpcUrl: 'https://eth.merkle.io', // Free public node
     chainId: 1,
+    blockExplorerUrl: 'https://etherscan.io',
   },
   sepolia: {
-    name: 'sepolia',
+    name: 'Sepolia Testnet',
     rpcUrl: alchemy_sepolia_url,
     chainId: 11155111,
+    blockExplorerUrl: 'https://sepolia.etherscan.io',
+  },
+  arbitrum: {
+    name: 'Arbitrum One',
+    rpcUrl: 'https://arb1.arbitrum.io/rpc', // Free public node
+    chainId: 42161,
+    blockExplorerUrl: 'https://arbiscan.io',
+  },
+  polygon: {
+    name: 'Polygon',
+    rpcUrl: 'https://polygon-rpc.com', // Free public node
+    chainId: 137,
+    blockExplorerUrl: 'https://polygonscan.com',
   },
 };
 
@@ -36,22 +58,33 @@ const NETWORK_CONFIGS: {| mainnet: NetworkConfig, sepolia: NetworkConfig |} = {
 const providerCache: Map<string, any> = new Map();
 
 /**
- * Get provider instance for a specific network
- * This function will be updated to use Redux state in web3.js
+ * Get provider instance for a specific network or custom configuration
  */
-// $FlowFixMe[unclear-type] - ethers provider type is complex
-export function createProvider(network: 'mainnet' | 'sepolia'): any {
-  if (providerCache.has(network)) {
-    return providerCache.get(network);
+export function createProvider(
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  customConfig?: NetworkConfig
+): mixed {
+  let cacheKey = network;
+  let config;
+
+  if (network === 'custom' && customConfig) {
+    cacheKey = `custom-${customConfig.chainId}`;
+    config = customConfig;
+  } else if (network !== 'custom') {
+    config = NETWORK_CONFIGS[network];
+    if (!config) {
+      throw new Error(`Unsupported network: ${network}`);
+    }
+  } else {
+    throw new Error('Custom network requires customConfig parameter');
   }
 
-  const config = NETWORK_CONFIGS[network];
-  if (!config) {
-    throw new Error(`Unsupported network: ${network}`);
+  if (providerCache.has(cacheKey)) {
+    return providerCache.get(cacheKey);
   }
 
   const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-  providerCache.set(network, provider);
+  providerCache.set(cacheKey, provider);
   return provider;
 }
 
@@ -65,7 +98,7 @@ export function clearProviderCache(): void {
 /**
  * Get network configuration
  */
-export function getNetworkConfig(network: 'mainnet' | 'sepolia'): NetworkConfig {
+export function getNetworkConfig(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): NetworkConfig {
   const config = NETWORK_CONFIGS[network];
   if (!config) {
     throw new Error(`Unsupported network: ${network}`);
@@ -76,6 +109,30 @@ export function getNetworkConfig(network: 'mainnet' | 'sepolia'): NetworkConfig 
 /**
  * Get all supported networks
  */
-export function getSupportedNetworks(): $ReadOnlyArray<'mainnet' | 'sepolia'> {
+export function getSupportedNetworks(): $ReadOnlyArray<'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'> {
   return Object.keys(NETWORK_CONFIGS);
+}
+
+/**
+ * Validate custom RPC configuration
+ */
+export function validateCustomRpcConfig(config: {
+  name: string,
+  rpcUrl: string,
+  chainId: number,
+  blockExplorerUrl?: string,
+}): NetworkConfig {
+  if (!config.name || !config.rpcUrl || !config.chainId) {
+    throw new Error('Custom RPC config must include name, rpcUrl, and chainId');
+  }
+
+  if (config.chainId <= 0) {
+    throw new Error('Chain ID must be a positive number');
+  }
+
+  if (!config.rpcUrl.startsWith('http://') && !config.rpcUrl.startsWith('https://')) {
+    throw new Error('RPC URL must be a valid HTTP or HTTPS URL');
+  }
+
+  return config;
 }

@@ -11,11 +11,18 @@ import {
 import type { TokenState } from './tokens/tokenTypes';
 import { getDefaultTokens, validateCustomToken } from './tokens/tokenConfig';
 
-// Simplified settings state - only keep what's actually used for token functionality
+// Enhanced settings state with network customization support
 export type TandaPaySettingsState = $ReadOnly<{|
-  selectedNetwork: 'mainnet' | 'sepolia',
+  selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
   // Token selection persistence
   selectedTokenSymbol: string,
+  // Custom RPC configuration
+  customRpcConfig: ?{|
+    name: string,
+    rpcUrl: string,
+    chainId: number,
+    blockExplorerUrl?: string,
+  |},
 |}>;
 
 export type TandaPayState = $ReadOnly<{|
@@ -26,6 +33,7 @@ export type TandaPayState = $ReadOnly<{|
 const initialSettingsState: TandaPaySettingsState = {
   selectedNetwork: 'sepolia', // Changed to sepolia for testing
   selectedTokenSymbol: 'ETH', // Default to ETH
+  customRpcConfig: null, // No custom RPC by default
 };
 
 const initialTokenState: TokenState = {
@@ -55,10 +63,11 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
       };
 
     case TANDAPAY_SETTINGS_UPDATE: {
-      // Only allow updating fields that exist in the simplified settings state
+      // Only allow updating fields that exist in the enhanced settings state
       const updatedSettings: TandaPaySettingsState = {
         selectedNetwork: action.settings.selectedNetwork != null ? action.settings.selectedNetwork : state.settings.selectedNetwork,
         selectedTokenSymbol: action.settings.selectedTokenSymbol != null ? action.settings.selectedTokenSymbol : state.settings.selectedTokenSymbol,
+        customRpcConfig: action.settings.customRpcConfig !== undefined ? action.settings.customRpcConfig : state.settings.customRpcConfig,
       };
 
       // If selectedTokenSymbol is being updated, also update the tokens state

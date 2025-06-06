@@ -37,8 +37,10 @@ export default function TandaPayInfoScreen(props: Props): Node {
         // Use centralized provider management with selected network
         const provider = createProvider(selectedNetwork);
         const [balance, blockNumber] = await Promise.all([
-          provider.getBalance('0x195605c92F0C875a98c7c144CF817A23D779C310'),
-          provider.getBlockNumber(),
+          // $FlowFixMe[unclear-type] - ethers provider methods
+          (provider: any).getBalance('0x195605c92F0C875a98c7c144CF817A23D779C310'),
+          // $FlowFixMe[unclear-type] - ethers provider methods
+          (provider: any).getBlockNumber(),
         ]);
 
         setBlockchainData({

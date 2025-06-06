@@ -38,5 +38,6 @@ export type TokenState = $ReadOnly<{|
 export type NetworkTokenAddresses = $ReadOnly<{|
   mainnet: $ReadOnly<{ [string]: string }>,
   sepolia: $ReadOnly<{ [string]: string }>,
-  // Can add more networks as needed
+  arbitrum: $ReadOnly<{ [string]: string }>,
+  polygon: $ReadOnly<{ [string]: string }>,
 |}>;

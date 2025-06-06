@@ -19,14 +19,24 @@ export const NETWORK_TOKEN_ADDRESSES: NetworkTokenAddresses = {
     USDT: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06', // Test USDT sepolia address
     DAI: '0x68194a729C2450ad26072b3D33ADaCbcef39D574',  // Test DAI sepolia address
   },
+  arbitrum: {
+    USDC: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8', // USDC on Arbitrum
+    USDT: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', // USDT on Arbitrum
+    DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',  // DAI on Arbitrum
+  },
+  polygon: {
+    USDC: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174', // USDC on Polygon
+    USDT: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', // USDT on Polygon
+    DAI: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',  // DAI on Polygon
+  },
 };
 
 /**
  * Default tokens that are always available in the wallet
  * These tokens will be shown to all users by default
  */
-export function getDefaultTokens(network: 'mainnet' | 'sepolia' = 'sepolia'): $ReadOnlyArray<Token> {
-  const addresses = NETWORK_TOKEN_ADDRESSES[network];
+export function getDefaultTokens(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' = 'sepolia'): $ReadOnlyArray<Token> {
+  const addresses = NETWORK_TOKEN_ADDRESSES[network] || NETWORK_TOKEN_ADDRESSES.sepolia;
 
   return [
     {
@@ -53,8 +63,20 @@ export function getDefaultTokens(network: 'mainnet' | 'sepolia' = 'sepolia'): $R
  */
 export function getAllTokens(
   customTokens: $ReadOnlyArray<Token>,
-  network: 'mainnet' | 'sepolia' = 'sepolia'
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'
 ): $ReadOnlyArray<Token> {
+  if (network === 'custom') {
+    // For custom networks, only return custom tokens and ETH
+    const ethToken = {
+      symbol: 'ETH',
+      address: null,
+      name: 'Ethereum',
+      decimals: 18,
+      isDefault: true,
+      isCustom: false,
+    };
+    return [ethToken, ...customTokens];
+  }
   return [...getDefaultTokens(network), ...customTokens];
 }
 
@@ -64,7 +86,7 @@ export function getAllTokens(
 export function findTokenBySymbol(
   symbol: string,
   customTokens: $ReadOnlyArray<Token>,
-  network: 'mainnet' | 'sepolia' = 'sepolia'
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'
 ): Token | null {
   const allTokens = getAllTokens(customTokens, network);
   return allTokens.find(token => token.symbol === symbol) || null;

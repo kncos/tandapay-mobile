@@ -11,7 +11,7 @@ import SwitchRow from '../common/SwitchRow';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
 import ZulipButton from '../common/ZulipButton';
-import { IconWallet, IconNotifications, IconSmartphone } from '../common/Icons';
+import { IconWallet, IconNotifications, IconSmartphone, IconLanguage } from '../common/Icons';
 import { deleteWallet } from './wallet/WalletManager';
 
 type Props = $ReadOnly<{|
@@ -101,6 +101,14 @@ export default function TandaPaySettingsScreen(props: Props): Node {
           navigation.push('notifications');
         }}
         subtitle="Configure TandaPay alert settings"
+      />
+      <NavRow
+        leftElement={{ type: 'icon', Component: IconLanguage }}
+        title="Network Settings"
+        onPress={() => {
+          navigation.push('tandapay-network-settings');
+        }}
+        subtitle="Configure blockchain network and RPC settings"
       />
       <TextRow
         icon={{ Component: IconSmartphone }}

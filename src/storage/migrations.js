@@ -549,6 +549,7 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
       settings: {
         selectedNetwork: 'sepolia',
         selectedTokenSymbol: 'ETH',
+        customRpcConfig: null,
       },
       tokens: {
         selectedTokenSymbol: 'ETH',
