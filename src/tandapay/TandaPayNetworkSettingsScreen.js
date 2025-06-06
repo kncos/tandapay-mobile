@@ -132,51 +132,55 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
     }
   }, [selectedNetwork, customRpcConfig, dispatch, switchingNetwork]);
 
-  const handleSaveCustomRpc = useCallback(async () => {
-    if (!customName.trim() || !customRpcUrl.trim() || !customChainId.trim()) {
-      Alert.alert('Missing Information', 'Please fill in all required fields (Name, RPC URL, Chain ID)');
-      return;
-    }
-
-    const chainId = parseInt(customChainId, 10);
-    if (Number.isNaN(chainId) || chainId <= 0) {
-      Alert.alert('Invalid Chain ID', 'Chain ID must be a positive number');
-      return;
-    }
-
-    const config = {
-      name: customName.trim(),
-      rpcUrl: customRpcUrl.trim(),
-      chainId,
-      blockExplorerUrl: customExplorerUrl.trim() || undefined,
-    };
-
+  const handleSaveCustomRpc = useCallback(() => {
     setLoading(true);
-    try {
-      // Validate the configuration
-      const validatedConfig = validateCustomRpcConfig(config);
 
-      // Save the custom RPC configuration
-      dispatch(setCustomRpc(validatedConfig));
+    // Use setTimeout to ensure state update happens before async operation
+    setTimeout(async () => {
+      if (!customName.trim() || !customRpcUrl.trim() || !customChainId.trim()) {
+        Alert.alert('Missing Information', 'Please fill in all required fields (Name, RPC URL, Chain ID)');
+        return;
+      }
 
-      Alert.alert(
-        'Custom RPC Saved',
-        'Your custom RPC configuration has been saved. You can now select "Custom" as your network.',
-        [
-          {
-            text: 'Switch to Custom',
-            onPress: async () => {
-              await handleNetworkSwitch('custom');
+      const chainId = parseInt(customChainId, 10);
+      if (Number.isNaN(chainId) || chainId <= 0) {
+        Alert.alert('Invalid Chain ID', 'Chain ID must be a positive number');
+        return;
+      }
+
+      const config = {
+        name: customName.trim(),
+        rpcUrl: customRpcUrl.trim(),
+        chainId,
+        blockExplorerUrl: customExplorerUrl.trim() || undefined,
+      };
+
+      try {
+        // Validate the configuration
+        const validatedConfig = validateCustomRpcConfig(config);
+
+        // Save the custom RPC configuration
+        dispatch(setCustomRpc(validatedConfig));
+
+        Alert.alert(
+          'Custom RPC Saved',
+          'Your custom RPC configuration has been saved. You can now select "Custom" as your network.',
+          [
+            {
+              text: 'Switch to Custom',
+              onPress: async () => {
+                await handleNetworkSwitch('custom');
+              },
             },
-          },
-          { text: 'OK' },
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Invalid Configuration', error.message || 'Please check your RPC configuration');
-    } finally {
-      setLoading(false);
-    }
+            { text: 'OK' },
+          ]
+        );
+      } catch (error) {
+        Alert.alert('Invalid Configuration', error.message || 'Please check your RPC configuration');
+      } finally {
+        setLoading(false);
+      }
+    }, 0);
   }, [customName, customRpcUrl, customChainId, customExplorerUrl, dispatch, handleNetworkSwitch]);
 
   const handleClearCustomRpc = useCallback(() => {
@@ -199,7 +203,7 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
             setCustomRpcUrl('');
             setCustomChainId('');
             setCustomExplorerUrl('');
-            Alert.alert('Cleared', 'Custom RPC configuration has been cleared');
+            // Alert.alert('Cleared', 'Custom RPC configuration has been cleared');
           },
         },
       ]
@@ -245,7 +249,7 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
                   </ZulipText>
                 </View>
                 {isSwitching && (
-                  <ActivityIndicator size="small" color="#007AFF" style={{ marginLeft: 8 }} />
+                  <ActivityIndicator size="small" color={themeData.color} style={{ marginLeft: 8 }} />
                 )}
               </TouchableOpacity>
             );
@@ -295,7 +299,8 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
               placeholder="Network Name (e.g., Local Ganache)"
               value={customName}
               onChangeText={setCustomName}
-              autoCapitalize="words"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
 
             <Input
@@ -313,6 +318,7 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
               value={customChainId}
               onChangeText={setCustomChainId}
               keyboardType="numeric"
+              autoCorrect={false}
             />
 
             <Input
@@ -327,8 +333,9 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
             <View style={styles.buttonRow}>
               <ZulipButton
                 style={styles.button}
-                disabled={loading || switchingNetwork != null}
-                text={loading ? 'Saving...' : 'Save Custom RPC'}
+                disabled={loading}
+                text="Save Custom RPC"
+                progress={loading}
                 onPress={handleSaveCustomRpc}
               />
 

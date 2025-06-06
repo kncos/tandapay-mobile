@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, TextInput, Alert } from 'react-native';
 
@@ -81,44 +81,60 @@ export default function WalletImportScreen(props: Props): Node {
   const [isValid, setIsValid] = useState<?boolean>(null);
   const [isImporting, setIsImporting] = useState(false);
 
-  const handleMnemonicChange = (text: string) => {
+  const handleMnemonicChange = useCallback((text: string) => {
     setMnemonic(text);
-    if (text.trim().length > 0) {
-      setIsValid(validateMnemonic(text));
-    } else {
+    // Reset validation state immediately when text changes
+    if (text.trim().length === 0) {
       setIsValid(null);
     }
-  };
+  }, []);
 
-  const handleImport = async () => {
+  // Debounced validation effect
+  useEffect(() => {
+    if (mnemonic.trim().length === 0) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setIsValid(validateMnemonic(mnemonic));
+    }, 500); // 500ms debounce delay
+
+    return () => clearTimeout(timeoutId);
+  }, [mnemonic]);
+
+  const handleImport = useCallback(() => {
     if (isValid !== true || mnemonic.trim().length === 0) {
       Alert.alert('Invalid Phrase', 'Please enter a valid 12-word recovery phrase.');
       return;
     }
 
     setIsImporting(true);
-    try {
-      const walletInfo = await importWallet(mnemonic);
-      Alert.alert(
-        'Wallet Imported',
-        `Successfully imported wallet: ${walletInfo.address.substring(0, 6)}...${walletInfo.address.substring(38)}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Pop the setup screens to return to the previous navigation state
-              // This preserves the existing chat app navigation history
-              navigation.pop(setupScreenCount);
+
+    // Use setTimeout to ensure state update happens before async operation
+    setTimeout(async () => {
+      try {
+        const walletInfo = await importWallet(mnemonic);
+        Alert.alert(
+          'Wallet Imported',
+          `Successfully imported wallet: ${walletInfo.address.substring(0, 6)}...${walletInfo.address.substring(38)}`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Pop the setup screens to return to the previous navigation state
+                // This preserves the existing chat app navigation history
+                navigation.pop(setupScreenCount);
+              },
             },
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Import Failed', error.message || 'Failed to import wallet. Please check your recovery phrase.');
-    } finally {
-      setIsImporting(false);
-    }
-  };
+          ]
+        );
+      } catch (error) {
+        Alert.alert('Import Failed', error.message || 'Failed to import wallet. Please check your recovery phrase.');
+      } finally {
+        setIsImporting(false);
+      }
+    }, 0);
+  }, [isValid, mnemonic, navigation, setupScreenCount]);
 
   const getInputStyle = () => {
     const baseStyle = [styles.textInput];
@@ -165,6 +181,7 @@ export default function WalletImportScreen(props: Props): Node {
             <ZulipButton
               text={isImporting ? 'Importing...' : 'Import Wallet'}
               disabled={isValid !== true || isImporting}
+              progress={isImporting}
               onPress={handleImport}
             />
           </View>
