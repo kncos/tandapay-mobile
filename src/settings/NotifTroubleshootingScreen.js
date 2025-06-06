@@ -549,14 +549,14 @@ export default function NotifTroubleshootingScreen(props: Props): React.Node {
   const handlePressEmailSupport = React.useCallback(async () => {
     const result = await MailComposer.composeAsync({
       recipients: ['support@zulip.com'],
-      subject: 'Zulip push notifications',
+      subject: 'TandaPay push notifications',
       body: `\
 <h3>The problem:</h3>
 <p>(${_('Please describe the problem.')})</p>
 <h3>Other details:</h3>
 <p>(${_('If there are other details you would like to share, please write them here.')})</p>
 <hr>
-<p>This email was written from a template provided by the Zulip mobile app.</p>
+<p>This email was written from a template provided by the TandaPay mobile app.</p>
 <details>
   <summary>Technical details:</summary>
   <pre>${reportJson}</pre>

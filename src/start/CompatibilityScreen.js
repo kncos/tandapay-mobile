@@ -3,7 +3,6 @@ import React, { PureComponent } from 'react';
 import type { Node } from 'react';
 import { Image, Text, View, Platform } from 'react-native';
 
-import { openLinkExternal } from '../utils/openLink';
 import Touchable from '../common/Touchable';
 import { BRAND_COLOR, createStyleSheet } from '../styles';
 import appStoreBadgePNG from '../../static/img/app-store-badge.png';
@@ -47,14 +46,15 @@ function GooglePlayBadge() {
 }
 
 export default class CompatibilityScreen extends PureComponent<{||}> {
-  storeURL: URL =
-    Platform.OS === 'ios'
-      ? new URL('https://itunes.apple.com/app/zulip/id1203036395')
-      : new URL('https://play.google.com/store/apps/details?id=com.zulipmobile');
+  // Disabled app store links to prevent update notifications from original Zulip app
+  // storeURL: URL =
+  //   Platform.OS === 'ios'
+  //     ? new URL('https://itunes.apple.com/app/zulip/id1203036395')
+  //     : new URL('https://play.google.com/store/apps/details?id=com.zulipmobile');
 
-  openStoreURL: () => void = () => {
-    openLinkExternal(this.storeURL);
-  };
+  // openStoreURL: () => void = () => {
+  //   openLinkExternal(this.storeURL);
+  // };
 
   render(): Node {
     return (
@@ -62,7 +62,7 @@ export default class CompatibilityScreen extends PureComponent<{||}> {
         <Text style={styles.text}>This app is too old!</Text>
         <Text style={styles.text}>Please update to the latest version.</Text>
         <View style={styles.badgeContainer}>
-          <Touchable onPress={this.openStoreURL}>
+          <Touchable>
             {Platform.OS === 'ios' ? <AppStoreBadge /> : <GooglePlayBadge />}
           </Touchable>
         </View>

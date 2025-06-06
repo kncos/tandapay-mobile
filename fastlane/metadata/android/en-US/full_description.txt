@@ -1,4 +1,8 @@
-The Zulip mobile app.
+The TandaPay mobile app.
+
+TandaPay is a decentralized insurance platform that brings communities together to provide mutual aid and financial protection. Built on blockchain technology, TandaPay enables peer-to-peer insurance pools where members collectively support each other during times of need.
+
+This mobile app provides a seamless interface for managing your TandaPay insurance participation, submitting claims, and staying connected with your insurance community.ip mobile app.
 
 Zulip is a team chat product for enterprises, open-source projects, working groups, and communities. Zulip’s unique threading model allows everyone to stay involved, even those that spend most of their day away from chat. https://zulipchat.com/why-zulip
 
