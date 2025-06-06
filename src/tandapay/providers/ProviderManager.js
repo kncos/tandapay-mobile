@@ -4,8 +4,9 @@ import '@ethersproject/shims';
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
 
-// $FlowFixMe[untyped-import] - env is a local module without flow types
-import { alchemy_sepolia_url } from '../env';
+// i don't care about this:
+const alchemy_api = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
+export const alchemy_sepolia_url = `https://eth-sepolia.g.alchemy.com/v2/${alchemy_api}`;
 
 /**
  * Network configuration for providers

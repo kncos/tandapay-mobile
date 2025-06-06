@@ -7,7 +7,7 @@ import { View, Alert } from 'react-native';
 import { useSelector, useDispatch } from '../../react-redux';
 import { ThemeContext, createStyleSheet } from '../../styles';
 import { getAvailableTokens } from './tokenSelectors';
-import { addCustomToken, removeCustomToken } from './tokenActions';
+import { addCustomToken, removeCustomToken } from '../tandaPayActions';
 import { validateCustomToken } from './tokenConfig';
 import type { Token } from './tokenTypes';
 import Screen from '../../common/Screen';

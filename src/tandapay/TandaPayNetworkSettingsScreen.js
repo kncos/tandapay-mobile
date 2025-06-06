@@ -13,7 +13,7 @@ import Input from '../common/Input';
 import { ThemeContext } from '../styles';
 import { useSelector, useDispatch } from '../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from './tandaPaySelectors';
-import { switchNetwork, setCustomRpc, clearCustomRpc } from './networkActions';
+import { switchNetwork, setCustomRpc, clearCustomRpc } from './tandaPayActions';
 import { getNetworkConfig, getSupportedNetworks, validateCustomRpcConfig } from './providers/ProviderManager';
 
 type Props = $ReadOnly<{|
