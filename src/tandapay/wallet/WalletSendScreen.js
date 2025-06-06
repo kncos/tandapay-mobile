@@ -4,6 +4,9 @@ import React, { useState, useContext, useCallback, useMemo } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 
+// $FlowFixMe[untyped-import]
+import { ethers } from 'ethers';
+
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
@@ -13,6 +16,7 @@ import Input from '../../common/Input';
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getSelectedToken } from '../tokens/tokenSelectors';
+import { getTandaPaySelectedNetwork } from '../tandaPaySelectors';
 import { transferToken, estimateTransferGas } from '../web3';
 import { getWalletInstance } from './WalletManager';
 
@@ -72,6 +76,7 @@ export default function WalletSendScreen(props: Props): Node {
   const { navigation } = props;
   const themeData = useContext(ThemeContext);
   const selectedToken = useSelector(getSelectedToken);
+  const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
 
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -99,10 +104,7 @@ export default function WalletSendScreen(props: Props): Node {
   }, [walletInstance, navigation]);
 
   // Validate Ethereum address
-  const validateAddress = useCallback((address: string): boolean => {
-    const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-    return ethAddressRegex.test(address);
-  }, []);
+  const validateAddress = useCallback((address: string): boolean => ethers.utils.isAddress(address), []);
 
   const handleAddressChange = useCallback((address: string) => {
     setToAddress(address);
@@ -113,14 +115,55 @@ export default function WalletSendScreen(props: Props): Node {
     }
   }, [validateAddress]);
 
+  // Validate amount format and value
+  const validateAmount = useCallback((amountValue: string): string => {
+    if (!amountValue.trim()) {
+      return '';
+    }
+
+    const numericAmount = parseFloat(amountValue);
+    if (Number.isNaN(numericAmount)) {
+      return 'Please enter a valid number';
+    }
+
+    if (numericAmount <= 0) {
+      return 'Amount must be greater than 0';
+    }
+
+    // Check decimal places
+    const parts = amountValue.split('.');
+    if (parts.length === 2 && selectedToken && parts[1].length > selectedToken.decimals) {
+      return `Maximum ${selectedToken.decimals} decimal places allowed for ${selectedToken.symbol}`;
+    }
+
+    return '';
+  }, [selectedToken]);
+
+  const [amountError, setAmountError] = useState('');
+
   const handleAmountChange = useCallback((value: string) => {
-    setAmount(value);
-  }, []);
+    // Allow only numbers and one decimal point
+    const numericValue = value.replace(/[^0-9.]/g, '');
+
+    // Prevent multiple decimal points
+    const parts = numericValue.split('.');
+    if (parts.length > 2) {
+      return; // Don't update if multiple decimal points
+    }
+
+    // Validate decimal places don't exceed token decimals
+    if (parts.length === 2 && selectedToken && parts[1].length > selectedToken.decimals) {
+      return; // Don't update if too many decimal places
+    }
+
+    setAmount(numericValue);
+    setAmountError(validateAmount(numericValue));
+  }, [selectedToken, validateAmount]);
 
   // Memoize form validation to prevent unnecessary re-renders
   const isFormValid = useMemo(() =>
-    toAddress.trim() && amount.trim() && !loading && !addressError,
-  [toAddress, amount, loading, addressError]);
+    toAddress.trim() && amount.trim() && !loading && !addressError && !amountError,
+  [toAddress, amount, loading, addressError, amountError]);
 
   const handleEstimateGas = useCallback(async () => {
     if (!toAddress.trim() || !amount.trim()) {
@@ -151,7 +194,7 @@ export default function WalletSendScreen(props: Props): Node {
         wallet.address,
         toAddress.trim(),
         amount.trim(),
-        'sepolia', // Using testnet for now
+        selectedNetwork, // Use selected network from Redux
       );
 
       if (result.success && result.gasEstimate != null && result.gasPrice != null) {
@@ -171,7 +214,7 @@ export default function WalletSendScreen(props: Props): Node {
     } finally {
       setEstimating(false);
     }
-  }, [toAddress, amount, validateAddress, getWallet, selectedToken]);
+  }, [toAddress, amount, validateAddress, getWallet, selectedToken, selectedNetwork]);
 
   const handleSend = useCallback(async () => {
     if (!toAddress.trim() || !amount.trim()) {
@@ -215,7 +258,7 @@ export default function WalletSendScreen(props: Props): Node {
                 wallet.privateKey,
                 toAddress.trim(),
                 amount.trim(),
-                'sepolia',
+                selectedNetwork,
               );
 
               if (result.success && result.txHash != null) {
@@ -236,7 +279,7 @@ export default function WalletSendScreen(props: Props): Node {
         },
       ],
     );
-  }, [toAddress, amount, gasEstimate, validateAddress, selectedToken, navigation, getWallet]);
+  }, [toAddress, amount, gasEstimate, validateAddress, selectedToken, navigation, getWallet, selectedNetwork]);
 
   // Return early if no token is selected
   if (!selectedToken) {
@@ -293,11 +336,14 @@ export default function WalletSendScreen(props: Props): Node {
           <ZulipText style={styles.label}>Amount</ZulipText>
           <Input
             style={styles.input}
-            placeholder={`Amount in ${selectedToken.symbol}`}
+            placeholder={`Amount in ${selectedToken.symbol} (max ${selectedToken.decimals} decimal places)`}
             value={amount}
             onChangeText={handleAmountChange}
             keyboardType="numeric"
           />
+          {amountError ? (
+            <ZulipText style={styles.errorText}>{amountError}</ZulipText>
+          ) : null}
 
           <ZulipButton
             disabled={!isFormValid || estimating}

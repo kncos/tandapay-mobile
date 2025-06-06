@@ -12,5 +12,5 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => state
 export const getTandaPaySettings = (state: PerAccountState): TandaPaySettingsState =>
   getTandaPayState(state).settings;
 
-export const getTandaPayDefaultNetwork = (state: PerAccountState): string =>
-  getTandaPaySettings(state).defaultNetwork;
+export const getTandaPaySelectedNetwork = (state: PerAccountState): 'mainnet' | 'sepolia' =>
+  getTandaPaySettings(state).selectedNetwork;

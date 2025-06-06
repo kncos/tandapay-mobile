@@ -13,7 +13,7 @@ import { getDefaultTokens, validateCustomToken } from './tokens/tokenConfig';
 
 // Simplified settings state - only keep what's actually used for token functionality
 export type TandaPaySettingsState = $ReadOnly<{|
-  defaultNetwork: string,
+  selectedNetwork: 'mainnet' | 'sepolia',
   // Token selection persistence
   selectedTokenSymbol: string,
 |}>;
@@ -24,7 +24,7 @@ export type TandaPayState = $ReadOnly<{|
 |}>;
 
 const initialSettingsState: TandaPaySettingsState = {
-  defaultNetwork: 'sepolia', // Changed to sepolia for testing
+  selectedNetwork: 'sepolia', // Changed to sepolia for testing
   selectedTokenSymbol: 'ETH', // Default to ETH
 };
 
@@ -57,7 +57,7 @@ export default (state: TandaPayState = initialState, action: Action): TandaPaySt
     case TANDAPAY_SETTINGS_UPDATE: {
       // Only allow updating fields that exist in the simplified settings state
       const updatedSettings: TandaPaySettingsState = {
-        defaultNetwork: action.settings.defaultNetwork != null ? action.settings.defaultNetwork : state.settings.defaultNetwork,
+        selectedNetwork: action.settings.selectedNetwork != null ? action.settings.selectedNetwork : state.settings.selectedNetwork,
         selectedTokenSymbol: action.settings.selectedTokenSymbol != null ? action.settings.selectedTokenSymbol : state.settings.selectedTokenSymbol,
       };
 

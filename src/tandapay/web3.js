@@ -5,9 +5,13 @@ import '@ethersproject/shims';
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
 
-// $FlowFixMe[untyped-import] - env is a local module without flow types
-import { alchemy_sepolia_url } from './env';
 import type { Token } from './tokens/tokenTypes';
+import { createProvider } from './providers/ProviderManager';
+
+// Redux store import for getting current network
+import store from '../boot/store';
+import { getTandaPaySelectedNetwork } from './tandaPaySelectors';
+import { tryGetActiveAccountState } from '../account/accountsSelectors';
 
 /**
  * Standard ERC20 ABI for balance, transfer, and other common functions
@@ -31,13 +35,36 @@ const ERC20_ABI = [
 ];
 
 /**
- * Get provider instance (could be enhanced to support multiple networks)
+ * Get provider instance using Redux state for network selection
+ * Falls back to parameter or default if Redux state is unavailable
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
-function getProvider(network: 'mainnet' | 'sepolia' = 'sepolia'): any {
-  // For now, we only support sepolia testnet
-  // In production, you'd want to support mainnet and other networks
-  return new ethers.providers.JsonRpcProvider(alchemy_sepolia_url);
+function getProvider(networkOverride?: 'mainnet' | 'sepolia'): any {
+  // Try to get network from Redux state first
+  let network: 'mainnet' | 'sepolia' = 'sepolia'; // default fallback
+
+  try {
+    if (store) {
+      const globalState = store.getState();
+      const perAccountState = tryGetActiveAccountState(globalState);
+      if (perAccountState) {
+        const selectedNetwork = getTandaPaySelectedNetwork(perAccountState);
+        if (selectedNetwork) {
+          network = selectedNetwork;
+        }
+      }
+    }
+  } catch (error) {
+    // Fallback to default if Redux state is not accessible
+    // Using default network due to Redux state access error
+  }
+
+  // Allow override parameter to take precedence
+  if (networkOverride) {
+    network = networkOverride;
+  }
+
+  return createProvider(network);
 }
 
 /**
@@ -48,7 +75,7 @@ function getProvider(network: 'mainnet' | 'sepolia' = 'sepolia'): any {
 export async function fetchBalance(
   token: Token,
   address: string,
-  network: 'mainnet' | 'sepolia' = 'sepolia'
+  network?: 'mainnet' | 'sepolia'
 ): Promise<string> {
   const provider = getProvider(network);
 
@@ -82,7 +109,7 @@ export async function transferToken(
   fromPrivateKey: string,
   toAddress: string,
   amount: string,
-  network: 'mainnet' | 'sepolia' = 'sepolia'
+  network?: 'mainnet' | 'sepolia'
 ): Promise<{| success: boolean, txHash?: string, error?: string |}> {
   try {
     const provider = getProvider(network);
@@ -119,7 +146,7 @@ export async function transferToken(
  */
 export async function getTokenInfo(
   contractAddress: string,
-  network: 'mainnet' | 'sepolia' = 'sepolia'
+  network?: 'mainnet' | 'sepolia'
 ): Promise<{|
   success: boolean,
   tokenInfo?: {| symbol: string, name: string, decimals: number |},
@@ -156,7 +183,7 @@ export async function estimateTransferGas(
   fromAddress: string,
   toAddress: string,
   amount: string,
-  network: 'mainnet' | 'sepolia' = 'sepolia'
+  network?: 'mainnet' | 'sepolia'
 ): Promise<{| success: boolean, gasEstimate?: string, gasPrice?: string, error?: string |}> {
   try {
     const provider = getProvider(network);
@@ -203,7 +230,7 @@ export async function estimateTransferGas(
  * Get current network gas price
  */
 export async function getGasPrice(
-  network: 'mainnet' | 'sepolia' = 'sepolia'
+  network?: 'mainnet' | 'sepolia'
 ): Promise<string> {
   try {
     const provider = getProvider(network);

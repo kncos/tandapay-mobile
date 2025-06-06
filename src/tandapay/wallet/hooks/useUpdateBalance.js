@@ -31,7 +31,7 @@ export function useUpdateBalance(
   );
 
   const network = useSelector(state =>
-    state.tandaPay.settings.defaultNetwork === 'mainnet' ? 'mainnet' : 'sepolia'
+    state.tandaPay.settings.selectedNetwork
   );
 
   const isBalanceStale = useSelector(state =>
@@ -52,7 +52,7 @@ export function useUpdateBalance(
     } catch (err) {
       const errorMessage = err?.message ?? 'Failed to fetch balance';
       setError(errorMessage);
-      console.error('Error fetching balance:', err);
+      // Error fetching balance handled by state
     } finally {
       setLoading(false);
     }

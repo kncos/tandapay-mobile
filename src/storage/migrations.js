@@ -546,24 +546,10 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
   '67': state => ({
     ...state,
     tandaPay: {
-      wallet: {
-        address: null,
-        privateKey: null,
-        publicKey: null,
-        mnemonic: null,
-        isImported: false,
-        createdAt: null,
-      },
       settings: {
-        defaultNetwork: 'sepolia',
-        notificationsEnabled: true,
-        biometricAuthEnabled: false,
-        autoBackupEnabled: true,
-        currency: 'USD',
+        selectedNetwork: 'sepolia',
         selectedTokenSymbol: 'ETH',
       },
-      transactions: [],
-      pools: [],
       tokens: {
         selectedTokenSymbol: 'ETH',
         defaultTokens: getDefaultTokens('sepolia'),

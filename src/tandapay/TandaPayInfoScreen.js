@@ -13,6 +13,9 @@ import Screen from '../common/Screen';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
 import { IconServer, IconTandaPayInfo, IconAlertTriangle, IconGroup } from '../common/Icons';
+import { createProvider } from './providers/ProviderManager';
+import { useSelector } from '../react-redux';
+import { getTandaPaySelectedNetwork } from './tandaPaySelectors';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-info'>,
@@ -20,6 +23,7 @@ type Props = $ReadOnly<{|
 |}>;
 
 export default function TandaPayInfoScreen(props: Props): Node {
+  const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const [blockchainData, setBlockchainData] = useState<?{|
     balance: string,
     blockNumber: string,
@@ -30,7 +34,8 @@ export default function TandaPayInfoScreen(props: Props): Node {
   useEffect(() => {
     const fetchBlockchainData = async () => {
       try {
-        const provider = new ethers.providers.JsonRpcProvider('https://eth.merkle.io');
+        // Use centralized provider management with selected network
+        const provider = createProvider(selectedNetwork);
         const [balance, blockNumber] = await Promise.all([
           provider.getBalance('0x195605c92F0C875a98c7c144CF817A23D779C310'),
           provider.getBlockNumber(),
@@ -49,7 +54,7 @@ export default function TandaPayInfoScreen(props: Props): Node {
     };
 
     fetchBlockchainData();
-  }, []);
+  }, [selectedNetwork]);
 
   const handleViewContract = useCallback(() => {
     // TODO: Navigate to contract viewer or external link
@@ -103,7 +108,11 @@ export default function TandaPayInfoScreen(props: Props): Node {
       )}
 
       <TextRow icon={{ Component: IconGroup }} title="Active Groups" subtitle="0 groups joined" />
-      <TextRow icon={{ Component: IconTandaPayInfo }} title="Network" subtitle="Ethereum Mainnet" />
+      <TextRow
+        icon={{ Component: IconTandaPayInfo }}
+        title="Network"
+        subtitle={selectedNetwork === 'mainnet' ? 'Ethereum Mainnet' : 'Ethereum Sepolia Testnet'}
+      />
     </Screen>
   );
 }

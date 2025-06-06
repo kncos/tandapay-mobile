@@ -1,5 +1,7 @@
 /* @flow strict-local */
 
+// $FlowFixMe[untyped-import]
+import { ethers } from 'ethers';
 import type { Token, NetworkTokenAddresses } from './tokenTypes';
 
 /**
@@ -88,7 +90,7 @@ export function validateCustomToken(token: {|
   }
 
   // Check address format (basic Ethereum address validation)
-  if (!token.address || !token.address.match(/^0x[a-fA-F0-9]{40}$/)) {
+  if (!ethers.utils.isAddress(token.address)) {
     return { isValid: false, error: 'Invalid Ethereum address format' };
   }
 

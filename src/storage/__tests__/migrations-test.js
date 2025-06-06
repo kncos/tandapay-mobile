@@ -134,7 +134,7 @@ describe('migrations', () => {
         createdAt: null,
       },
       settings: {
-        defaultNetwork: 'sepolia',
+        selectedNetwork: 'sepolia',
         notificationsEnabled: true,
         biometricAuthEnabled: false,
         autoBackupEnabled: true,

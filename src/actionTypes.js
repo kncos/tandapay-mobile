@@ -661,7 +661,7 @@ type OutboxAction = MessageSendStartAction | MessageSendCompleteAction | DeleteO
 type TandaPaySettingsUpdateAction = $ReadOnly<{|
   type: typeof TANDAPAY_SETTINGS_UPDATE,
   settings: $Shape<{
-    defaultNetwork: string,
+    selectedNetwork: 'mainnet' | 'sepolia',
     selectedTokenSymbol: string,
   }>,
 |}>;

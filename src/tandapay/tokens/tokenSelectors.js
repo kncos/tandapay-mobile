@@ -23,7 +23,7 @@ export function getSelectedTokenSymbol(state: PerAccountState): string {
  */
 export function getAvailableTokens(state: PerAccountState): $ReadOnlyArray<Token> {
   const tokenState = getTokenState(state);
-  const network = state.tandaPay.settings.defaultNetwork === 'mainnet' ? 'mainnet' : 'sepolia';
+  const network = state.tandaPay.settings.selectedNetwork;
   return getAllTokens(tokenState.customTokens, network);
 }
 
@@ -32,7 +32,7 @@ export function getAvailableTokens(state: PerAccountState): $ReadOnlyArray<Token
  */
 export function getSelectedToken(state: PerAccountState): Token | null {
   const tokenState = getTokenState(state);
-  const network = state.tandaPay.settings.defaultNetwork === 'mainnet' ? 'mainnet' : 'sepolia';
+  const network = state.tandaPay.settings.selectedNetwork;
   return findTokenBySymbol(tokenState.selectedTokenSymbol, tokenState.customTokens, network);
 }
 
