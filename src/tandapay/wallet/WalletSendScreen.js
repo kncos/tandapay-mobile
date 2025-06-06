@@ -103,8 +103,15 @@ export default function WalletSendScreen(props: Props): Node {
     }
   }, [walletInstance, navigation]);
 
-  // Validate Ethereum address
-  const validateAddress = useCallback((address: string): boolean => ethers.utils.isAddress(address), []);
+  // Validate Ethereum address with proper checksumming
+  const validateAddress = useCallback((address: string): boolean => {
+    try {
+      ethers.utils.getAddress(address.toLowerCase()); // Convert to lowercase first to handle mixed-case input
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const handleAddressChange = useCallback((address: string) => {
     setToAddress(address);
@@ -166,54 +173,63 @@ export default function WalletSendScreen(props: Props): Node {
   [toAddress, amount, loading, addressError, amountError]);
 
   const handleEstimateGas = useCallback(async () => {
-    if (!toAddress.trim() || !amount.trim()) {
-      Alert.alert('Missing Information', 'Please enter recipient address and amount.');
-      return;
-    }
-
-    if (!validateAddress(toAddress.trim())) {
-      setAddressError('Please enter a valid Ethereum address');
-      return;
-    }
-
-    const wallet = await getWallet();
-    if (!wallet?.address) {
-      Alert.alert('Error', 'Wallet not loaded properly. Please try again.');
-      return;
-    }
-
-    if (!selectedToken) {
-      Alert.alert('Error', 'No token selected. Please select a token first.');
-      return;
-    }
-
     setEstimating(true);
-    try {
-      const result = await estimateTransferGas(
-        selectedToken,
-        wallet.address,
-        toAddress.trim(),
-        amount.trim(),
-        selectedNetwork, // Use selected network from Redux
-      );
 
-      if (result.success && result.gasEstimate != null && result.gasPrice != null) {
-        const gasLimitValue = result.gasEstimate;
-        const gasPriceValue = result.gasPrice;
-        const estimatedCost = ((parseFloat(gasLimitValue) * parseFloat(gasPriceValue)) / 1e9).toFixed(8);
-        setGasEstimate({
-          gasLimit: gasLimitValue,
-          gasPrice: gasPriceValue,
-          estimatedCost,
-        });
-      } else {
-        Alert.alert('Gas Estimation Failed', result.error ?? 'Unable to estimate gas costs.');
+    const estimate = async () => {
+      if (!toAddress.trim() || !amount.trim()) {
+        Alert.alert('Missing Information', 'Please enter recipient address and amount.');
+        setEstimating(false);
+        return;
       }
-    } catch (error) {
-      Alert.alert('Gas Estimation Failed', error.message ?? 'Unable to estimate gas costs.');
-    } finally {
-      setEstimating(false);
-    }
+
+      if (!validateAddress(toAddress.trim())) {
+        setAddressError('Please enter a valid Ethereum address');
+        setEstimating(false);
+        return;
+      }
+
+      const wallet = await getWallet();
+      if (!wallet?.address) {
+        Alert.alert('Error', 'Wallet not loaded properly. Please try again.');
+        setEstimating(false);
+        return;
+      }
+
+      if (!selectedToken) {
+        Alert.alert('Error', 'No token selected. Please select a token first.');
+        setEstimating(false);
+        return;
+      }
+
+      try {
+        const result = await estimateTransferGas(
+          selectedToken,
+          ethers.utils.getAddress(wallet.address.toLowerCase()), // Ensure proper address checksumming
+          ethers.utils.getAddress(toAddress.trim().toLowerCase()), // Convert to lowercase first to handle mixed-case input
+          amount.trim(),
+          selectedNetwork, // Use selected network from Redux
+        );
+
+        if (result.success && result.gasEstimate != null && result.gasPrice != null) {
+          const gasLimitValue = result.gasEstimate;
+          const gasPriceValue = result.gasPrice;
+          const estimatedCost = ((parseFloat(gasLimitValue) * parseFloat(gasPriceValue)) / 1e9).toFixed(8);
+          setGasEstimate({
+            gasLimit: gasLimitValue,
+            gasPrice: gasPriceValue,
+            estimatedCost,
+          });
+        } else {
+          Alert.alert('Gas Estimation Failed 1', result.error ?? 'Unable to estimate gas costs.');
+        }
+      } catch (error) {
+        Alert.alert('Gas Estimation Failed', error.message ?? 'Unable to estimate gas costs.');
+      } finally {
+        setEstimating(false);
+      }
+    };
+
+    setTimeout(estimate, 0); // Use setTimeout to ensure state updates are applied before async operation
   }, [toAddress, amount, validateAddress, getWallet, selectedToken, selectedNetwork]);
 
   const handleSend = useCallback(async () => {
@@ -256,7 +272,7 @@ export default function WalletSendScreen(props: Props): Node {
               const result = await transferToken(
                 selectedToken,
                 wallet.privateKey,
-                toAddress.trim(),
+                ethers.utils.getAddress(toAddress.trim().toLowerCase()), // Convert to lowercase first to handle mixed-case input
                 amount.trim(),
                 selectedNetwork,
               );
@@ -347,7 +363,8 @@ export default function WalletSendScreen(props: Props): Node {
 
           <ZulipButton
             disabled={!isFormValid || estimating}
-            text={estimating ? 'Estimating Gas...' : 'Estimate Gas'}
+            progress={estimating}
+            text="Estimate Gas"
             onPress={handleEstimateGas}
             style={{ marginTop: 16 }}
           />

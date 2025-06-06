@@ -131,20 +131,24 @@ export async function transferToken(
     const provider = getProvider(network);
     const wallet = new ethers.Wallet(fromPrivateKey, provider);
 
+    // Ensure proper address checksumming
+    const checksummedToAddress = ethers.utils.getAddress(toAddress);
+
     if (token.address == null) {
       // ETH transfer
       const tx = await wallet.sendTransaction({
-        to: toAddress,
+        to: checksummedToAddress,
         value: ethers.utils.parseEther(amount),
       });
 
       return { success: true, txHash: tx.hash };
     } else {
       // ERC20 transfer
-      const contract = new ethers.Contract(token.address, ERC20_ABI, wallet);
+      const checksummedTokenAddress = ethers.utils.getAddress(token.address);
+      const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, wallet);
       const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
 
-      const tx = await contract.transfer(toAddress, amountInWei);
+      const tx = await contract.transfer(checksummedToAddress, amountInWei);
 
       return { success: true, txHash: tx.hash };
     }
@@ -204,11 +208,15 @@ export async function estimateTransferGas(
   try {
     const provider = getProvider(network);
 
+    // Ensure proper address checksumming
+    const checksummedFromAddress = ethers.utils.getAddress(fromAddress);
+    const checksummedToAddress = ethers.utils.getAddress(toAddress);
+
     if (token.address == null) {
       // ETH transfer
       const gasEstimate = await provider.estimateGas({
-        from: fromAddress,
-        to: toAddress,
+        from: checksummedFromAddress,
+        to: checksummedToAddress,
         value: ethers.utils.parseEther(amount),
       });
 
@@ -221,10 +229,11 @@ export async function estimateTransferGas(
       };
     } else {
       // ERC20 transfer
-      const contract = new ethers.Contract(token.address, ERC20_ABI, provider);
+      const checksummedTokenAddress = ethers.utils.getAddress(token.address);
+      const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, provider);
       const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
 
-      const gasEstimate = await contract.estimateGas.transfer(toAddress, amountInWei);
+      const gasEstimate = await contract.estimateGas.transfer(checksummedToAddress, amountInWei, { from: checksummedFromAddress });
       const gasPrice = await provider.getGasPrice();
 
       return {
