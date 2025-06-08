@@ -3,7 +3,6 @@ import type { ReadWrite, SubsetProperties } from '../generics';
 import { ZulipVersion } from '../utils/zulipVersion';
 import type { GlobalState } from '../types';
 import { objectFromEntries } from '../jsBackport';
-import { getDefaultTokens } from '../tandapay/tokens/tokenConfig';
 
 // Like GlobalState, but making all properties optional.
 type PartialState = $ReadOnly<$Rest<GlobalState, { ... }>>;
@@ -552,35 +551,46 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
       },
       tokens: {
         selectedTokenSymbol: 'ETH',
-        defaultTokens: getDefaultTokens('sepolia'),
+        defaultTokens: [
+          {
+            symbol: 'ETH',
+            address: null,
+            name: 'Ethereum',
+            decimals: 18,
+            isDefault: true,
+            isCustom: false,
+          },
+          {
+            symbol: 'USDC',
+            address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+            name: 'USD Coin',
+            decimals: 6,
+            isDefault: true,
+            isCustom: false,
+          },
+          {
+            symbol: 'USDT',
+            address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+            name: 'Tether USD',
+            decimals: 6,
+            isDefault: true,
+            isCustom: false,
+          },
+          {
+            symbol: 'DAI',
+            address: '0x68194a729C2450ad26072b3D33ADaCbcef39D574',
+            name: 'Dai Stablecoin',
+            decimals: 18,
+            isDefault: true,
+            isCustom: false,
+          },
+        ],
         customTokens: [],
         balances: {},
         lastUpdated: {},
       },
     },
   }),
-
-  // Remove duplicate selectedTokenSymbol from settings state
-  '68': state => {
-    if (!state.tandaPay || !state.tandaPay.settings) {
-      return state;
-    }
-
-    // Create clean settings without selectedTokenSymbol if it exists
-    const settings = state.tandaPay.settings;
-    const cleanSettings = {
-      selectedNetwork: settings.selectedNetwork || 'sepolia',
-      customRpcConfig: settings.customRpcConfig || null,
-    };
-
-    return {
-      ...state,
-      tandaPay: {
-        ...state.tandaPay,
-        settings: cleanSettings,
-      },
-    };
-  },
 
   // TIP: When adding a migration, consider just using `dropCache`.
   //   (See its jsdoc for guidance on when that's the right answer.)

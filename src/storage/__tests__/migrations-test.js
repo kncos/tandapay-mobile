@@ -148,39 +148,19 @@ describe('migrations', () => {
             isDefault: true,
             isCustom: false,
           },
-        ],
-        customTokens: [],
-        balances: {},
-        lastUpdated: {},
-      },
-    },
-  };
-
-  // What `base` becomes after migrations up through 68.
-  const base68 = {
-    ...base67,
-    migrations: { version: 68 },
-    tandaPay: {
-      settings: {
-        selectedNetwork: 'sepolia',
-        customRpcConfig: null,
-      },
-      tokens: {
-        selectedTokenSymbol: 'ETH',
-        defaultTokens: [
           {
-            symbol: 'ETH',
-            address: null,
-            name: 'Ethereum',
-            decimals: 18,
+            symbol: 'USDT',
+            address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+            name: 'Tether USD',
+            decimals: 6,
             isDefault: true,
             isCustom: false,
           },
           {
-            symbol: 'USDC',
-            address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-            name: 'USD Coin',
-            decimals: 6,
+            symbol: 'DAI',
+            address: '0x68194a729C2450ad26072b3D33ADaCbcef39D574',
+            name: 'Dai Stablecoin',
+            decimals: 18,
             isDefault: true,
             isCustom: false,
           },
@@ -194,8 +174,8 @@ describe('migrations', () => {
 
   // What `base` becomes after all migrations.
   const endBase = {
-    ...base68,
-    migrations: { version: 68 },
+    ...base67,
+    migrations: { version: 67 },
   };
 
   for (const [desc, before, after] of [

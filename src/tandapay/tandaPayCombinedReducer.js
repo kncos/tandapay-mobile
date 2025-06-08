@@ -21,8 +21,16 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
     tokens: tokensReducer(undefined, action),
   };
 
+  const newSettings = settingsReducer(currentState.settings, action);
+  const newTokens = tokensReducer(currentState.tokens, action);
+
+  // Only return a new object if at least one sub-reducer changed
+  if (newSettings === currentState.settings && newTokens === currentState.tokens) {
+    return currentState;
+  }
+
   return {
-    settings: settingsReducer(currentState.settings, action),
-    tokens: tokensReducer(currentState.tokens, action),
+    settings: newSettings,
+    tokens: newTokens,
   };
 };

@@ -2,7 +2,6 @@
 
 import type { PerAccountState } from '../../reduxTypes';
 import type { Token, TokenState } from './tokenTypes';
-import { getAllTokens, findTokenBySymbol } from './tokenConfig';
 
 /**
  * Get the token state from Redux state
@@ -23,8 +22,8 @@ export function getSelectedTokenSymbol(state: PerAccountState): string {
  */
 export function getAvailableTokens(state: PerAccountState): $ReadOnlyArray<Token> {
   const tokenState = getTokenState(state);
-  const network = state.tandaPay.settings.selectedNetwork;
-  return getAllTokens(tokenState.customTokens, network);
+  // Use tokens directly from state instead of calling dynamic functions
+  return [...tokenState.defaultTokens, ...tokenState.customTokens];
 }
 
 /**
@@ -32,8 +31,8 @@ export function getAvailableTokens(state: PerAccountState): $ReadOnlyArray<Token
  */
 export function getSelectedToken(state: PerAccountState): Token | null {
   const tokenState = getTokenState(state);
-  const network = state.tandaPay.settings.selectedNetwork;
-  return findTokenBySymbol(tokenState.selectedTokenSymbol, tokenState.customTokens, network);
+  const allTokens = getAvailableTokens(state);
+  return allTokens.find(token => token.symbol === tokenState.selectedTokenSymbol) || null;
 }
 
 /**

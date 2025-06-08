@@ -31,14 +31,23 @@ export const NETWORK_TOKEN_ADDRESSES: NetworkTokenAddresses = {
   },
 };
 
+// Cache for default tokens to ensure object identity consistency
+const defaultTokensCache: Map<string, $ReadOnlyArray<Token>> = new Map();
+
 /**
  * Default tokens that are always available in the wallet
  * These tokens will be shown to all users by default
  */
 export function getDefaultTokens(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' = 'sepolia'): $ReadOnlyArray<Token> {
+  // Check cache first to ensure object identity consistency
+  const cached = defaultTokensCache.get(network);
+  if (cached) {
+    return cached;
+  }
+
   const addresses = NETWORK_TOKEN_ADDRESSES[network] || NETWORK_TOKEN_ADDRESSES.sepolia;
 
-  return [
+  const tokens = [
     {
       symbol: 'ETH',
       address: null, // Native token, no contract address
@@ -72,6 +81,10 @@ export function getDefaultTokens(network: 'mainnet' | 'sepolia' | 'arbitrum' | '
       isCustom: false,
     },
   ];
+
+  // Cache the result
+  defaultTokensCache.set(network, tokens);
+  return tokens;
 }
 
 /**

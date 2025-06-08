@@ -38,6 +38,9 @@ export function useUpdateBalance(
     token ? isTokenBalanceStale(state, token.symbol) : true
   );
 
+  // Debug logging
+  // console.log('useUpdateBalance: token =', token?.symbol, 'walletAddress =', walletAddress);
+
   const refreshBalance = useCallback(async () => {
     if (!token || walletAddress == null || walletAddress === '') {
       return;

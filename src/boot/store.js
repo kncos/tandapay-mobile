@@ -34,8 +34,6 @@ if (process.env.NODE_ENV === 'development') {
   installDevTools(Immutable);
 }
 
-// AsyncStorage.clear(); // use to reset storage during development
-
 /**
  * Properties on the global state which we explicitly choose not to persist.
  *
@@ -153,6 +151,7 @@ function listMiddleware() {
  *  * docs/background/recommended-reading.md
  */
 // TODO: Represent thunk actions, etc.
+
 const store: Store<GlobalState, Action> = createStore(
   rootReducer,
   undefined,
