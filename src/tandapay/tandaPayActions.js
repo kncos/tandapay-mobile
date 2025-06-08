@@ -2,7 +2,7 @@
 import type { PerAccountAction } from '../types';
 import type {
   TandaPaySettingsState,
-} from './tandaPayReducer';
+} from './reducers/settingsReducer';
 import {
   TANDAPAY_SETTINGS_UPDATE,
   TANDAPAY_TOKEN_SELECT,

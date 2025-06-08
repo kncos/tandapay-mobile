@@ -2,8 +2,8 @@
 import type { PerAccountState } from '../reduxTypes';
 import type {
   TandaPayState,
-  TandaPaySettingsState,
-} from './tandaPayReducer';
+} from './tandaPayCombinedReducer';
+import type { TandaPaySettingsState } from './reducers/settingsReducer';
 
 // Main TandaPay state selector
 export const getTandaPayState = (state: PerAccountState): TandaPayState => {

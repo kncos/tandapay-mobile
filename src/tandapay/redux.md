@@ -87,6 +87,10 @@ Your existing TandaPay integration already handles the infrastructure correctly.
 tandaPay: applyReducer('tandaPay', tandaPay, state.tandaPay, action, state)
 ```
 
-This means **any new action you add will automatically flow through your `tandaPayReducer`** without needing to modify the reducer composition logic.
+```javascript
+tandaPay: applyReducer('tandaPay', tandaPay, state.tandaPay, action, state)
+```
 
-The key insight is that your TandaPay integration is **already fully wired** - you just need to extend the action definitions and handle migrations for state changes.
+This means **any new action you add will automatically flow through your `tandaPayCombinedReducer`** without needing to modify the reducer composition logic. The combined reducer internally delegates to separate `settingsReducer` and `tokensReducer` for better maintainability.
+
+The key insight is that your TandaPay integration is **already fully wired** with a modular reducer architecture - you just need to extend the action definitions in the appropriate domain-specific reducer and handle migrations for state changes.

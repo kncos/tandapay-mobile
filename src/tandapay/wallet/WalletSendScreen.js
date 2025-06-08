@@ -2,28 +2,23 @@
 
 import React, { useState, useContext, useCallback, useMemo } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert, ActivityIndicator, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
-// $FlowFixMe[untyped-import]
-import { BarCodeScanner } from 'expo-barcode-scanner';
-// $FlowFixMe[untyped-import]
-import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import Input from '../../common/Input';
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getSelectedToken } from '../tokens/tokenSelectors';
 import { getTandaPaySelectedNetwork } from '../tandaPaySelectors';
 import { transferToken, estimateTransferGas } from '../web3';
 import { getWalletInstance } from './WalletManager';
-import { BRAND_COLOR } from '../../styles/constants';
+import { AddressInput, AmountInput, validateEthereumAddress } from '../components';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-send'>,
@@ -75,43 +70,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
-  addressInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  addressInput: {
-    flex: 1,
-    marginRight: 8,
-  },
-  qrButton: {
-    padding: 10,
-    borderRadius: 4,
-    backgroundColor: BRAND_COLOR,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrButtonIcon: {
-    color: 'white',
-  },
-  scannerModal: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  scannerContainer: {
-    flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'center',
-  },
-  scannerCloseButton: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 25,
-    padding: 10,
-    zIndex: 1,
-  },
 });
 
 export default function WalletSendScreen(props: Props): Node {
@@ -126,9 +84,6 @@ export default function WalletSendScreen(props: Props): Node {
   const [loading, setLoading] = useState(false);
   const [estimating, setEstimating] = useState(false);
   const [walletInstance, setWalletInstance] = useState(null);
-  const [addressError, setAddressError] = useState('');
-  const [showScanner, setShowScanner] = useState(false);
-  const [hasPermission, setHasPermission] = useState(null);
 
   // Load wallet instance lazily (only when needed)
   const getWallet = useCallback(async () => {
@@ -147,110 +102,10 @@ export default function WalletSendScreen(props: Props): Node {
     }
   }, [walletInstance, navigation]);
 
-  // Validate Ethereum address with proper checksumming
-  const validateAddress = useCallback((address: string): boolean => {
-    try {
-      ethers.utils.getAddress(address.toLowerCase()); // Convert to lowercase first to handle mixed-case input
-      return true;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  // Request camera permission and open QR scanner
-  const handleOpenScanner = useCallback(async () => {
-    const { status } = await BarCodeScanner.requestPermissionsAsync();
-    setHasPermission(status === 'granted');
-
-    if (status === 'granted') {
-      setShowScanner(true);
-    } else {
-      Alert.alert('Camera Permission', 'Camera permission is required to scan QR codes.');
-    }
-  }, []);
-
-  // Handle QR code scan result
-  const handleBarCodeScanned = useCallback(({ type, data }) => {
-    setShowScanner(false);
-
-    // Extract address from QR code data
-    let scannedAddress = data;
-
-    // Handle ethereum: URI format
-    if (data.startsWith('ethereum:')) {
-      const match = data.match(/ethereum:([0-9a-fA-F]{40})/);
-      if (match) {
-        scannedAddress = `0x${match[1]}`;
-      }
-    }
-
-    // Validate the scanned address
-    if (validateAddress(scannedAddress)) {
-      setToAddress(scannedAddress);
-      setAddressError('');
-    } else {
-      Alert.alert('Invalid QR Code', 'The scanned QR code does not contain a valid Ethereum address.');
-    }
-  }, [validateAddress]);
-
-  const handleAddressChange = useCallback((address: string) => {
-    setToAddress(address);
-    setAddressError('');
-
-    if (address.length > 0 && !validateAddress(address)) {
-      setAddressError('Invalid Ethereum address format');
-    }
-  }, [validateAddress]);
-
-  // Validate amount format and value
-  const validateAmount = useCallback((amountValue: string): string => {
-    if (!amountValue.trim()) {
-      return '';
-    }
-
-    const numericAmount = parseFloat(amountValue);
-    if (Number.isNaN(numericAmount)) {
-      return 'Please enter a valid number';
-    }
-
-    if (numericAmount <= 0) {
-      return 'Amount must be greater than 0';
-    }
-
-    // Check decimal places
-    const parts = amountValue.split('.');
-    if (parts.length === 2 && selectedToken && parts[1].length > selectedToken.decimals) {
-      return `Maximum ${selectedToken.decimals} decimal places allowed for ${selectedToken.symbol}`;
-    }
-
-    return '';
-  }, [selectedToken]);
-
-  const [amountError, setAmountError] = useState('');
-
-  const handleAmountChange = useCallback((value: string) => {
-    // Allow only numbers and one decimal point
-    const numericValue = value.replace(/[^0-9.]/g, '');
-
-    // Prevent multiple decimal points
-    const parts = numericValue.split('.');
-    if (parts.length > 2) {
-      return; // Don't update if multiple decimal points
-    }
-
-    // Validate decimal places don't exceed token decimals
-    if (parts.length === 2 && selectedToken && parts[1].length > selectedToken.decimals) {
-      return; // Don't update if too many decimal places
-    }
-
-    setAmount(numericValue);
-    setAmountError(validateAmount(numericValue));
-  }, [selectedToken, validateAmount]);
-
   // Memoize form validation to prevent unnecessary re-renders
   const isFormValid = useMemo(() =>
-    toAddress.trim() && amount.trim() && !loading && !addressError && !amountError,
-  [toAddress, amount, loading, addressError, amountError]);
+    toAddress.trim() && amount.trim() && !loading,
+  [toAddress, amount, loading]);
 
   const handleEstimateGas = useCallback(async () => {
     setEstimating(true);
@@ -262,8 +117,8 @@ export default function WalletSendScreen(props: Props): Node {
         return;
       }
 
-      if (!validateAddress(toAddress.trim())) {
-        setAddressError('Please enter a valid Ethereum address');
+      if (!validateEthereumAddress(toAddress.trim())) {
+        Alert.alert('Invalid Address', 'Please enter a valid Ethereum address');
         setEstimating(false);
         return;
       }
@@ -310,7 +165,7 @@ export default function WalletSendScreen(props: Props): Node {
     };
 
     setTimeout(estimate, 0); // Use setTimeout to ensure state updates are applied before async operation
-  }, [toAddress, amount, validateAddress, getWallet, selectedToken, selectedNetwork]);
+  }, [toAddress, amount, getWallet, selectedToken, selectedNetwork]);
 
   const handleSend = useCallback(async () => {
     if (!toAddress.trim() || !amount.trim()) {
@@ -323,7 +178,7 @@ export default function WalletSendScreen(props: Props): Node {
       return;
     }
 
-    if (!validateAddress(toAddress.trim())) {
+    if (!validateEthereumAddress(toAddress.trim())) {
       Alert.alert('Invalid Address', 'Please enter a valid Ethereum address.');
       return;
     }
@@ -375,7 +230,7 @@ export default function WalletSendScreen(props: Props): Node {
         },
       ],
     );
-  }, [toAddress, amount, gasEstimate, validateAddress, selectedToken, navigation, getWallet, selectedNetwork]);
+  }, [toAddress, amount, gasEstimate, selectedToken, navigation, getWallet, selectedNetwork]);
 
   // Return early if no token is selected
   if (!selectedToken) {
@@ -416,35 +271,22 @@ export default function WalletSendScreen(props: Props): Node {
 
         {/* Send Form */}
         <View style={styles.section}>
-          <ZulipText style={styles.label}>Recipient Address</ZulipText>
-          <View style={styles.addressInputRow}>
-            <Input
-              style={[styles.input, styles.addressInput]}
-              placeholder="0x..."
-              value={toAddress}
-              onChangeText={handleAddressChange}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity style={styles.qrButton} onPress={handleOpenScanner}>
-              <Icon name="qr-code-scanner" size={20} style={styles.qrButtonIcon} />
-            </TouchableOpacity>
-          </View>
-          {addressError ? (
-            <ZulipText style={styles.errorText}>{addressError}</ZulipText>
-          ) : null}
-
-          <ZulipText style={styles.label}>Amount</ZulipText>
-          <Input
-            style={styles.input}
-            placeholder={`Amount in ${selectedToken.symbol} (max ${selectedToken.decimals} decimal places)`}
-            value={amount}
-            onChangeText={handleAmountChange}
-            keyboardType="numeric"
+          <AddressInput
+            value={toAddress}
+            onChangeText={setToAddress}
+            label="Recipient Address"
+            placeholder="0x..."
+            disabled={loading || estimating}
           />
-          {amountError ? (
-            <ZulipText style={styles.errorText}>{amountError}</ZulipText>
-          ) : null}
+
+          <AmountInput
+            value={amount}
+            onChangeText={setAmount}
+            tokenSymbol={selectedToken.symbol}
+            tokenDecimals={selectedToken.decimals}
+            label="Amount"
+            disabled={loading || estimating}
+          />
 
           <ZulipButton
             disabled={!isFormValid || estimating}
@@ -512,36 +354,6 @@ export default function WalletSendScreen(props: Props): Node {
             </ZulipText>
           </View>
         )}
-
-        {/* QR Scanner Modal */}
-        <Modal
-          animationType="slide"
-          transparent={false}
-          visible={showScanner}
-          onRequestClose={() => setShowScanner(false)}
-        >
-          <View style={styles.scannerModal}>
-            <TouchableOpacity
-              style={styles.scannerCloseButton}
-              onPress={() => setShowScanner(false)}
-            >
-              <Icon name="close" size={24} color="white" />
-            </TouchableOpacity>
-
-            <View style={styles.scannerContainer}>
-              {hasPermission === null ? (
-                <ZulipText>Requesting camera permission...</ZulipText>
-              ) : hasPermission === false ? (
-                <ZulipText>No camera access. Please grant camera permission in settings.</ZulipText>
-              ) : (
-                <BarCodeScanner
-                  onBarCodeScanned={handleBarCodeScanned}
-                  style={{ flex: 1 }}
-                />
-              )}
-            </View>
-          </View>
-        </Modal>
       </View>
     </Screen>
   );

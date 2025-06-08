@@ -73,7 +73,9 @@
 ### Modified Files
 - `/src/actionConstants.js` - Added token action constants
 - `/src/actionTypes.js` - Added token action type definitions
-- `/src/tandapay/tandaPayReducer.js` - Enhanced with token state management
+- `/src/tandapay/tandaPayCombinedReducer.js` - New combined reducer architecture
+- `/src/tandapay/reducers/tokensReducer.js` - Dedicated token state management
+- `/src/tandapay/reducers/settingsReducer.js` - Dedicated settings state management
 - `/src/tandapay/wallet/WalletBalanceCard.js` - Completely refactored for Redux
 - `/src/tandapay/web3.js` - Updated to use enhanced implementation
 

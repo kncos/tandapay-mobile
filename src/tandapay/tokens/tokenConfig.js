@@ -10,7 +10,7 @@ import type { Token, NetworkTokenAddresses } from './tokenTypes';
  */
 export const NETWORK_TOKEN_ADDRESSES: NetworkTokenAddresses = {
   mainnet: {
-    USDC: '0xA0b86a33E6441bE95d9C825e95D6B3C8c79e3F0A', // Real USDC mainnet address
+    USDC: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', // Real USDC mainnet address
     USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // Real USDT mainnet address
     DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F',  // Real DAI mainnet address
   },
