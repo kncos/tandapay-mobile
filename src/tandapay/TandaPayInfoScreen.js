@@ -15,7 +15,7 @@ import TextRow from '../common/TextRow';
 import { IconServer, IconTandaPayInfo, IconAlertTriangle, IconGroup } from '../common/Icons';
 import { createProvider } from './providers/ProviderManager';
 import { useSelector } from '../react-redux';
-import { getTandaPaySelectedNetwork } from './tandaPaySelectors';
+import { getTandaPaySelectedNetwork } from './redux/selectors';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-info'>,

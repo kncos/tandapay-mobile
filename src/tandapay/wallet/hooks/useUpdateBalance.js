@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from '../../../react-redux';
-import { updateTokenBalance } from '../../tandaPayActions';
+import { updateTokenBalance } from '../../redux/actions';
 import { getTokenBalance, isTokenBalanceStale } from '../../tokens/tokenSelectors';
 import { fetchBalance } from '../../web3';
 import type { Token } from '../../tokens/tokenTypes';

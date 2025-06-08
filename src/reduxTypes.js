@@ -39,7 +39,7 @@ import type { UnreadState } from './unread/unreadModelTypes';
 import type { UserStatusesState } from './user-statuses/userStatusesCore';
 import type { ServerEmojiData, UserMessageFlag } from './api/modelTypes';
 import type { EmailAddressVisibility } from './api/permissionsTypes';
-import type { TandaPayState } from './tandapay/tandaPayCombinedReducer';
+import type { TandaPayState } from './tandapay/redux/reducer';
 import { typesEquivalent } from './generics';
 
 export type { MuteState } from './mute/muteModelTypes';

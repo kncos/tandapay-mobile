@@ -1,15 +1,15 @@
 /* @flow strict-local */
 
-import type { Action } from '../../types';
+import type { Action } from '../../../types';
 import {
   RESET_ACCOUNT_DATA,
   TANDAPAY_TOKEN_SELECT,
   TANDAPAY_TOKEN_ADD_CUSTOM,
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
-} from '../../actionConstants';
-import type { TokenState, Token } from '../tokens/tokenTypes';
-import { validateCustomToken } from '../tokens/tokenConfig';
+} from '../../../actionConstants';
+import type { TokenState, Token } from '../../tokens/tokenTypes';
+import { validateCustomToken } from '../../tokens/tokenConfig';
 
 // Static default tokens for consistent object references
 const defaultTokens: $ReadOnlyArray<Token> = [

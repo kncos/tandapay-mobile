@@ -1,11 +1,11 @@
 /* @flow strict-local */
 
-import type { Action } from '../../actionTypes';
+import type { Action } from '../../../types';
 import {
   RESET_ACCOUNT_DATA,
   TANDAPAY_SETTINGS_UPDATE,
-} from '../../actionConstants';
-import { validateTandaPaySettings } from '../stateValidation';
+} from '../../../actionConstants';
+import { validateTandaPaySettings } from '../../stateValidation';
 
 // Settings-specific state
 export type TandaPaySettingsState = $ReadOnly<{|

@@ -5,10 +5,10 @@ import type { Node } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { createStyleSheet, HALF_COLOR } from '../styles';
-import type { LocalizableReactText } from '../types';
-import ZulipText from '../common/ZulipText';
-import ZulipTextButton from '../common/ZulipTextButton';
+import { createStyleSheet, HALF_COLOR } from '../../styles';
+import type { LocalizableReactText } from '../../types';
+import ZulipText from '../../common/ZulipText';
+import ZulipTextButton from '../../common/ZulipTextButton';
 
 const styles = createStyleSheet({
   wrapper: {

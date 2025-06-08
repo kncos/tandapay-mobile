@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import type { Node } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import ZulipText from '../common/ZulipText';
+import ZulipText from '../../common/ZulipText';
 
 const styles = StyleSheet.create({
   ribbon: {

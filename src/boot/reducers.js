@@ -27,7 +27,7 @@ import { reducer as unread } from '../unread/unreadModel';
 import userGroups from '../user-groups/userGroupsReducer';
 import { reducer as userStatuses } from '../user-statuses/userStatusesModel';
 import users from '../users/usersReducer';
-import tandaPay from '../tandapay/tandaPayCombinedReducer';
+import tandaPay from '../tandapay/redux/reducer';
 
 // The `Object.freeze` is to work around a Flow issue:
 //   https://github.com/facebook/flow/issues/2386#issuecomment-695064325

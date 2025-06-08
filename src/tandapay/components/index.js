@@ -11,6 +11,10 @@ export { default as NetworkSelector } from './NetworkSelector';
 export { default as CustomRpcForm } from './CustomRpcForm';
 export { default as NetworkInfo } from './NetworkInfo';
 
+// UI Components
+export { default as TandaRibbon } from './TandaRibbon';
+export { default as TandaPayBanner } from './TandaPayBanner';
+
 // Validation utilities
 export { validateEthereumAddress } from './AddressInput';
 export { validateTokenAmount } from './AmountInput';

@@ -1,10 +1,10 @@
 /* @flow strict-local */
 
-import type { Action } from '../types';
+import type { Action } from '../../types';
 import settingsReducer from './reducers/settingsReducer';
 import tokensReducer from './reducers/tokensReducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
-import type { TokenState } from './tokens/tokenTypes';
+import type { TokenState } from '../tokens/tokenTypes';
 
 export type TandaPayState = $ReadOnly<{|
   settings: TandaPaySettingsState,
@@ -14,6 +14,7 @@ export type TandaPayState = $ReadOnly<{|
 // Re-export types for backward compatibility
 export type { TandaPaySettingsState };
 
+// Combined TandaPay reducer
 // eslint-disable-next-line default-param-last
 export default (state: TandaPayState | void, action: Action): TandaPayState => {
   const currentState = state || {

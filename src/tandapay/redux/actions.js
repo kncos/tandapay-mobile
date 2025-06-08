@@ -1,5 +1,5 @@
 /* @flow strict-local */
-import type { PerAccountAction } from '../types';
+import type { PerAccountAction } from '../../types';
 import type {
   TandaPaySettingsState,
 } from './reducers/settingsReducer';
@@ -9,7 +9,7 @@ import {
   TANDAPAY_TOKEN_ADD_CUSTOM,
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
-} from '../actionConstants';
+} from '../../actionConstants';
 
 // =============================================================================
 // SETTINGS ACTIONS

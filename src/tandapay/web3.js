@@ -10,7 +10,7 @@ import { createProvider } from './providers/ProviderManager';
 
 // Redux store import for getting current network
 import store from '../boot/store';
-import { getTandaPaySelectedNetwork } from './tandaPaySelectors';
+import { getTandaPaySelectedNetwork } from './redux/selectors';
 import { tryGetActiveAccountState } from '../account/accountsSelectors';
 
 /**

@@ -15,7 +15,7 @@ import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getSelectedToken } from '../tokens/tokenSelectors';
-import { getTandaPaySelectedNetwork } from '../tandaPaySelectors';
+import { getTandaPaySelectedNetwork } from '../redux/selectors';
 import { transferToken, estimateTransferGas } from '../web3';
 import { getWalletInstance } from './WalletManager';
 import { AddressInput, AmountInput, validateEthereumAddress } from '../components';

@@ -1,8 +1,8 @@
 /* @flow strict-local */
-import type { PerAccountState } from '../reduxTypes';
+import type { PerAccountState } from '../../reduxTypes';
 import type {
   TandaPayState,
-} from './tandaPayCombinedReducer';
+} from './reducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
 
 // Main TandaPay state selector

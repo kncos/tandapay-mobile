@@ -1,7 +1,7 @@
 // @flow strict-local
 
 import { getDefaultTokens, validateCustomToken } from '../tokenConfig';
-import { selectToken, addCustomToken, updateTokenBalance } from '../../tandaPayActions';
+import { selectToken, addCustomToken, updateTokenBalance } from '../../redux/actions';
 import { getSelectedToken, getAvailableTokens, getTokenBalance } from '../tokenSelectors';
 import { TANDAPAY_TOKEN_SELECT, TANDAPAY_TOKEN_ADD_CUSTOM, TANDAPAY_TOKEN_UPDATE_BALANCE } from '../../../actionConstants';
 

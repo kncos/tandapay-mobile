@@ -3,8 +3,8 @@
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useSelector, useDispatch } from '../../react-redux';
-import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../tandaPaySelectors';
-import { switchNetwork, setCustomRpc, clearCustomRpc } from '../tandaPayActions';
+import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
+import { switchNetwork, setCustomRpc, clearCustomRpc } from '../redux/actions';
 import { validateCustomRpcConfig } from '../providers/ProviderManager';
 
 type NetworkHookReturn = {|
@@ -49,14 +49,14 @@ export function useNetworkSettings(): NetworkHookReturn {
     try {
       // Add delay to ensure UI updates
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       dispatch(switchNetwork(network));
-      
+
       const networkName = network === 'custom' ? customRpcConfig?.name || 'Custom' : network;
-      
+
       // Wait for state to update
       await new Promise(resolve => setTimeout(resolve, 200));
-      
+
       Alert.alert('Network Switched', `Successfully switched to ${networkName}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to switch network. Please try again.');

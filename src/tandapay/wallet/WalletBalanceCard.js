@@ -14,7 +14,7 @@ import AnimatedRotateComponent from '../../animation/AnimatedRotateComponent';
 import { ThemeContext } from '../../styles';
 import { BRAND_COLOR, HIGHLIGHT_COLOR } from '../../styles/constants';
 import { useSelector, useDispatch } from '../../react-redux';
-import { selectToken } from '../tandaPayActions';
+import { selectToken } from '../redux/actions';
 import { getSelectedToken, getAvailableTokens } from '../tokens/tokenSelectors';
 import { useUpdateBalance } from './hooks/useUpdateBalance';
 
