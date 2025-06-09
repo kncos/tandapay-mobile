@@ -6,15 +6,14 @@ import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType
 import { getProvider } from '../web3';
 import { getTandaPayReadActions } from './read';
 import { TandaPayInfo } from './TandaPay';
+import { getTandaPayNetworkPerformance } from '../redux/selectors';
+import { tryGetActiveAccountState } from '../../selectors';
+import store from '../../boot/store';
 
 // Configuration type for the community info class
 type CommunityInfoConfig = {
   contractAddress: string,
   userAddress?: ?string,
-  cacheExpirationMs?: number,
-  rateLimitDelayMs?: number,
-  retryAttempts?: number,
-  networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
 };
 
 // Comprehensive community information type
@@ -57,12 +56,7 @@ class TandaPayCommunityInfo {
   multicall: any;
 
   constructor(config: CommunityInfoConfig) {
-    this.config = {
-      cacheExpirationMs: 30000, // 30 seconds default
-      rateLimitDelayMs: 100, // 100ms between calls
-      retryAttempts: 3,
-      ...config,
-    };
+    this.config = config;
 
     this.readActions = getTandaPayReadActions(
       getProvider(),
@@ -74,12 +68,35 @@ class TandaPayCommunityInfo {
   }
 
   /**
+   * Get network performance settings from Redux state
+   */
+  getNetworkPerformanceSettings(): {| cacheExpirationMs: number, rateLimitDelayMs: number, retryAttempts: number |} {
+    try {
+      const globalState = store.getState();
+      const perAccountState = tryGetActiveAccountState(globalState);
+      if (perAccountState) {
+        return getTandaPayNetworkPerformance(perAccountState);
+      }
+    } catch (error) {
+      // Fallback to defaults if Redux state is not accessible
+    }
+
+    // Default fallback values
+    return {
+      cacheExpirationMs: 30000,
+      rateLimitDelayMs: 100,
+      retryAttempts: 3,
+    };
+  }
+
+  /**
    * Rate-limited contract call wrapper
    */
   async rateLimitedContractCall(methodName: string, args?: Array<any>): Promise<any> {
-    const rateLimitDelay = this.config.rateLimitDelayMs;
-    if ((rateLimitDelay ?? 0) > 0) {
-      await new Promise(resolve => setTimeout(resolve, rateLimitDelay ?? 0));
+    const performanceSettings = this.getNetworkPerformanceSettings();
+    const rateLimitDelay = performanceSettings.rateLimitDelayMs;
+    if (rateLimitDelay > 0) {
+      await new Promise(resolve => setTimeout(resolve, rateLimitDelay));
     }
 
     const method = this.readActions[methodName];
@@ -88,7 +105,7 @@ class TandaPayCommunityInfo {
     }
 
     let lastError: Error;
-    const maxRetries = this.config.retryAttempts ?? 3;
+    const maxRetries = performanceSettings.retryAttempts;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         if (args != null) {
@@ -116,7 +133,8 @@ class TandaPayCommunityInfo {
     // Check cache first unless force refresh is requested
     if (!shouldForceRefresh) {
       const cached = this.cache.get(cacheKey);
-      const cacheExpiration = this.config.cacheExpirationMs ?? 30000;
+      const performanceSettings = this.getNetworkPerformanceSettings();
+      const cacheExpiration = performanceSettings.cacheExpirationMs;
       if (cached && (Date.now() - cached.timestamp) < cacheExpiration) {
         return cached.data;
       }
@@ -276,7 +294,8 @@ class TandaPayCommunityInfo {
   getCachedCommunityInfo(): ?CommunityInfo {
     const cacheKey = `community_${this.config.contractAddress}_${this.config.userAddress ?? 'anonymous'}`;
     const cached = this.cache.get(cacheKey);
-    const cacheExpiration = this.config.cacheExpirationMs ?? 30000;
+    const performanceSettings = this.getNetworkPerformanceSettings();
+    const cacheExpiration = performanceSettings.cacheExpirationMs;
 
     if (cached && (Date.now() - cached.timestamp) < cacheExpiration) {
       return cached.data;

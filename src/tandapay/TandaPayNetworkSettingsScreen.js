@@ -7,8 +7,9 @@ import { ScrollView } from 'react-native';
 import type { RouteProp } from '../react-navigation';
 import type { AppNavigationProp } from '../nav/AppNavigator';
 import Screen from '../common/Screen';
-import { NetworkSelector, CustomRpcForm, NetworkInfo } from './components';
+import { NetworkSelector, CustomRpcForm, NetworkInfo, NetworkPerformanceSettings } from './components';
 import { useNetworkSettings } from './hooks/useNetworkSettings';
+import { useNetworkPerformanceSettings } from './hooks/useNetworkPerformanceSettings';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-network-settings'>,
@@ -26,6 +27,17 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
     handleClearCustomRpc,
   } = useNetworkSettings();
 
+  const {
+    cacheExpirationMs,
+    rateLimitDelayMs,
+    retryAttempts,
+    handleUpdateCacheExpiration,
+    handleUpdateRateLimitDelay,
+    handleUpdateRetryAttempts,
+    handleUpdateAll,
+    handleResetToDefaults,
+  } = useNetworkPerformanceSettings();
+
   return (
     <Screen title="Network Settings" canGoBack>
       <ScrollView style={{ flex: 1, padding: 16 }}>
@@ -42,6 +54,18 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
           onSave={handleSaveCustomRpc}
           onClear={handleClearCustomRpc}
           loading={loading}
+          disabled={Boolean(switchingNetwork)}
+        />
+
+        <NetworkPerformanceSettings
+          cacheExpirationMs={cacheExpirationMs}
+          rateLimitDelayMs={rateLimitDelayMs}
+          retryAttempts={retryAttempts}
+          onUpdateCacheExpiration={handleUpdateCacheExpiration}
+          onUpdateRateLimitDelay={handleUpdateRateLimitDelay}
+          onUpdateRetryAttempts={handleUpdateRetryAttempts}
+          onUpdateAll={handleUpdateAll}
+          onResetToDefaults={handleResetToDefaults}
           disabled={Boolean(switchingNetwork)}
         />
 

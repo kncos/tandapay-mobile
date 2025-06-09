@@ -3,6 +3,9 @@ import type { PerAccountAction } from '../../types';
 import type {
   TandaPaySettingsState,
 } from './reducers/settingsReducer';
+import type {
+  TandaPaySettingsUpdateAction,
+} from '../../actionTypes';
 import {
   TANDAPAY_SETTINGS_UPDATE,
   TANDAPAY_TOKEN_SELECT,
@@ -14,11 +17,6 @@ import {
 // =============================================================================
 // SETTINGS ACTIONS
 // =============================================================================
-
-export type TandaPaySettingsUpdateAction = {|
-  type: typeof TANDAPAY_SETTINGS_UPDATE,
-  settings: $Shape<TandaPaySettingsState>,
-|};
 
 export const updateTandaPaySettings = (settings: $Shape<TandaPaySettingsState>): TandaPaySettingsUpdateAction => ({
   type: TANDAPAY_SETTINGS_UPDATE,
@@ -118,6 +116,64 @@ export function clearCustomRpc(fallbackNetwork: 'mainnet' | 'sepolia' | 'arbitru
     settings: {
       selectedNetwork: fallbackNetwork,
       customRpcConfig: null,
+    },
+  };
+}
+
+/**
+ * Action creator for updating network performance settings
+ */
+export function updateNetworkPerformance(performance: {|
+  cacheExpirationMs?: number,
+  rateLimitDelayMs?: number,
+  retryAttempts?: number,
+|}): TandaPaySettingsUpdateAction {
+  return {
+    type: TANDAPAY_SETTINGS_UPDATE,
+    settings: {
+      networkPerformance: performance,
+    },
+  };
+}
+
+/**
+ * Action creator for updating cache expiration time
+ */
+export function updateCacheExpiration(cacheExpirationMs: number): TandaPaySettingsUpdateAction {
+  return {
+    type: TANDAPAY_SETTINGS_UPDATE,
+    settings: {
+      networkPerformance: {
+        cacheExpirationMs,
+      },
+    },
+  };
+}
+
+/**
+ * Action creator for updating rate limit delay
+ */
+export function updateRateLimitDelay(rateLimitDelayMs: number): TandaPaySettingsUpdateAction {
+  return {
+    type: TANDAPAY_SETTINGS_UPDATE,
+    settings: {
+      networkPerformance: {
+        rateLimitDelayMs,
+      },
+    },
+  };
+}
+
+/**
+ * Action creator for updating retry attempts
+ */
+export function updateRetryAttempts(retryAttempts: number): TandaPaySettingsUpdateAction {
+  return {
+    type: TANDAPAY_SETTINGS_UPDATE,
+    settings: {
+      networkPerformance: {
+        retryAttempts,
+      },
     },
   };
 }

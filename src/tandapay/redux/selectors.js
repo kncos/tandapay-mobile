@@ -13,6 +13,11 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
       settings: {
         selectedNetwork: 'sepolia',
         customRpcConfig: null,
+        networkPerformance: {
+          cacheExpirationMs: 30000,
+          rateLimitDelayMs: 100,
+          retryAttempts: 3,
+        },
       },
       tokens: {
         selectedTokenSymbol: 'ETH',
@@ -34,6 +39,11 @@ export const getTandaPaySettings = (state: PerAccountState): TandaPaySettingsSta
     return {
       selectedNetwork: 'sepolia',
       customRpcConfig: null,
+      networkPerformance: {
+        cacheExpirationMs: 30000,
+        rateLimitDelayMs: 100,
+        retryAttempts: 3,
+      },
     };
   }
   return tandaPayState.settings;
@@ -58,6 +68,52 @@ export const getTandaPayCustomRpcConfig = (state: PerAccountState): ?{|
     return getTandaPaySettings(state).customRpcConfig;
   } catch (error) {
     return null;
+  }
+};
+
+// Network performance selectors
+export const getTandaPayNetworkPerformance = (state: PerAccountState): {|
+  cacheExpirationMs: number,
+  rateLimitDelayMs: number,
+  retryAttempts: number,
+|} => {
+  try {
+    const settings = getTandaPaySettings(state);
+    return settings.networkPerformance || {
+      cacheExpirationMs: 30000,
+      rateLimitDelayMs: 100,
+      retryAttempts: 3,
+    };
+  } catch (error) {
+    return {
+      cacheExpirationMs: 30000,
+      rateLimitDelayMs: 100,
+      retryAttempts: 3,
+    };
+  }
+};
+
+export const getTandaPayCacheExpiration = (state: PerAccountState): number => {
+  try {
+    return getTandaPayNetworkPerformance(state).cacheExpirationMs;
+  } catch (error) {
+    return 30000;
+  }
+};
+
+export const getTandaPayRateLimitDelay = (state: PerAccountState): number => {
+  try {
+    return getTandaPayNetworkPerformance(state).rateLimitDelayMs;
+  } catch (error) {
+    return 100;
+  }
+};
+
+export const getTandaPayRetryAttempts = (state: PerAccountState): number => {
+  try {
+    return getTandaPayNetworkPerformance(state).retryAttempts;
+  } catch (error) {
+    return 3;
   }
 };
 

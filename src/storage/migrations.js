@@ -548,6 +548,11 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
       settings: {
         selectedNetwork: 'sepolia',
         customRpcConfig: null,
+        networkPerformance: {
+          cacheExpirationMs: 30000, // 30 seconds default
+          rateLimitDelayMs: 100,    // 100ms between calls
+          retryAttempts: 3,         // 3 retry attempts
+        },
       },
       tokens: {
         selectedTokenSymbol: 'ETH',

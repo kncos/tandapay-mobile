@@ -669,6 +669,11 @@ export type TandaPaySettingsUpdateAction = $ReadOnly<{|
       chainId: number,
       blockExplorerUrl?: string,
     |},
+    networkPerformance: $Shape<{|
+      cacheExpirationMs: number,
+      rateLimitDelayMs: number,
+      retryAttempts: number,
+    |}>,
   }>,
 |}>;
 

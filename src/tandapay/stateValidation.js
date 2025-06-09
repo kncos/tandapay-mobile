@@ -76,6 +76,50 @@ export function validateCustomRpcConfig(config: mixed): ValidationResult {
 }
 
 /**
+ * Validate network performance settings
+ */
+export function validateNetworkPerformance(performance: mixed): ValidationResult {
+  const errors = [];
+
+  if (performance === null || performance === undefined) {
+    return { isValid: true, errors: [] }; // null/undefined is valid for partial updates
+  }
+
+  if (typeof performance !== 'object' || performance === null) {
+    errors.push('Network performance must be an object or null');
+    return { isValid: false, errors };
+  }
+
+  // Flow-safe destructuring
+  if (performance != null && typeof performance === 'object') {
+    const { cacheExpirationMs, rateLimitDelayMs, retryAttempts } = performance;
+
+    if (cacheExpirationMs !== undefined) {
+      if (typeof cacheExpirationMs !== 'number' || cacheExpirationMs < 0) {
+        errors.push('Cache expiration must be a non-negative number');
+      }
+    }
+
+    if (rateLimitDelayMs !== undefined) {
+      if (typeof rateLimitDelayMs !== 'number' || rateLimitDelayMs < 0) {
+        errors.push('Rate limit delay must be a non-negative number');
+      }
+    }
+
+    if (retryAttempts !== undefined) {
+      if (typeof retryAttempts !== 'number' || retryAttempts < 0 || !Number.isInteger(retryAttempts)) {
+        errors.push('Retry attempts must be a non-negative integer');
+      }
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
  * Validate TandaPay settings state
  */
 export function validateTandaPaySettings(settings: mixed): ValidationResult {
@@ -88,7 +132,7 @@ export function validateTandaPaySettings(settings: mixed): ValidationResult {
 
   // Flow-safe destructuring
   if (settings != null && typeof settings === 'object') {
-    const { selectedNetwork, customRpcConfig } = settings;
+    const { selectedNetwork, customRpcConfig, networkPerformance } = settings;
 
     // Validate network
     const networkValidation = validateNetwork(selectedNetwork);
@@ -100,6 +144,12 @@ export function validateTandaPaySettings(settings: mixed): ValidationResult {
     const rpcValidation = validateCustomRpcConfig(customRpcConfig);
     if (!rpcValidation.isValid) {
       errors.push(...rpcValidation.errors);
+    }
+
+    // Validate network performance settings
+    const performanceValidation = validateNetworkPerformance(networkPerformance);
+    if (!performanceValidation.isValid) {
+      errors.push(...performanceValidation.errors);
     }
   }
 

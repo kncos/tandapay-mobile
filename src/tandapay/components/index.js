@@ -10,6 +10,7 @@ export { default as AmountInput } from './AmountInput';
 export { default as NetworkSelector } from './NetworkSelector';
 export { default as CustomRpcForm } from './CustomRpcForm';
 export { default as NetworkInfo } from './NetworkInfo';
+export { default as NetworkPerformanceSettings } from './NetworkPerformanceSettings';
 
 // UI Components
 export { default as TandaRibbon } from './TandaRibbon';
