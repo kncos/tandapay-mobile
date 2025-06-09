@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import type { Node } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import ZulipText from '../../common/ZulipText';
+import { BRAND_COLOR } from '../../styles/constants';
 
 const styles = StyleSheet.create({
   ribbon: {
@@ -48,7 +49,7 @@ type Props = $ReadOnly<{|
 export default function TandaRibbon(props: Props): Node {
   const {
     label,
-    backgroundColor = '#eee',
+    backgroundColor = BRAND_COLOR,
     initiallyCollapsed = false,
     marginTop = 8,
     marginBottom = 8,

@@ -129,3 +129,14 @@ export const IconTandaPayInfo: SpecificIconType = makeIcon(Feather, 'info');
 export const IconEthereum: SpecificIconType = makeIcon(FontAwesome, 'circle');
 export const IconUSDC: SpecificIconType = makeIcon(FontAwesome, 'usd');
 export const IconRefresh: SpecificIconType = makeIcon(Feather, 'rotate-cw');
+
+// TandaPay Transaction Icons
+export const IconDollarSign: SpecificIconType = makeIcon(Feather, 'dollar-sign');
+export const IconUserCheck: SpecificIconType = makeIcon(Feather, 'user-check');
+export const IconUsers: SpecificIconType = makeIcon(Feather, 'users');
+export const IconShield: SpecificIconType = makeIcon(Feather, 'shield');
+export const IconRefreshCw: SpecificIconType = makeIcon(Feather, 'refresh-cw');
+export const IconLogOut: SpecificIconType = makeIcon(Feather, 'log-out');
+export const IconUserPlus: SpecificIconType = makeIcon(Feather, 'user-plus');
+export const IconCalendar: SpecificIconType = makeIcon(Feather, 'calendar');
+export const IconTrendingUp: SpecificIconType = makeIcon(Feather, 'trending-up');

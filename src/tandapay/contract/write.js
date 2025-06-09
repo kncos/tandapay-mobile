@@ -2,11 +2,10 @@
 
 import { ethers } from 'ethers';
 import { TandaPayInfo } from './TandaPay';
-import { getWriteSimulations } from './writeSim';
-import * as allTransactions from './writeTransactions';
+import { getAllWriteTransactions } from './writeTransactionObjects';
 
 /**
- * Get all write methods organized by access level with preserved metadata
+ * Get all write methods organized by access level with full transaction metadata
  * @param client An ethers.js Signer instance
  * @param contractAddress The address of the TandaPay contract
  * @returns An object with public, member, and secretary write methods with metadata
@@ -18,31 +17,38 @@ export function getWriteMethods(client, contractAddress) {
   const memberWriteMethods = {};
   const secretaryWriteMethods = {};
 
-  // Get all transactions with metadata
-  const allTransactionsList = allTransactions.getAllWriteTransactions();
+  // Get all standardized write transactions
+  const allTransactions = getAllWriteTransactions();
 
-  allTransactionsList.forEach((transaction) => {
-    const { functionName, func, role } = transaction;
+  allTransactions.forEach((transaction) => {
+    const { functionName, writeFunction, simulateFunction, role } = transaction;
 
-    // Create bound method with preserved metadata
-    const boundMethod = (...args) => func(contract, ...args);
-    boundMethod.meta = {
+    // Create bound write method with full metadata
+    const boundWriteMethod = (...args) => writeFunction(contract, ...args);
+    boundWriteMethod.meta = {
       displayName: transaction.displayName,
       description: transaction.description,
       role: transaction.role,
       requiresParams: transaction.requiresParams,
+      icon: transaction.icon,
     };
+
+    // Create bound simulation method
+    const boundSimulateMethod = (...args) => simulateFunction(contract, ...args);
+
+    // Add simulation method to write method
+    boundWriteMethod.simulate = boundSimulateMethod;
 
     // Organize by role
     switch (role) {
       case 'public':
-        publicWriteMethods[functionName] = boundMethod;
+        publicWriteMethods[functionName] = boundWriteMethod;
         break;
       case 'member':
-        memberWriteMethods[functionName] = boundMethod;
+        memberWriteMethods[functionName] = boundWriteMethod;
         break;
       case 'secretary':
-        secretaryWriteMethods[functionName] = boundMethod;
+        secretaryWriteMethods[functionName] = boundWriteMethod;
         break;
     }
   });
@@ -82,37 +88,26 @@ export function getAllWriteMethodsWithMetadata(client, contractAddress) {
 }
 
 /**
- * create a TandaPay contract writer, a thin wrapper around tandapay write methods.
- * All of the methods returned will simulate the transaction to catch errors before writing
- * to the blockchain.
+ * Create a TandaPay contract writer with integrated simulations and full metadata.
+ * Each write method includes:
+ * - Full transaction metadata (displayName, description, role, requiresParams, icon)
+ * - Integrated simulation method accessible via writeMethod.simulate()
+ * - Consistent error handling and parameter validation
+ *
  * @param contractAddress The address of the TandaPay contract
  * @param signer An ethers.js Signer instance
- * @param options Configuration options
- * @param options.includeSimulations Whether to include simulation methods (default: false)
- * @returns returns an object with all the TandaPay contract write methods organized by access level
+ * @returns An object with all TandaPay contract write methods organized by access level
  */
-export default function getTandaPayWriter(contractAddress, signer, options = {}) {
+export default function getTandaPayWriter(contractAddress, signer) {
   if (!ethers.utils.isAddress(contractAddress)) {
     throw new Error('Invalid TandaPay contract address');
   }
   if (!ethers.Signer.isSigner(signer)) {
     throw new Error('Invalid signer provided');
   }
-  // this one shouldn't happen but will catch a programming mistake
   if (!TandaPayInfo.abi || !Array.isArray(TandaPayInfo.abi)) {
     throw new Error('Invalid TandaPay ABI');
   }
 
-  const writeMethods = getWriteMethods(signer, contractAddress);
-
-  // Optionally include simulation methods
-  if (options.includeSimulations) {
-    const simulations = getWriteSimulations(signer, contractAddress);
-    return {
-      ...writeMethods,
-      simulations
-    };
-  }
-
-  return writeMethods;
+  return getWriteMethods(signer, contractAddress);
 }

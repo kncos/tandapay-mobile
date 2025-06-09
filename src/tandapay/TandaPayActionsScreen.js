@@ -8,9 +8,11 @@ import type { RouteProp } from '../react-navigation';
 import Screen from '../common/Screen';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
-import { IconSend, IconGroup, IconTandaPayInfo, IconSettings } from '../common/Icons';
+import { IconTandaPayInfo } from '../common/Icons';
 // $FlowFixMe - importing from untyped module
-import { getAllWriteTransactions } from './contract/writeTransactions';
+import { getAllWriteTransactions } from './contract/writeTransactionObjects';
+import { TandaRibbon } from './components';
+import ZulipText from '../common/ZulipText';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-actions'>,
@@ -24,20 +26,6 @@ export default function TandaPayActionsScreen(props: Props): Node {
   // const writeTransactions = getAllWriteMethodsWithMetadata(signer, contractAddress);
   const writeTransactions = getAllWriteTransactions();
 
-  // Helper function to get icon based on role
-  const getIconForRole = (role: string) => {
-    switch (role) {
-      case 'member':
-        return IconGroup;
-      case 'secretary':
-        return IconSettings;
-      case 'public':
-        return IconTandaPayInfo;
-      default:
-        return IconSend;
-    }
-  };
-
   // Helper function to create callback for each transaction
   const createTransactionCallback = useCallback((transactionName: string) => () => {
     // TODO: Implement transaction functionality
@@ -49,20 +37,28 @@ export default function TandaPayActionsScreen(props: Props): Node {
 
   return (
     <Screen title="TandaPay Actions">
-      {writeTransactions.map((transaction) => (
-        <NavRow
-          key={transaction.functionName}
-          leftElement={{ type: 'icon', Component: getIconForRole(transaction.role) }}
-          title={transaction.displayName}
-          onPress={createTransactionCallback(transaction.functionName)}
-          subtitle={transaction.description}
-        />
-      ))}
-      <TextRow
-        icon={{ Component: IconTandaPayInfo }}
-        title="Available Actions"
-        subtitle="TandaPay blockchain actions require ETH for gas fees"
-      />
+      <TandaRibbon label="Member Actions" marginTop={0}>
+        {writeTransactions.filter((transaction) => transaction.role !== 'secretary').map((transaction) => (
+          <NavRow
+            key={transaction.functionName}
+            leftElement={{ type: 'icon', Component: transaction.icon }}
+            title={transaction.displayName}
+            onPress={createTransactionCallback(transaction.functionName)}
+            subtitle={transaction.description}
+          />
+        ))}
+      </TandaRibbon>
+      <TandaRibbon label="Secretary Actions" marginTop={0}>
+        {writeTransactions.filter((transaction) => transaction.role === 'secretary').map((transaction) => (
+          <NavRow
+            key={transaction.functionName}
+            leftElement={{ type: 'icon', Component: transaction.icon }}
+            title={transaction.displayName}
+            onPress={createTransactionCallback(transaction.functionName)}
+            subtitle={transaction.description}
+          />
+        ))}
+      </TandaRibbon>
     </Screen>
   );
 }
