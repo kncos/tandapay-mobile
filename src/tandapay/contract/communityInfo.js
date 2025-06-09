@@ -5,6 +5,7 @@ import { Multicall } from 'ethereum-multicall';
 import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType } from './types';
 import { getProvider } from '../web3';
 import { getTandaPayReadActions } from './read';
+import { TandaPayInfo } from './TandaPay';
 
 // Configuration type for the community info class
 type CommunityInfoConfig = {
@@ -106,7 +107,7 @@ class TandaPayCommunityInfo {
   }
 
   /**
-   * Get comprehensive community information
+   * Get comprehensive community information using multicall for efficiency
    */
   async getCommunityInfo(forceRefresh?: boolean): Promise<CommunityInfo> {
     const shouldForceRefresh = forceRefresh || false;
@@ -121,37 +122,65 @@ class TandaPayCommunityInfo {
       }
     }
 
-    // Fetch all basic information in parallel
-    const [
-      paymentTokenAddress,
-      currentMemberCount,
-      currentSubgroupCount,
-      currentClaimId,
-      currentPeriodId,
-      totalCoverageAmount,
-      basePremium,
-      communityState,
-      secretaryAddress,
-      secretarySuccessorList,
-    ] = await Promise.all([
-      this.rateLimitedContractCall('getPaymentTokenAddress'),
-      this.rateLimitedContractCall('getCurrentMemberCount'),
-      this.rateLimitedContractCall('getCurrentSubgroupCount'),
-      this.rateLimitedContractCall('getCurrentClaimId'),
-      this.rateLimitedContractCall('getCurrentPeriodId'),
-      this.rateLimitedContractCall('getTotalCoverageAmount'),
-      this.rateLimitedContractCall('getBasePremium'),
-      this.rateLimitedContractCall('getCommunityState'),
-      this.rateLimitedContractCall('getSecretaryAddress'),
-      this.rateLimitedContractCall('getSecretarySuccessorList'),
-    ]);
+    // Use multicall to batch basic information calls
+    const basicCalls = [
+      { reference: 'paymentTokenAddress', methodName: 'getPaymentTokenAddress', methodParameters: [] },
+      { reference: 'currentMemberCount', methodName: 'getCurrentMemberCount', methodParameters: [] },
+      { reference: 'currentSubgroupCount', methodName: 'getCurrentSubgroupCount', methodParameters: [] },
+      { reference: 'currentClaimId', methodName: 'getCurrentClaimId', methodParameters: [] },
+      { reference: 'currentPeriodId', methodName: 'getCurrentPeriodId', methodParameters: [] },
+      { reference: 'totalCoverageAmount', methodName: 'getTotalCoverageAmount', methodParameters: [] },
+      { reference: 'basePremium', methodName: 'getBasePremium', methodParameters: [] },
+      { reference: 'communityState', methodName: 'getCommunityState', methodParameters: [] },
+      { reference: 'secretaryAddress', methodName: 'getSecretaryAddress', methodParameters: [] },
+      { reference: 'secretarySuccessorList', methodName: 'getSecretarySuccessorList', methodParameters: [] },
+    ];
 
-    // Fetch period-specific information
-    const [periodInfo, claimIdsInPeriod, whitelistedClaimIds] = await Promise.all([
-      this.rateLimitedContractCall('getPeriodInfo', [currentPeriodId]),
-      this.rateLimitedContractCall('getClaimIdsInPeriod', [currentPeriodId]),
-      this.rateLimitedContractCall('getWhitelistedClaimIdsInPeriod', [currentPeriodId]),
-    ]);
+    const basicContractCallContext = {
+      reference: 'tandaPayContract',
+      contractAddress: this.config.contractAddress,
+      abi: TandaPayInfo.abi,
+      calls: basicCalls,
+    };
+
+    const basicResults = await this.multicall.call([basicContractCallContext]);
+    const basicData = basicResults.results.tandaPayContract.callsReturnContext;
+
+    // Extract basic results
+    const currentPeriodId = basicData.find(call => call.reference === 'currentPeriodId')?.returnValues[0];
+
+    // Fetch period-specific information using multicall
+    const periodCalls = [
+      { reference: 'periodInfo', methodName: 'getPeriodInfo', methodParameters: [currentPeriodId] },
+      { reference: 'claimIdsInPeriod', methodName: 'getClaimIdsInPeriod', methodParameters: [currentPeriodId] },
+      { reference: 'whitelistedClaimIds', methodName: 'getWhitelistedClaimIdsInPeriod', methodParameters: [currentPeriodId] },
+    ];
+
+    const periodContractCallContext = {
+      reference: 'tandaPayContract',
+      contractAddress: this.config.contractAddress,
+      abi: TandaPayInfo.abi,
+      calls: periodCalls,
+    };
+
+    const periodResults = await this.multicall.call([periodContractCallContext]);
+    const periodData = periodResults.results.tandaPayContract.callsReturnContext;
+
+    // Extract period results
+    const periodInfo = periodData.find(call => call.reference === 'periodInfo')?.returnValues[0];
+    const claimIdsInPeriod = periodData.find(call => call.reference === 'claimIdsInPeriod')?.returnValues;
+    const whitelistedClaimIds = periodData.find(call => call.reference === 'whitelistedClaimIds')?.returnValues;
+
+    // Extract basic data values from multicall results
+    const paymentTokenAddress = basicData.find(call => call.reference === 'paymentTokenAddress')?.returnValues[0];
+    const currentMemberCount = basicData.find(call => call.reference === 'currentMemberCount')?.returnValues[0];
+    const currentSubgroupCount = basicData.find(call => call.reference === 'currentSubgroupCount')?.returnValues[0];
+    const currentClaimId = basicData.find(call => call.reference === 'currentClaimId')?.returnValues[0];
+    const totalCoverageAmount = basicData.find(call => call.reference === 'totalCoverageAmount')?.returnValues[0];
+    const basePremium = basicData.find(call => call.reference === 'basePremium')?.returnValues[0];
+    const communityState = basicData.find(call => call.reference === 'communityState')?.returnValues[0];
+    const secretaryAddress = basicData.find(call => call.reference === 'secretaryAddress')?.returnValues[0];
+    const secretarySuccessorList = basicData.find(call => call.reference === 'secretarySuccessorList')?.returnValues;
 
     // Build current period info - safe null checks
     const currentPeriodInfo = {
