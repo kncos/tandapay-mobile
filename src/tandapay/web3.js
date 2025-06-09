@@ -39,7 +39,7 @@ const ERC20_ABI = [
  * Falls back to parameter or default if Redux state is unavailable
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
-function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'): any {
+export function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'): any {
   // Try to get network from Redux state first
   let network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'; // default fallback
   let customConfig = null;

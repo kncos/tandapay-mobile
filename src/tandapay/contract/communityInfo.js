@@ -1,23 +1,19 @@
-// @flow
+/* @flow */
 
+// $FlowFixMe[untyped-import] - ethereum-multicall is a third-party library
+import { Multicall } from 'ethereum-multicall';
+import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType } from './types';
+import { getProvider } from '../web3';
 import { getTandaPayReadActions } from './read';
-
-import type {
-  TandaPayStateType,
-} from './types';
-
-// Flow type for ethers BigNumber - using mixed since ethers is not Flow-typed
-type BigNumber = mixed;
 
 // Configuration type for the community info class
 type CommunityInfoConfig = {
   contractAddress: string,
-  provider: any, // ethers provider
   userAddress?: ?string,
   cacheExpirationMs?: number,
   rateLimitDelayMs?: number,
   retryAttempts?: number,
-  useMulticall?: boolean,
+  networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
 };
 
 // Comprehensive community information type
@@ -32,34 +28,11 @@ export type CommunityInfo = {
   communityState: TandaPayStateType,
   secretaryAddress: string,
   secretarySuccessorList: Array<string>,
-  currentPeriodInfo: {
-    startTimestamp: BigNumber,
-    endTimestamp: BigNumber,
-    coverageAmount: BigNumber,
-    totalPremiumsPaid: BigNumber,
-    claimIds: Array<BigNumber>,
-  },
+  currentPeriodInfo: PeriodInfo,
   claimIdsInCurrentPeriod: Array<BigNumber>,
   whitelistedClaimIdsInCurrentPeriod: Array<BigNumber>,
-  userMemberInfo: ?{
-    id: BigNumber,
-    subgroupId: BigNumber,
-    walletAddress: string,
-    communityEscrowAmount: BigNumber,
-    savingsEscrowAmount: BigNumber,
-    pendingRefundAmount: BigNumber,
-    availableToWithdrawAmount: BigNumber,
-    isEligibleForCoverageThisPeriod: boolean,
-    isPremiumPaidThisPeriod: boolean,
-    queuedRefundAmountThisPeriod: BigNumber,
-    memberStatus: number,
-    assignmentStatus: number,
-  },
-  userSubgroupInfo: ?{
-    id: BigNumber,
-    members: Array<string>,
-    isValid: boolean,
-  },
+  userMemberInfo: ?MemberInfo,
+  userSubgroupInfo: ?SubgroupInfo,
   lastUpdated: number,
 };
 
@@ -87,30 +60,16 @@ class TandaPayCommunityInfo {
       cacheExpirationMs: 30000, // 30 seconds default
       rateLimitDelayMs: 100, // 100ms between calls
       retryAttempts: 3,
-      useMulticall: false, // Disabled to avoid Flow type issues
       ...config,
     };
 
     this.readActions = getTandaPayReadActions(
-      this.config.provider,
+      getProvider(),
       this.config.contractAddress
     );
 
     this.cache = new Map();
-    this.multicall = null;
-
-    // Initialize multicall if enabled
-    if (this.config.useMulticall) {
-      this.initializeMulticall();
-    }
-  }
-
-  /**
-   * Initialize multicall functionality
-   */
-  async initializeMulticall(): Promise<void> {
-    // Disabled to avoid Flow type issues with dynamic imports
-    this.multicall = null;
+    this.multicall = new Multicall({ web3Instance: getProvider(), tryAggregate: true });
   }
 
   /**
@@ -118,8 +77,8 @@ class TandaPayCommunityInfo {
    */
   async rateLimitedContractCall(methodName: string, args?: Array<any>): Promise<any> {
     const rateLimitDelay = this.config.rateLimitDelayMs;
-    if (rateLimitDelay != null && rateLimitDelay > 0) {
-      await new Promise(resolve => setTimeout(resolve, rateLimitDelay));
+    if ((rateLimitDelay ?? 0) > 0) {
+      await new Promise(resolve => setTimeout(resolve, rateLimitDelay ?? 0));
     }
 
     const method = this.readActions[methodName];
@@ -128,7 +87,7 @@ class TandaPayCommunityInfo {
     }
 
     let lastError: Error;
-    const maxRetries = this.config.retryAttempts != null ? this.config.retryAttempts : 3;
+    const maxRetries = this.config.retryAttempts ?? 3;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         if (args != null) {
@@ -151,12 +110,12 @@ class TandaPayCommunityInfo {
    */
   async getCommunityInfo(forceRefresh?: boolean): Promise<CommunityInfo> {
     const shouldForceRefresh = forceRefresh || false;
-    const cacheKey = `community_${this.config.contractAddress}_${this.config.userAddress || 'anonymous'}`;
+    const cacheKey = `community_${this.config.contractAddress}_${this.config.userAddress ?? 'anonymous'}`;
 
     // Check cache first unless force refresh is requested
     if (!shouldForceRefresh) {
       const cached = this.cache.get(cacheKey);
-      const cacheExpiration = this.config.cacheExpirationMs != null ? this.config.cacheExpirationMs : 30000;
+      const cacheExpiration = this.config.cacheExpirationMs ?? 30000;
       if (cached && (Date.now() - cached.timestamp) < cacheExpiration) {
         return cached.data;
       }
@@ -196,11 +155,11 @@ class TandaPayCommunityInfo {
 
     // Build current period info - safe null checks
     const currentPeriodInfo = {
-      startTimestamp: (periodInfo != null && periodInfo.startTimestamp != null) ? periodInfo.startTimestamp : 0,
-      endTimestamp: (periodInfo != null && periodInfo.endTimestamp != null) ? periodInfo.endTimestamp : 0,
-      coverageAmount: (periodInfo != null && periodInfo.coverageAmount != null) ? periodInfo.coverageAmount : 0,
-      totalPremiumsPaid: (periodInfo != null && periodInfo.totalPremiumsPaid != null) ? periodInfo.totalPremiumsPaid : 0,
-      claimIds: (periodInfo != null && periodInfo.claimIds != null) ? periodInfo.claimIds : [],
+      startTimestamp: periodInfo?.startTimestamp ?? 0,
+      endTimestamp: periodInfo?.endTimestamp ?? 0,
+      coverageAmount: periodInfo?.coverageAmount ?? 0,
+      totalPremiumsPaid: periodInfo?.totalPremiumsPaid ?? 0,
+      claimIds: periodInfo?.claimIds ?? [],
     };
 
     // Initialize user info as null
@@ -217,18 +176,18 @@ class TandaPayCommunityInfo {
 
         if (memberInfo != null && memberInfo !== false && this.config.userAddress != null) {
           userMemberInfo = {
-            id: (memberInfo.id != null) ? memberInfo.id : 0,
-            subgroupId: (memberInfo.subgroupId != null) ? memberInfo.subgroupId : 0,
-            walletAddress: (memberInfo.walletAddress != null) ? memberInfo.walletAddress : this.config.userAddress,
-            communityEscrowAmount: (memberInfo.communityEscrowAmount != null) ? memberInfo.communityEscrowAmount : 0,
-            savingsEscrowAmount: (memberInfo.savingsEscrowAmount != null) ? memberInfo.savingsEscrowAmount : 0,
-            pendingRefundAmount: (memberInfo.pendingRefundAmount != null) ? memberInfo.pendingRefundAmount : 0,
-            availableToWithdrawAmount: (memberInfo.availableToWithdrawAmount != null) ? memberInfo.availableToWithdrawAmount : 0,
-            isEligibleForCoverageThisPeriod: (memberInfo.isEligibleForCoverageThisPeriod != null) ? memberInfo.isEligibleForCoverageThisPeriod : false,
-            isPremiumPaidThisPeriod: (memberInfo.isPremiumPaidThisPeriod != null) ? memberInfo.isPremiumPaidThisPeriod : false,
-            queuedRefundAmountThisPeriod: (memberInfo.queuedRefundAmountThisPeriod != null) ? memberInfo.queuedRefundAmountThisPeriod : 0,
-            memberStatus: (memberInfo.memberStatus != null) ? memberInfo.memberStatus : 0,
-            assignmentStatus: (memberInfo.assignmentStatus != null) ? memberInfo.assignmentStatus : 0,
+            id: memberInfo.id ?? 0,
+            subgroupId: memberInfo.subgroupId ?? 0,
+            walletAddress: memberInfo.walletAddress ?? this.config.userAddress,
+            communityEscrowAmount: memberInfo.communityEscrowAmount ?? 0,
+            savingsEscrowAmount: memberInfo.savingsEscrowAmount ?? 0,
+            pendingRefundAmount: memberInfo.pendingRefundAmount ?? 0,
+            availableToWithdrawAmount: memberInfo.availableToWithdrawAmount ?? 0,
+            isEligibleForCoverageThisPeriod: memberInfo.isEligibleForCoverageThisPeriod ?? false,
+            isPremiumPaidThisPeriod: memberInfo.isPremiumPaidThisPeriod ?? false,
+            queuedRefundAmountThisPeriod: memberInfo.queuedRefundAmountThisPeriod ?? 0,
+            memberStatus: memberInfo.memberStatus ?? 0,
+            assignmentStatus: memberInfo.assignmentStatus ?? 0,
           };
 
           // Fetch subgroup information if user has a subgroup
@@ -239,8 +198,8 @@ class TandaPayCommunityInfo {
               if (subgroupInfo != null && subgroupInfo !== false) {
                 userSubgroupInfo = {
                   id: subgroupIdNum,
-                  members: (subgroupInfo.members != null) ? subgroupInfo.members : [],
-                  isValid: (subgroupInfo.isValid != null) ? subgroupInfo.isValid : false,
+                  members: subgroupInfo.members ?? [],
+                  isValid: subgroupInfo.isValid ?? false,
                 };
               }
             } catch (subgroupError) {
@@ -255,19 +214,19 @@ class TandaPayCommunityInfo {
 
     // Build the final community info object with safe null checks
     const communityInfo: CommunityInfo = {
-      paymentTokenAddress: (paymentTokenAddress != null) ? String(paymentTokenAddress) : '',
-      currentMemberCount: (currentMemberCount != null) ? currentMemberCount : 0,
-      currentSubgroupCount: (currentSubgroupCount != null) ? currentSubgroupCount : 0,
-      currentClaimId: (currentClaimId != null) ? currentClaimId : 0,
-      currentPeriodId: (currentPeriodId != null) ? currentPeriodId : 0,
-      totalCoverageAmount: (totalCoverageAmount != null) ? totalCoverageAmount : 0,
-      basePremium: (basePremium != null) ? basePremium : 0,
-      communityState: (communityState != null) ? communityState : 0,
-      secretaryAddress: (secretaryAddress != null) ? String(secretaryAddress) : '',
-      secretarySuccessorList: (secretarySuccessorList != null) ? secretarySuccessorList : [],
+      paymentTokenAddress: String(paymentTokenAddress ?? ''),
+      currentMemberCount: currentMemberCount ?? 0,
+      currentSubgroupCount: currentSubgroupCount ?? 0,
+      currentClaimId: currentClaimId ?? 0,
+      currentPeriodId: currentPeriodId ?? 0,
+      totalCoverageAmount: totalCoverageAmount ?? 0,
+      basePremium: basePremium ?? 0,
+      communityState: communityState ?? 0,
+      secretaryAddress: String(secretaryAddress ?? ''),
+      secretarySuccessorList: secretarySuccessorList ?? [],
       currentPeriodInfo,
-      claimIdsInCurrentPeriod: (claimIdsInPeriod != null) ? claimIdsInPeriod : [],
-      whitelistedClaimIdsInCurrentPeriod: (whitelistedClaimIds != null) ? whitelistedClaimIds : [],
+      claimIdsInCurrentPeriod: claimIdsInPeriod ?? [],
+      whitelistedClaimIdsInCurrentPeriod: whitelistedClaimIds ?? [],
       userMemberInfo,
       userSubgroupInfo,
       lastUpdated: Date.now(),
@@ -286,9 +245,9 @@ class TandaPayCommunityInfo {
    * Get cached community information if available
    */
   getCachedCommunityInfo(): ?CommunityInfo {
-    const cacheKey = `community_${this.config.contractAddress}_${this.config.userAddress || 'anonymous'}`;
+    const cacheKey = `community_${this.config.contractAddress}_${this.config.userAddress ?? 'anonymous'}`;
     const cached = this.cache.get(cacheKey);
-    const cacheExpiration = this.config.cacheExpirationMs != null ? this.config.cacheExpirationMs : 30000;
+    const cacheExpiration = this.config.cacheExpirationMs ?? 30000;
 
     if (cached && (Date.now() - cached.timestamp) < cacheExpiration) {
       return cached.data;
@@ -310,10 +269,10 @@ class TandaPayCommunityInfo {
   updateConfig(newConfig: $Shape<CommunityInfoConfig>): void {
     this.config = { ...this.config, ...newConfig };
 
-    // If contract address or provider changed, recreate read actions
-    if (newConfig.contractAddress != null || newConfig.provider != null) {
+    // If contract address changed, recreate read actions
+    if (newConfig.contractAddress != null) {
       this.readActions = getTandaPayReadActions(
-        this.config.provider,
+        getProvider(),
         this.config.contractAddress
       );
     }
@@ -357,12 +316,10 @@ export function createCommunityInfo(config: CommunityInfoConfig): TandaPayCommun
  */
 export async function fetchCommunityInfo(
   contractAddress: string,
-  provider: any,
   userAddress?: ?string
 ): Promise<CommunityInfo> {
   const communityInfo = createCommunityInfo({
     contractAddress,
-    provider,
     userAddress,
   });
 

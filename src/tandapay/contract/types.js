@@ -1,7 +1,7 @@
 // @flow strict-local
 
 // Flow type for ethers BigNumber - using mixed since ethers is not Flow-typed
-type BigNumber = mixed;
+export type BigNumber = mixed;
 
 /** Enum type representing the different states the TandaPay community can be in */
 export const TandaPayState = Object.freeze({
