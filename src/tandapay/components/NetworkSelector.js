@@ -76,7 +76,7 @@ export default function NetworkSelector(props: Props): Node {
   return (
     <View style={styles.container}>
       <ZulipText style={styles.sectionTitle}>Select Network</ZulipText>
-      
+
       {supportedNetworks.map((network) => {
         const config = getNetworkConfig(network);
         const isSelected = selectedNetwork === network;

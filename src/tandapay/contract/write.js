@@ -2,94 +2,83 @@
 
 import { ethers } from 'ethers';
 import { TandaPayInfo } from './TandaPay';
-import * as publicMethods from './writePublic';
-import * as memberMethods from './writeMember';
-import * as secretaryMethods from './writeSecretary';
 import { getWriteSimulations } from './writeSim';
+import * as allTransactions from './writeTransactions';
 
 /**
- * Get public write methods bound to a contract instance
+ * Get all write methods organized by access level with preserved metadata
  * @param client An ethers.js Signer instance
  * @param contractAddress The address of the TandaPay contract
- * @returns An object with all public write methods
- */
-export function getPublicWriteMethods(client, contractAddress) {
-  const contract = new ethers.Contract(contractAddress, TandaPayInfo.abi, client);
-
-  return {
-    issueRefund: () => publicMethods.issueRefund(contract),
-  };
-}
-
-/**
- * Get member write methods bound to a contract instance
- * @param client An ethers.js Signer instance
- * @param contractAddress The address of the TandaPay contract
- * @returns An object with all member write methods
- */
-export function getMemberWriteMethods(client, contractAddress) {
-  const contract = new ethers.Contract(contractAddress, TandaPayInfo.abi, client);
-
-  return {
-    joinCommunity: () => memberMethods.joinCommunity(contract),
-    approveSubgroupAssignment: (approve) => memberMethods.approveSubgroupAssignment(contract, approve),
-    approveNewSubgroupMember: (subgroupId, newMemberId, approve) =>
-      memberMethods.approveNewSubgroupMember(contract, subgroupId, newMemberId, approve),
-    leaveSubgroup: () => memberMethods.leaveSubgroup(contract),
-    defectFromCommunity: () => memberMethods.defectFromCommunity(contract),
-    payPremium: (useAvailableBalance) => memberMethods.payPremium(contract, useAvailableBalance),
-    acceptSecretaryRole: () => memberMethods.acceptSecretaryRole(contract),
-    emergencySecretaryHandoff: (newSecretaryWalletAddress) =>
-      memberMethods.emergencySecretaryHandoff(contract, newSecretaryWalletAddress),
-    withdrawRefund: () => memberMethods.withdrawRefund(contract),
-    submitClaim: () => memberMethods.submitClaim(contract),
-    withdrawClaimFund: (forfeit) => memberMethods.withdrawClaimFund(contract, forfeit),
-  };
-}
-
-/**
- * Get secretary write methods bound to a contract instance
- * @param client An ethers.js Signer instance
- * @param contractAddress The address of the TandaPay contract
- * @returns An object with all secretary write methods
- */
-export function getSecretaryWriteMethods(client, contractAddress) {
-  const contract = new ethers.Contract(contractAddress, TandaPayInfo.abi, client);
-
-  return {
-    addMemberToCommunity: (memberWalletAddress) =>
-      secretaryMethods.addMemberToCommunity(contract, memberWalletAddress),
-    createSubgroup: () => secretaryMethods.createSubgroup(contract),
-    assignMemberToSubgroup: (memberWalletAddress, subgroupId, isReorging) =>
-      secretaryMethods.assignMemberToSubgroup(contract, memberWalletAddress, subgroupId, isReorging),
-    initiateDefaultState: (totalCoverage) =>
-      secretaryMethods.initiateDefaultState(contract, totalCoverage),
-    whitelistClaim: (claimId) => secretaryMethods.whitelistClaim(contract, claimId),
-    updateCoverageAmount: (totalCoverage) =>
-      secretaryMethods.updateCoverageAmount(contract, totalCoverage),
-    defineSecretarySuccessorList: (successorListWalletAddresses) =>
-      secretaryMethods.defineSecretarySuccessorList(contract, successorListWalletAddresses),
-    handoverSecretaryRoleToSuccessor: (successorWalletAddress) =>
-      secretaryMethods.handoverSecretaryRoleToSuccessor(contract, successorWalletAddress),
-    injectFunds: () => secretaryMethods.injectFunds(contract),
-    divideShortfall: () => secretaryMethods.divideShortfall(contract),
-    extendPeriodByOneDay: () => secretaryMethods.extendPeriodByOneDay(contract),
-    advancePeriod: () => secretaryMethods.advancePeriod(contract),
-  };
-}
-
-/**
- * Get all write methods organized by access level
- * @param client An ethers.js Signer instance
- * @param contractAddress The address of the TandaPay contract
- * @returns An object with public, member, and secretary write methods
+ * @returns An object with public, member, and secretary write methods with metadata
  */
 export function getWriteMethods(client, contractAddress) {
+  const contract = new ethers.Contract(contractAddress, TandaPayInfo.abi, client);
+
+  const publicWriteMethods = {};
+  const memberWriteMethods = {};
+  const secretaryWriteMethods = {};
+
+  // Get all transactions with metadata
+  const allTransactionsList = allTransactions.getAllWriteTransactions();
+
+  allTransactionsList.forEach((transaction) => {
+    const { functionName, func, role } = transaction;
+
+    // Create bound method with preserved metadata
+    const boundMethod = (...args) => func(contract, ...args);
+    boundMethod.meta = {
+      displayName: transaction.displayName,
+      description: transaction.description,
+      role: transaction.role,
+      requiresParams: transaction.requiresParams,
+    };
+
+    // Organize by role
+    switch (role) {
+      case 'public':
+        publicWriteMethods[functionName] = boundMethod;
+        break;
+      case 'member':
+        memberWriteMethods[functionName] = boundMethod;
+        break;
+      case 'secretary':
+        secretaryWriteMethods[functionName] = boundMethod;
+        break;
+    }
+  });
+
   return {
-    public: getPublicWriteMethods(client, contractAddress),
-    member: getMemberWriteMethods(client, contractAddress),
-    secretary: getSecretaryWriteMethods(client, contractAddress),
+    public: publicWriteMethods,
+    member: memberWriteMethods,
+    secretary: secretaryWriteMethods,
   };
+}
+
+/**
+ * Get all write methods as a flat array with metadata for UI purposes
+ * @param client An ethers.js Signer instance
+ * @param contractAddress The address of the TandaPay contract
+ * @returns Array of all write methods with metadata
+ */
+export function getAllWriteMethodsWithMetadata(client, contractAddress) {
+  const writeMethods = getWriteMethods(client, contractAddress);
+  const allMethods = [];
+
+  // Flatten all methods from all roles
+  Object.keys(writeMethods).forEach(role => {
+    Object.keys(writeMethods[role]).forEach(methodName => {
+      const method = writeMethods[role][methodName];
+      if (method.meta) {
+        allMethods.push({
+          functionName: methodName,
+          method,
+          ...method.meta,
+        });
+      }
+    });
+  });
+
+  return allMethods;
 }
 
 /**
