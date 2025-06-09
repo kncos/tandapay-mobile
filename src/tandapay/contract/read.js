@@ -1,40 +1,78 @@
-/* flow */
+// @flow
 
 import { ethers } from 'ethers';
 import { TandaPayInfo } from './TandaPay';
 
+import type {
+  SubgroupInfo,
+  ClaimInfo,
+  MemberInfo,
+  PeriodInfo,
+  TandaPayStateType,
+} from './types';
+
+// Flow type for ethers BigNumber - using mixed since ethers is not Flow-typed
+type BigNumber = mixed;
+type EthersContract = any;
+
+// Type for the read actions object
+type TandaPayReadActions = {|
+  +getPaymentTokenAddress: () => Promise<string>,
+  +getCurrentMemberCount: () => Promise<BigNumber>,
+  +getCurrentSubgroupCount: () => Promise<BigNumber>,
+  +getCurrentClaimId: () => Promise<BigNumber>,
+  +getCurrentPeriodId: () => Promise<BigNumber>,
+  +getTotalCoverageAmount: () => Promise<BigNumber>,
+  +getBasePremium: () => Promise<BigNumber>,
+  +getCommunityState: () => Promise<TandaPayStateType>,
+  +getSubgroupInfo: (subgroupId: number | string) => Promise<SubgroupInfo>,
+  +getClaimInfo: (claimId: number | string, periodId?: number | string) => Promise<ClaimInfo>,
+  +getClaimIdsInPeriod: (periodId?: number | string) => Promise<Array<BigNumber>>,
+  +getDefectorMemberIdsInPeriod: (periodId?: number | string) => Promise<Array<BigNumber>>,
+  +getMemberIdFromAddress: (walletAddress: string) => Promise<BigNumber>,
+  +getWhitelistedClaimIdsInPeriod: (periodId?: number | string) => Promise<Array<BigNumber>>,
+  +getMemberInfoFromAddress: (walletAddress: string, periodId?: number | string) => Promise<MemberInfo>,
+  +getSecretaryAddress: () => Promise<string>,
+  +getPeriodInfo: (periodId?: number | string) => Promise<PeriodInfo>,
+  +getSecretarySuccessorList: () => Promise<Array<string>>,
+  +isVoluntaryHandoverInProgress: () => Promise<boolean>,
+  +getVoluntaryHandoverNominee: () => Promise<string>,
+  +getEmergencyHandoverNominees: () => Promise<Array<string>>,
+  +getMemberInfoFromId: (memberId: number | string, periodId?: number | string) => Promise<MemberInfo>,
+|};
+
 /**
  * Get the payment token address used by the TandaPay contract
  */
-export const getPaymentTokenAddress = async (contract) => contract.getPaymentTokenAddress();
+export const getPaymentTokenAddress = async (contract: EthersContract): Promise<string> => contract.getPaymentTokenAddress();
 
 /** @returns A promise that resolves to the total number of members in the TandaPay community. */
-export const getCurrentMemberCount = async (contract) => contract.getCurrentMemberCount();
+export const getCurrentMemberCount = async (contract: EthersContract): Promise<BigNumber> => contract.getCurrentMemberCount();
 
 /** @returns A promise that resolves to the total number of subgroups in the TandaPay community. */
-export const getCurrentSubgroupCount = async (contract) => contract.getCurrentSubgroupCount();
+export const getCurrentSubgroupCount = async (contract: EthersContract): Promise<BigNumber> => contract.getCurrentSubgroupCount();
 
 /** @returns A promise that resolves to the total number of claims that have occurred in the TandaPay community. This will also be the ID of the next claim */
-export const getCurrentClaimId = async (contract) => contract.getCurrentClaimId();
+export const getCurrentClaimId = async (contract: EthersContract): Promise<BigNumber> => contract.getCurrentClaimId();
 
 /** @returns A promise that resolves to the current period ID, which is just the total number of periods that have elapsed since the community's inception */
-export const getCurrentPeriodId = async (contract) => contract.getCurrentPeriodId();
+export const getCurrentPeriodId = async (contract: EthersContract): Promise<BigNumber> => contract.getCurrentPeriodId();
 
 /** @returns A promise that resolves to the total coverage amount the community has, i.e. how much must collectively go into the community escrow each period */
-export const getTotalCoverageAmount = async (contract) => contract.getTotalCoverageAmount();
+export const getTotalCoverageAmount = async (contract: EthersContract): Promise<BigNumber> => contract.getTotalCoverageAmount();
 
 /** @returns A promise that resolves to the base premium, a.k.a. the community escrow contribution each individual member must make. Calculated as `(total coverage) / (member count)` */
-export const getBasePremium = async (contract) => contract.getBasePremium();
+export const getBasePremium = async (contract: EthersContract): Promise<BigNumber> => contract.getBasePremium();
 
 /** @returns A promise that resolves to an enum value representing the state the TandaPay community is in. (e.g. initialization, default, fractured, collapsed) */
-export const getCommunityState = async (contract) => contract.getCommunityState();
+export const getCommunityState = async (contract: EthersContract): Promise<TandaPayStateType> => contract.getCommunityState();
 
 /**
  * get up-to-date information about a subgroup
  * @param subgroupId Subgroup ID you want information about
  * @returns A promise resolving to an object containing information about the subgroup
  */
-export const getSubgroupInfo = async (contract, subgroupId) => contract.getSubgroupInfo(ethers.BigNumber.from(subgroupId));
+export const getSubgroupInfo = async (contract: EthersContract, subgroupId: number | string): Promise<SubgroupInfo> => contract.getSubgroupInfo(ethers.BigNumber.from(subgroupId));
 
 /**
  * Get information about a claim, given a period and claim ID
@@ -42,7 +80,7 @@ export const getSubgroupInfo = async (contract, subgroupId) => contract.getSubgr
  * @param periodId period Id in which the claim occurred
  * @returns A promise that resolves to an object containing information about the claim
  */
-export const getClaimInfo = async (contract, claimId, periodId = 0) => {
+export const getClaimInfo = async (contract: EthersContract, claimId: number | string, periodId: number | string = 0): Promise<ClaimInfo> => {
   const res = await contract.getClaimInfo(
     ethers.BigNumber.from(periodId),
     ethers.BigNumber.from(claimId)
@@ -63,28 +101,28 @@ export const getClaimInfo = async (contract, claimId, periodId = 0) => {
  * @param periodId The period to retrieve claim IDs from
  * @returns A promise resolving to an array of claim IDs in the given period
  */
-export const getClaimIdsInPeriod = async (contract, periodId = 0) => contract.getClaimIdsInPeriod(ethers.BigNumber.from(periodId));
+export const getClaimIdsInPeriod = async (contract: EthersContract, periodId: number | string = 0): Promise<Array<BigNumber>> => contract.getClaimIdsInPeriod(ethers.BigNumber.from(periodId));
 
 /**
  * Retrieve a list of defectors' member IDs in a given period
  * @param periodId The period to query for defectors
  * @returns A promise resolving to an array of member IDs for members who defected in the given period
  */
-export const getDefectorMemberIdsInPeriod = async (contract, periodId = 0) => contract.getDefectorMemberIdsInPeriod(ethers.BigNumber.from(periodId));
+export const getDefectorMemberIdsInPeriod = async (contract: EthersContract, periodId: number | string = 0): Promise<Array<BigNumber>> => contract.getDefectorMemberIdsInPeriod(ethers.BigNumber.from(periodId));
 
 /**
  * Retrieve a member ID given the member's wallet address
  * @param walletAddress wallet address, as a hexadecimal string (valid hex string prefixed with `0x`)
  * @returns A promise resolving to the member's ID number within the community
  */
-export const getMemberIdFromAddress = async (contract, walletAddress) => contract.getMemberIdFromAddress(walletAddress);
+export const getMemberIdFromAddress = async (contract: EthersContract, walletAddress: string): Promise<BigNumber> => contract.getMemberIdFromAddress(walletAddress);
 
 /**
  * Retrieve whitelisted claims that occurred in a given period
  * @param periodId The period ID to query for whitelisted claims
  * @returns A promise resolving to an array of claim IDs for whitelisted claims in the given period
  */
-export const getWhitelistedClaimIdsInPeriod = async (contract, periodId = 0) => contract.getWhitelistedClaimIdsInPeriod(ethers.BigNumber.from(periodId));
+export const getWhitelistedClaimIdsInPeriod = async (contract: EthersContract, periodId: number | string = 0): Promise<Array<BigNumber>> => contract.getWhitelistedClaimIdsInPeriod(ethers.BigNumber.from(periodId));
 
 /**
  * Retrieve information about a member given their wallet address and a period Id.
@@ -93,7 +131,7 @@ export const getWhitelistedClaimIdsInPeriod = async (contract, periodId = 0) => 
  * @param periodId which period to query for this information. If 0 is passed, it just uses the current period. Default: 0
  * @returns A promise resolving to an object containing information about the given member in the given period ID
  */
-export const getMemberInfoFromAddress = async (contract, walletAddress, periodId = 0) => {
+export const getMemberInfoFromAddress = async (contract: EthersContract, walletAddress: string, periodId: number | string = 0): Promise<MemberInfo> => {
   const memberInfo = await contract.getMemberInfoFromAddress(
     walletAddress,
     ethers.BigNumber.from(periodId)
@@ -115,14 +153,14 @@ export const getMemberInfoFromAddress = async (contract, walletAddress, periodId
 };
 
 /** @returns A promise resolving to a hexadecimal string, which is the wallet address of the community's secretary */
-export const getSecretaryAddress = async (contract) => contract.getSecretaryAddress();
+export const getSecretaryAddress = async (contract: EthersContract): Promise<string> => contract.getSecretaryAddress();
 
 /**
  * Retrieve information about a given period
  * @param periodId period ID to query
  * @returns A promise resolving to an object containing information about the given period
  */
-export const getPeriodInfo = async (contract, periodId = 0) => {
+export const getPeriodInfo = async (contract: EthersContract, periodId: number | string = 0): Promise<PeriodInfo> => {
   const periodInfo = await contract.getPeriodIdToPeriodInfo(ethers.BigNumber.from(periodId));
   return {
     startTimestamp: periodInfo.startedAt,
@@ -134,19 +172,19 @@ export const getPeriodInfo = async (contract, periodId = 0) => {
 };
 
 /** Returns a list of the secretary successors */
-export const getSecretarySuccessorList = async (contract) => contract.getSecretarySuccessorList();
+export const getSecretarySuccessorList = async (contract: EthersContract): Promise<Array<string>> => contract.getSecretarySuccessorList();
 
 /** Returns whether or not the secretary has initiated a voluntary handover */
-export const isVoluntaryHandoverInProgress = async (contract) => contract.getIsHandingOver();
+export const isVoluntaryHandoverInProgress = async (contract: EthersContract): Promise<boolean> => contract.getIsHandingOver();
 
 /** If the secretary has initiated a voluntary handover, this returns the address of the nominee */
-export const getVoluntaryHandoverNominee = async (contract) => contract.getUpcomingSecretary();
+export const getVoluntaryHandoverNominee = async (contract: EthersContract): Promise<string> => contract.getUpcomingSecretary();
 
 /**
  * Gets the members who have been nominated by secretary successors to take on the role of
  * secretary in the event of an emergency handover
  */
-export const getEmergencyHandoverNominees = async (contract) => contract.getEmergencySecretaries();
+export const getEmergencyHandoverNominees = async (contract: EthersContract): Promise<Array<string>> => contract.getEmergencySecretaries();
 
 /**
  * Get information about a member based on their Id and a given period
@@ -154,7 +192,7 @@ export const getEmergencyHandoverNominees = async (contract) => contract.getEmer
  * @param periodId what period you want to get information from. Uses current period if 0 is passed. Default = 0
  * @returns information about a member given their Id and an optional periodID
  */
-export const getMemberInfoFromId = async (contract, memberId, periodId = 0) => {
+export const getMemberInfoFromId = async (contract: EthersContract, memberId: number | string, periodId: number | string = 0): Promise<MemberInfo> => {
   const memberInfo = await contract.getMemberInfoFromId(
     ethers.BigNumber.from(memberId),
     ethers.BigNumber.from(periodId)
@@ -184,7 +222,7 @@ export const getMemberInfoFromId = async (contract, memberId, periodId = 0) => {
  * @param contractAddress The address of the TandaPay contract
  * @returns An object with all TandaPay read methods bound to the contract instance
  */
-export function getTandaPayReadActions(client, contractAddress) {
+export function getTandaPayReadActions(client: any, contractAddress: string): TandaPayReadActions {
   // Create the contract instance once and reuse it for all method calls
   const contract = new ethers.Contract(contractAddress, TandaPayInfo.abi, client);
 
@@ -221,7 +259,7 @@ export function getTandaPayReadActions(client, contractAddress) {
  * @param provider An ethers.js Provider instance
  * @returns An object with all the TandaPay contract read methods
  */
-export default function getTandaPayReader(contractAddress, provider) {
+export default function getTandaPayReader(contractAddress: string, provider: any): TandaPayReadActions {
   if (!ethers.utils.isAddress(contractAddress)) {
     throw new Error('Invalid TandaPay contract address');
   }
