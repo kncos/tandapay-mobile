@@ -1,13 +1,13 @@
 /* @flow strict-local */
 
-import React, { useContext } from 'react';
+import React from 'react';
 import type { Node } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
-import { ThemeContext } from '../../styles';
 import { getNetworkConfig } from '../providers/ProviderManager';
-import { TandaPayColors, TandaPayLayout, TandaPayTypography } from '../styles';
+import { TandaPayColors, TandaPayTypography } from '../styles';
+import Card from './Card';
 
 type Props = $ReadOnly<{|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
@@ -22,7 +22,6 @@ type Props = $ReadOnly<{|
 
 export default function NetworkInfo(props: Props): Node {
   const { selectedNetwork, customRpcConfig, switchingNetwork } = props;
-  const themeData = useContext(ThemeContext);
 
   const renderNetworkDetails = () => {
     if (selectedNetwork === 'custom' && customRpcConfig) {
@@ -95,9 +94,9 @@ export default function NetworkInfo(props: Props): Node {
           />
         )}
       </View>
-      <View style={[{ padding: 16, borderRadius: 8 }, { backgroundColor: themeData.cardColor }]}>
+      <Card>
         {renderNetworkDetails()}
-      </View>
+      </Card>
     </View>
   );
 }

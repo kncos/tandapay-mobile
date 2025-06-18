@@ -19,6 +19,7 @@ import {
   getEtherscanApiKey,
   deleteEtherscanApiKey,
 } from './WalletManager';
+import Card from '../components/Card';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-settings'>,
@@ -48,12 +49,6 @@ const customStyles = {
     padding: 12,
     fontSize: 16,
     marginBottom: 8,
-  },
-  apiKeyContainer: {
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
   },
   buttonRowWithSpacing: {
     ...TandaPayLayout.buttonRow,
@@ -183,13 +178,10 @@ export default function WalletSettingsScreen(props: Props): Node {
             </ZulipText>
 
             {/* Status Card */}
-            <View
+            <Card
               style={[
-                TandaPayLayout.status,
-                {
-                  backgroundColor: themeData.cardColor,
-                  borderColor: hasApiKey ? BRAND_COLOR : HIGHLIGHT_COLOR,
-                },
+                { flexDirection: 'row', alignItems: 'center' },
+                { borderWidth: 2, borderColor: hasApiKey ? BRAND_COLOR : HIGHLIGHT_COLOR },
               ]}
             >
               <View style={customStyles.statusIcon}>
@@ -205,7 +197,7 @@ export default function WalletSettingsScreen(props: Props): Node {
                     : 'Add an Etherscan API key to enhance functionality'}
                 </ZulipText>
               </View>
-            </View>
+            </Card>
 
             {/* API Key Management */}
             {hasApiKey && (
@@ -228,15 +220,7 @@ export default function WalletSettingsScreen(props: Props): Node {
 
                 {/* Revealed API Key */}
                 {revealedApiKey != null && revealedApiKey !== '' && (
-                  <View
-                    style={[
-                      customStyles.apiKeyContainer,
-                      {
-                        backgroundColor: themeData.cardColor,
-                        borderColor: HIGHLIGHT_COLOR,
-                      },
-                    ]}
-                  >
+                  <Card style={{ borderWidth: 1, borderColor: HIGHLIGHT_COLOR }}>
                     <ZulipText style={[TandaPayTypography.inputLabel, { color: themeData.color }]}>
                       Your API Key:
                     </ZulipText>
@@ -244,13 +228,13 @@ export default function WalletSettingsScreen(props: Props): Node {
                       {revealedApiKey}
                     </ZulipText>
                     <ZulipButton text="Hide" onPress={handleHideApiKey} secondary />
-                  </View>
+                  </Card>
                 )}
               </>
             )}
 
             {/* Input Card */}
-            <View style={[TandaPayLayout.base, { backgroundColor: themeData.cardColor }]}>
+            <Card>
               <View style={TandaPayLayout.inputContainer}>
                 <ZulipText style={[TandaPayTypography.inputLabel, { color: themeData.color }]}>
                   {hasApiKey ? 'Update API Key' : 'Etherscan API Key'}
@@ -278,7 +262,7 @@ export default function WalletSettingsScreen(props: Props): Node {
                   progress={saving}
                 />
               </View>
-            </View>
+            </Card>
           </View>
 
           {/* Back to Wallet Button */}

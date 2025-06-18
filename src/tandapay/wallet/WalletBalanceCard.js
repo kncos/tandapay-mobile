@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 
 // $FlowFixMe[untyped-import] - @react-native-picker/picker is a third-party library
 import { Picker } from '@react-native-picker/picker';
@@ -18,6 +18,7 @@ import { selectToken } from '../redux/actions';
 import { getSelectedToken, getAvailableTokens } from '../tokens/tokenSelectors';
 import { useUpdateBalance } from './hooks/useUpdateBalance';
 import { TandaPayColors } from '../styles';
+import Card from '../components/Card';
 
 import type { Token } from '../tokens/tokenTypes';
 
@@ -39,21 +40,8 @@ type TokenPickerProps = {|
   |}>,
 |};
 
-const styles = StyleSheet.create({
-  balanceCard: {
-    alignItems: 'stretch',
-    marginVertical: 24,
-    width: '90%',
-    borderRadius: 18,
-    paddingVertical: 28,
-    paddingHorizontal: 18,
-    elevation: 6,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    backgroundColor: TandaPayColors.white,
-    borderWidth: 2,
-  },
+// Custom styles as plain objects
+const styles = {
   label: {
     fontSize: 16,
   },
@@ -74,19 +62,6 @@ const styles = StyleSheet.create({
     borderColor: TandaPayColors.whiteOverlay20,
     alignSelf: 'center',
   },
-  pickerChip: {
-    borderRadius: 18,
-    paddingHorizontal: 12,
-    paddingVertical: 2,
-    alignSelf: 'center',
-    minWidth: 150,
-    maxWidth: 260,
-    overflow: 'hidden',
-    marginTop: 18,
-    borderWidth: 2,
-    elevation: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
   picker: {
     width: '100%',
     minWidth: 130,
@@ -105,7 +80,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
-});
+};
 
 function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: TokenPickerProps): Node {
   if (!selectedToken) {
@@ -113,7 +88,19 @@ function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: To
   }
 
   return (
-    <View style={[styles.pickerChip, { backgroundColor: themeData.cardColor, borderColor: HIGHLIGHT_COLOR }]}>
+    <Card
+      style={{
+        alignSelf: 'center',
+        minWidth: 150,
+        maxWidth: 260,
+        overflow: 'hidden',
+        marginTop: 16,
+        borderWidth: 2,
+        borderColor: HIGHLIGHT_COLOR,
+      }}
+      borderRadius={16}
+      padding={2}
+    >
       <Picker
         selectedValue={selectedToken.symbol}
         style={styles.picker}
@@ -136,7 +123,7 @@ function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: To
           />
         ))}
       </Picker>
-    </View>
+    </Card>
   );
 }
 
@@ -175,7 +162,23 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
   };
 
   return (
-    <View style={[styles.balanceCard, { backgroundColor: themeData.backgroundColor, borderColor: HIGHLIGHT_COLOR }]}>
+    <Card
+      style={[
+        {
+          alignItems: 'stretch',
+          marginVertical: 24,
+          width: '90%',
+          paddingVertical: 28,
+          paddingHorizontal: 18,
+          backgroundColor: themeData.backgroundColor,
+          borderWidth: 2,
+          borderColor: HIGHLIGHT_COLOR,
+        }
+      ]}
+      borderRadius={18}
+      backgroundColor={themeData.backgroundColor}
+      padding={0}
+    >
       <View style={styles.balanceColumn}>
         <ZulipText style={styles.label} text="Balance" />
         <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%' }}>
@@ -218,6 +221,6 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
           </Touchable>
         </View>
       </View>
-    </View>
+    </Card>
   );
 }

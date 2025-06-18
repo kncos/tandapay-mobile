@@ -2,13 +2,14 @@
 
 import React, { useState, useContext, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import Input from '../../common/Input';
 import { ThemeContext } from '../../styles';
 import TandaPayStyles from '../styles';
+import Card from './Card';
 
 type Props = $ReadOnly<{|
   cacheExpirationMs: number,
@@ -26,20 +27,8 @@ type Props = $ReadOnly<{|
   disabled?: boolean,
 |}>;
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
-  formSection: {
-    padding: 16,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  currentValues: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 6,
-  },
+// Custom styles as plain objects
+const customStyles = {
   currentValuesTitle: {
     fontSize: 14,
     fontWeight: '600',
@@ -49,7 +38,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 4,
   },
-});
+};
 
 export default function NetworkPerformanceSettings(props: Props): Node {
   const {
@@ -121,14 +110,14 @@ export default function NetworkPerformanceSettings(props: Props): Node {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={{ marginBottom: 24 }}>
       <ZulipText style={TandaPayStyles.sectionTitle}>Network Performance Settings</ZulipText>
       <ZulipText style={TandaPayStyles.description}>
         Configure caching, rate limiting, and retry behavior for blockchain network calls.
         These settings affect how the app interacts with TandaPay contracts.
       </ZulipText>
 
-      <View style={[styles.formSection, { backgroundColor: themeData.cardColor }]}>
+      <Card style={{ marginTop: 12 }}>
         {/* Cache Expiration */}
         <ZulipText style={TandaPayStyles.inputLabel}>Cache Expiration Time</ZulipText>
         <ZulipText style={TandaPayStyles.description}>
@@ -188,24 +177,24 @@ export default function NetworkPerformanceSettings(props: Props): Node {
         </View>
 
         {/* Current Values Display */}
-        <View style={[styles.currentValues, { backgroundColor: themeData.backgroundColor, opacity: 0.8 }]}>
-          <ZulipText style={styles.currentValuesTitle}>Current Settings:</ZulipText>
-          <ZulipText style={styles.currentValue}>
+        <Card backgroundColor={themeData.backgroundColor}>
+          <ZulipText style={customStyles.currentValuesTitle}>Current Settings:</ZulipText>
+          <ZulipText style={customStyles.currentValue}>
             Cache Expiration:
             {String(cacheExpirationMs)}
             ms
           </ZulipText>
-          <ZulipText style={styles.currentValue}>
+          <ZulipText style={customStyles.currentValue}>
             Rate Limit Delay:
             {String(rateLimitDelayMs)}
             ms
           </ZulipText>
-          <ZulipText style={styles.currentValue}>
+          <ZulipText style={customStyles.currentValue}>
             Retry Attempts:
             {String(retryAttempts)}
           </ZulipText>
-        </View>
-      </View>
+        </Card>
+      </Card>
     </View>
   );
 }

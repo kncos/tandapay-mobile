@@ -1,14 +1,14 @@
 /* @flow strict-local */
 
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import type { Node } from 'react';
 import { View } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import Input from '../../common/Input';
-import { ThemeContext } from '../../styles';
 import TandaPayStyles from '../styles';
+import Card from './Card';
 
 type Props = $ReadOnly<{|
   initialConfig?: ?{|
@@ -30,7 +30,6 @@ type Props = $ReadOnly<{|
 
 export default function CustomRpcForm(props: Props): Node {
   const { initialConfig, onSave, onClear, loading, disabled } = props;
-  const themeData = useContext(ThemeContext);
 
   const [customName, setCustomName] = useState(initialConfig?.name || '');
   const [customRpcUrl, setCustomRpcUrl] = useState(initialConfig?.rpcUrl || '');
@@ -73,7 +72,7 @@ export default function CustomRpcForm(props: Props): Node {
     <View style={{ marginBottom: 24 }}>
       <ZulipText style={TandaPayStyles.sectionTitle}>Custom RPC Configuration</ZulipText>
 
-      <View style={[{ padding: 16, borderRadius: 8, marginTop: 12 }, { backgroundColor: themeData.cardColor }]}>
+      <Card style={{ marginTop: 12 }}>
         <Input
           placeholder="Network Name (e.g., Local Ganache)"
           value={customName}
@@ -128,7 +127,7 @@ export default function CustomRpcForm(props: Props): Node {
             />
           )}
         </View>
-      </View>
+      </Card>
     </View>
   );
 }

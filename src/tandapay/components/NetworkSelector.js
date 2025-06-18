@@ -8,6 +8,7 @@ import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography, TandaPayLayout, TandaPayComponents } from '../styles';
 import { getSupportedNetworks, getNetworkConfig } from '../providers/ProviderManager';
+import Card from './Card';
 
 type Props = $ReadOnly<{|
   selectedNetwork: string,
@@ -24,13 +25,6 @@ type Props = $ReadOnly<{|
 
 // Only custom styles for this component
 const networkStyles = {
-  networkOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
   networkOptionLoading: {
     opacity: 0.6,
   },
@@ -63,62 +57,66 @@ export default function NetworkSelector(props: Props): Node {
         return (
           <TouchableOpacity
             key={network}
-            style={[
-              networkStyles.networkOption,
-              { backgroundColor: themeData.cardColor },
-              isSwitching && networkStyles.networkOptionLoading
-            ]}
             onPress={() => onNetworkSelect(network)}
             disabled={Boolean(disabled) || isSwitching || switchingNetwork != null}
             activeOpacity={0.7}
           >
-            <View style={isSelected ? TandaPayComponents.selected : TandaPayComponents.unselected} />
-            <View style={{ flex: 1 }}>
-              <ZulipText style={networkStyles.networkText}>
-                {config.name}
-              </ZulipText>
-              <ZulipText style={networkStyles.networkDetail}>
-                {`Chain ID: ${config.chainId} • ${config.rpcUrl}`}
-              </ZulipText>
-            </View>
-            {isSwitching && (
-              <ActivityIndicator size="small" color={themeData.color} style={{ marginLeft: 8 }} />
-            )}
+            <Card
+              style={[
+                { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+                isSwitching && networkStyles.networkOptionLoading
+              ]}
+            >
+              <View style={isSelected ? TandaPayComponents.selected : TandaPayComponents.unselected} />
+              <View style={{ flex: 1 }}>
+                <ZulipText style={networkStyles.networkText}>
+                  {config.name}
+                </ZulipText>
+                <ZulipText style={networkStyles.networkDetail}>
+                  {`Chain ID: ${config.chainId} • ${config.rpcUrl}`}
+                </ZulipText>
+              </View>
+              {isSwitching && (
+                <ActivityIndicator size="small" color={themeData.color} style={{ marginLeft: 8 }} />
+              )}
+            </Card>
           </TouchableOpacity>
         );
       })}
 
       {/* Custom Network Option */}
       <TouchableOpacity
-        style={[
-          networkStyles.networkOption,
-          { backgroundColor: themeData.cardColor },
-          switchingNetwork === 'custom' && networkStyles.networkOptionLoading
-        ]}
         onPress={() => customRpcConfig && onNetworkSelect('custom')}
         disabled={Boolean(disabled) || !customRpcConfig || switchingNetwork != null}
         activeOpacity={customRpcConfig ? 0.7 : 1}
       >
-        <View style={selectedNetwork === 'custom' ? TandaPayComponents.selected : TandaPayComponents.unselected} />
-        <View style={{ flex: 1 }}>
-          <ZulipText
-            style={[
-              networkStyles.networkText,
-              { opacity: customRpcConfig ? 1 : 0.5 }
-            ]}
-          >
-            Custom Network
-          </ZulipText>
-          <ZulipText style={networkStyles.networkDetail}>
-            {customRpcConfig
-              ? `${customRpcConfig.name} • Chain ID: ${customRpcConfig.chainId}`
-              : 'Configure custom RPC below'
-            }
-          </ZulipText>
-        </View>
-        {switchingNetwork === 'custom' && (
-          <ActivityIndicator size="small" color={TandaPayColors.primary} style={{ marginLeft: 8 }} />
-        )}
+        <Card
+          style={[
+            { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+            switchingNetwork === 'custom' && networkStyles.networkOptionLoading
+          ]}
+        >
+          <View style={selectedNetwork === 'custom' ? TandaPayComponents.selected : TandaPayComponents.unselected} />
+          <View style={{ flex: 1 }}>
+            <ZulipText
+              style={[
+                networkStyles.networkText,
+                { opacity: customRpcConfig ? 1 : 0.5 }
+              ]}
+            >
+              Custom Network
+            </ZulipText>
+            <ZulipText style={networkStyles.networkDetail}>
+              {customRpcConfig
+                ? `${customRpcConfig.name} • Chain ID: ${customRpcConfig.chainId}`
+                : 'Configure custom RPC below'
+              }
+            </ZulipText>
+          </View>
+          {switchingNetwork === 'custom' && (
+            <ActivityIndicator size="small" color={TandaPayColors.primary} style={{ marginLeft: 8 }} />
+          )}
+        </Card>
       </TouchableOpacity>
     </View>
   );

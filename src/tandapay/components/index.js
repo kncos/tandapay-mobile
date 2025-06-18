@@ -18,6 +18,7 @@ export { default as TransactionEstimateAndSend } from './TransactionEstimateAndS
 export type { GasEstimate, TransactionParams, EstimateGasCallback, SendTransactionCallback } from './TransactionEstimateAndSend';
 
 // UI Components
+export { default as Card } from './Card';
 export { default as TandaRibbon } from './TandaRibbon';
 export { default as TandaPayBanner } from './TandaPayBanner';
 

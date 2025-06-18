@@ -1,13 +1,12 @@
 /* @flow strict-local */
 
-import React, { useState, useContext, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
 import { View, Alert, ActivityIndicator } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import { useBalanceInvalidation } from '../hooks/useBalanceInvalidation';
 import { useSelector, useGlobalSelector } from '../../react-redux';
@@ -16,6 +15,7 @@ import { getGlobalSettings } from '../../directSelectors';
 import { getNetworkConfig } from '../providers/ProviderManager';
 import { openLinkWithUserPreference } from '../../utils/openLink';
 import { showToast } from '../../utils/info';
+import Card from './Card';
 
 export type GasEstimate = {|
   gasLimit: string,
@@ -73,12 +73,6 @@ const customStyles = {
   container: {
     marginTop: 16,
   },
-  gasEstimate: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    marginTop: 16,
-  },
   gasEstimateTitle: {
     ...TandaPayTypography.sectionTitle,
     marginBottom: 8,
@@ -121,7 +115,6 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     onTransactionError,
   } = props;
 
-  const themeData = useContext(ThemeContext);
   const { invalidateAllTokens } = useBalanceInvalidation();
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const customRpcConfig = useSelector(getTandaPayCustomRpcConfig);
@@ -275,7 +268,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   ]);
 
   const renderDefaultGasEstimate = (estimate: GasEstimate): Node => (
-    <View style={[customStyles.gasEstimate, { backgroundColor: themeData.cardColor }]}>
+    <Card style={{ marginBottom: 16, marginTop: 16 }}>
       <ZulipText style={customStyles.gasEstimateTitle}>
         Gas Estimate
       </ZulipText>
@@ -306,7 +299,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
           ETH
         </ZulipText>
       </View>
-    </View>
+    </Card>
   );
 
   return (
