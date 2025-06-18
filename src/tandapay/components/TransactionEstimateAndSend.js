@@ -3,11 +3,18 @@
 import React, { useState, useContext, useCallback } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { useBalanceInvalidation } from '../hooks/useBalanceInvalidation';
+import { useSelector, useGlobalSelector } from '../../react-redux';
+import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
+import { getGlobalSettings } from '../../directSelectors';
+import { getNetworkConfig } from '../providers/ProviderManager';
+import { openLinkWithUserPreference } from '../../utils/openLink';
+import { showToast } from '../../utils/info';
 
 export type GasEstimate = {|
   gasLimit: string,
@@ -115,9 +122,29 @@ export default function TransactionEstimateAndSend(props: Props): Node {
 
   const themeData = useContext(ThemeContext);
   const { invalidateAllTokens } = useBalanceInvalidation();
+  const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
+  const customRpcConfig = useSelector(getTandaPayCustomRpcConfig);
+  const globalSettings = useGlobalSelector(getGlobalSettings);
   const [gasEstimate, setGasEstimate] = useState<?GasEstimate>(null);
   const [estimating, setEstimating] = useState(false);
   const [sending, setSending] = useState(false);
+
+  // Get explorer URL for the current network
+  const getExplorerUrl = useCallback((txHash: string): string | null => {
+    try {
+      if (selectedNetwork === 'custom' && customRpcConfig?.blockExplorerUrl != null && customRpcConfig.blockExplorerUrl !== '') {
+        return `${customRpcConfig.blockExplorerUrl}/tx/${txHash}`;
+      } else if (selectedNetwork !== 'custom') {
+        const networkConfig = getNetworkConfig(selectedNetwork);
+        if (networkConfig.blockExplorerUrl != null && networkConfig.blockExplorerUrl !== '') {
+          return `${networkConfig.blockExplorerUrl}/tx/${txHash}`;
+        }
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }, [selectedNetwork, customRpcConfig]);
 
   const handleEstimateGas = useCallback(async () => {
     if (!isFormValid) {
@@ -170,21 +197,51 @@ export default function TransactionEstimateAndSend(props: Props): Node {
 
               if (result.success && result.txHash != null && result.txHash !== '') {
                 const successMessage = `Your ${transactionDescription} has been submitted to the network.\n\nTransaction Hash: ${result.txHash}\n\nIt may take a few minutes to confirm.`;
+                const explorerUrl = getExplorerUrl(result.txHash);
+
+                // Create buttons array based on available features
+                const buttons = [];
+
+                // Copy to Clipboard button
+                buttons.push({
+                  text: 'Copy Hash',
+                  onPress: () => {
+                    if (result.txHash != null) {
+                      Clipboard.setString(result.txHash);
+                      showToast('Transaction hash copied to clipboard');
+                    }
+                  },
+                });
+
+                // View in Explorer button (only if explorer URL is available)
+                if (explorerUrl != null) {
+                  buttons.push({
+                    text: 'View in Explorer',
+                    onPress: () => {
+                      const explorerUrlObj = new URL(explorerUrl);
+                      openLinkWithUserPreference(explorerUrlObj, globalSettings);
+                    },
+                  });
+                }
+
+                // OK button
+                buttons.push({
+                  text: 'OK',
+                  style: 'cancel',
+                  onPress: () => {
+                    // Invalidate all token balances to force refresh on next visit
+                    invalidateAllTokens();
+
+                    if (result.txHash != null) {
+                      onTransactionSuccess?.(result.txHash);
+                    }
+                  },
+                });
 
                 Alert.alert(
                   'Transaction Sent!',
                   successMessage,
-                  [{
-                    text: 'OK',
-                    onPress: () => {
-                      // Invalidate all token balances to force refresh on next visit
-                      invalidateAllTokens();
-
-                      if (result.txHash != null) {
-                        onTransactionSuccess?.(result.txHash);
-                      }
-                    },
-                  }],
+                  buttons,
                 );
               } else {
                 const errorMessage = result.error ?? 'Unknown error occurred.';
@@ -211,6 +268,9 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     onSendTransaction,
     onTransactionSuccess,
     onTransactionError,
+    getExplorerUrl,
+    globalSettings,
+    invalidateAllTokens,
   ]);
 
   const renderDefaultGasEstimate = (estimate: GasEstimate): Node => (
