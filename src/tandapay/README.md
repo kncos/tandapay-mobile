@@ -213,6 +213,101 @@ All major TandaPay components have been refactored to use the centralized stylin
 - **Input Components**: AddressInput, AmountInput with consistent styling
 - **Transaction Components**: TransactionEstimateAndSend with card-based gas estimates
 
+## Error Handling System
+
+### Architecture
+TandaPay includes a centralized error handling system designed to eliminate silent failures and provide consistent, user-friendly error experiences across the application.
+
+#### Core Components
+
+**TandaPayErrorHandler:**
+- Centralized error creation and handling
+- Standardized error logging and user messaging
+- Structured error categorization and retry logic
+
+**TandaPayResult<T> Pattern:**
+- Type-safe result wrapper for async operations
+- Eliminates the need for try-catch blocks in components
+- Consistent error propagation through component hierarchy
+
+**Error Types:**
+- `NETWORK_ERROR`: RPC calls, connectivity issues
+- `API_ERROR`: External API failures (Etherscan, etc.)
+- `VALIDATION_ERROR`: Input validation, data validation
+- `WALLET_ERROR`: Wallet operations, signing failures
+- `CONTRACT_ERROR`: Smart contract interactions
+- `STORAGE_ERROR`: SecureStore, AsyncStorage operations
+- `RATE_LIMITED`: API rate limiting
+- `TIMEOUT_ERROR`: Operation timeouts
+- And more... (see `errors/types.js`)
+
+#### Key Features
+
+**Structured Error Information:**
+```javascript
+type TandaPayError = {
+  type: ErrorType,
+  message: string,
+  userMessage?: string,     // User-friendly display message
+  code?: string,           // Specific error code for debugging
+  details?: mixed,         // Additional context
+  retryable?: boolean,     // Whether operation can be retried
+  timestamp: number,
+};
+```
+
+**Result Pattern Usage:**
+```javascript
+// Before (silent failure)
+async function fetchBalance() {
+  try {
+    const balance = await apiCall();
+    return balance;
+  } catch (error) {
+    console.log(error);
+    return '0'; // Silent failure!
+  }
+}
+
+// After (structured error handling)
+async function fetchBalance(): Promise<TandaPayResult<string>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const balance = await apiCall();
+      return balance;
+    },
+    'NETWORK_ERROR',
+    'Unable to fetch balance. Please check your connection.',
+    'BALANCE_FETCH_FAILED'
+  );
+}
+
+// Component usage
+const result = await fetchBalance();
+if (result.success) {
+  setBalance(result.data);
+} else {
+  setError(result.error);
+  if (result.error.retryable) {
+    // Show retry button
+  }
+}
+```
+
+**Migration Status:**
+- ✅ Error handling utilities created (`errors/ErrorHandler.js`, `errors/types.js`)
+- ✅ Migration plan documented (`errors/MIGRATION_PLAN.md`)
+- ✅ Quick reference guide available (`errors/QUICK_REFERENCE.md`)
+- 🔄 **In Progress**: Gradual migration of existing functions
+- 📋 **Next**: Balance fetching, transaction history, wallet operations
+
+**Benefits:**
+- No more silent failures
+- User-friendly error messages
+- Automatic retry for transient errors
+- Better debugging with structured error information
+- Consistent error handling patterns across the app
+
 ## Token System
 
 ### Architecture
