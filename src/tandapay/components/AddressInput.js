@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity, Modal } from 'react-native';
+import { View, Alert, TouchableOpacity, Modal } from 'react-native';
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
@@ -13,7 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import Input from '../../common/Input';
 import ZulipText from '../../common/ZulipText';
-import { BRAND_COLOR } from '../../styles/constants';
+import { TandaPayColors, TandaPayTypography, TandaPayComponents, TandaPayLayout } from '../styles';
 
 type Props = $ReadOnly<{|
   value: string,
@@ -25,65 +25,31 @@ type Props = $ReadOnly<{|
   showQRButton?: boolean,
 |}>;
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 12,
-  },
-  label: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  addressInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  addressInput: {
-    flex: 1,
-    marginRight: 8,
-  },
-  qrButton: {
-    padding: 10,
-    borderRadius: 4,
-    backgroundColor: BRAND_COLOR,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qrButtonDisabled: {
-    backgroundColor: '#cccccc',
-  },
+// Create only the styles that need customization beyond our centralized styles
+const customStyles = {
   qrButtonIcon: {
-    color: 'white',
+    color: TandaPayColors.white,
   },
   errorText: {
-    color: '#f44336',
-    fontSize: 14,
-    marginTop: 8,
+    ...TandaPayTypography.error,
+    color: TandaPayColors.error,
   },
   scannerModal: {
     flex: 1,
-    backgroundColor: 'black',
+    backgroundColor: TandaPayColors.black,
   },
   scannerContainer: {
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'center',
   },
-  scannerCloseButton: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 25,
-    padding: 10,
-    zIndex: 1,
-  },
   permissionText: {
-    color: 'white',
+    color: TandaPayColors.white,
     textAlign: 'center',
     marginHorizontal: 20,
     fontSize: 16,
   },
-});
+};
 
 export default function AddressInput(props: Props): Node {
   const {
@@ -161,12 +127,12 @@ export default function AddressInput(props: Props): Node {
   }, [onChangeText, validateAddress]);
 
   return (
-    <View style={style ? [styles.container, style] : styles.container}>
-      {label && <ZulipText style={styles.label}>{label}</ZulipText>}
+    <View style={style ? [TandaPayLayout.inputContainer, style] : TandaPayLayout.inputContainer}>
+      {label && <ZulipText style={TandaPayTypography.label}>{label}</ZulipText>}
 
-      <View style={styles.addressInputRow}>
+      <View style={TandaPayComponents.addressRow}>
         <Input
-          style={styles.addressInput}
+          style={TandaPayComponents.address}
           placeholder={placeholder}
           value={value}
           onChangeText={handleAddressChange}
@@ -177,17 +143,17 @@ export default function AddressInput(props: Props): Node {
 
         {showQRButton && (
           <TouchableOpacity
-            style={[styles.qrButton, disabled && styles.qrButtonDisabled]}
+            style={[TandaPayComponents.qr, disabled && TandaPayComponents.qrDisabled]}
             onPress={handleOpenScanner}
             disabled={disabled}
           >
-            <Icon name="qr-code-scanner" size={20} style={styles.qrButtonIcon} />
+            <Icon name="qr-code-scanner" size={20} style={customStyles.qrButtonIcon} />
           </TouchableOpacity>
         )}
       </View>
 
       {addressError ? (
-        <ZulipText style={styles.errorText}>{addressError}</ZulipText>
+        <ZulipText style={customStyles.errorText}>{addressError}</ZulipText>
       ) : null}
 
       {/* QR Scanner Modal */}
@@ -197,21 +163,21 @@ export default function AddressInput(props: Props): Node {
         visible={showScanner}
         onRequestClose={() => setShowScanner(false)}
       >
-        <View style={styles.scannerModal}>
+        <View style={customStyles.scannerModal}>
           <TouchableOpacity
-            style={styles.scannerCloseButton}
+            style={TandaPayComponents.close}
             onPress={() => setShowScanner(false)}
           >
             <Icon name="close" size={24} color="white" />
           </TouchableOpacity>
 
-          <View style={styles.scannerContainer}>
+          <View style={customStyles.scannerContainer}>
             {hasPermission === null ? (
-              <ZulipText style={styles.permissionText}>
+              <ZulipText style={customStyles.permissionText}>
                 Requesting camera permission...
               </ZulipText>
             ) : hasPermission === false ? (
-              <ZulipText style={styles.permissionText}>
+              <ZulipText style={customStyles.permissionText}>
                 No camera access. Please grant camera permission in settings.
               </ZulipText>
             ) : (

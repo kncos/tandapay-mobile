@@ -12,6 +12,7 @@ import TextRow from '../common/TextRow';
 import ZulipButton from '../common/ZulipButton';
 import { IconWallet, IconSmartphone, IconLanguage, IconPlusCircle } from '../common/Icons';
 import { deleteWallet } from './wallet/WalletManager';
+import { TandaPayColors } from './styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-settings'>,
@@ -95,7 +96,7 @@ export default function TandaPaySettingsScreen(props: Props): Node {
         style={{
           marginTop: 32,
           marginHorizontal: 16,
-          backgroundColor: '#f44336'
+          backgroundColor: TandaPayColors.error
         }}
       />
     </Screen>

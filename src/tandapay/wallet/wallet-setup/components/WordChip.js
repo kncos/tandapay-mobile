@@ -2,15 +2,11 @@
 
 import React from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
 import ZulipText from '../../../../common/ZulipText';
 import Touchable from '../../../../common/Touchable';
-import {
-  BRAND_COLOR,
-  HIGHLIGHT_COLOR,
-  QUARTER_COLOR,
-} from '../../../../styles/constants';
+import { TandaPayColors, TandaPayComponents } from '../../../styles';
 
 type Props = $ReadOnly<{|
   word: string,
@@ -18,37 +14,26 @@ type Props = $ReadOnly<{|
   onPress: () => void,
 |}>;
 
-const styles = StyleSheet.create({
-  wordChip: {
-    backgroundColor: QUARTER_COLOR,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: BRAND_COLOR,
-    margin: 4,
-  },
-  selectedWordChip: {
-    backgroundColor: HIGHLIGHT_COLOR,
-    borderColor: BRAND_COLOR,
-  },
-  wordText: {
+// Only create styles for the text since chips use centralized styles
+const textStyles = {
+  normal: {
     fontSize: 14,
   },
-  selectedWordText: {
-    color: '#fff',
+  selected: {
+    fontSize: 14,
+    color: TandaPayColors.white,
   },
-});
+};
 
 export default function WordChip(props: Props): Node {
   const { word, isSelected, onPress } = props;
-  
+
   const chipStyle = isSelected
-    ? [styles.wordChip, styles.selectedWordChip]
-    : styles.wordChip;
+    ? [TandaPayComponents.base, TandaPayComponents.selected]
+    : TandaPayComponents.base;
   const textStyle = isSelected
-    ? styles.selectedWordText
-    : styles.wordText;
+    ? textStyles.selected
+    : textStyles.normal;
 
   return (
     <Touchable onPress={onPress}>

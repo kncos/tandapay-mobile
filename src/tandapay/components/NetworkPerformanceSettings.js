@@ -8,6 +8,7 @@ import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import Input from '../../common/Input';
 import { ThemeContext } from '../../styles';
+import { TandaPayLayout, TandaPayTypography } from '../styles';
 
 type Props = $ReadOnly<{|
   cacheExpirationMs: number,

@@ -2,10 +2,11 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
 import Input from '../../common/Input';
 import ZulipText from '../../common/ZulipText';
+import { TandaPayColors, TandaPayTypography, TandaPayLayout } from '../styles';
 
 type Props = $ReadOnly<{|
   value: string,
@@ -18,20 +19,13 @@ type Props = $ReadOnly<{|
   disabled?: boolean,
 |}>;
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 12,
-  },
-  label: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
+// Custom styles for this component
+const customStyles = {
   errorText: {
-    color: '#f44336',
-    fontSize: 14,
-    marginTop: 8,
+    ...TandaPayTypography.error,
+    color: TandaPayColors.error,
   },
-});
+};
 
 export default function AmountInput(props: Props): Node {
   const {
@@ -99,8 +93,8 @@ export default function AmountInput(props: Props): Node {
   const dynamicPlaceholder = placeholder != null ? placeholder : `Amount in ${tokenSymbol} (max ${tokenDecimals} decimal places)`;
 
   return (
-    <View style={style ? [styles.container, style] : styles.container}>
-      {label && <ZulipText style={styles.label}>{label}</ZulipText>}
+    <View style={style ? [TandaPayLayout.inputContainer, style] : TandaPayLayout.inputContainer}>
+      {label && <ZulipText style={TandaPayTypography.inputLabel}>{label}</ZulipText>}
 
       <Input
         placeholder={dynamicPlaceholder}
@@ -111,7 +105,7 @@ export default function AmountInput(props: Props): Node {
       />
 
       {amountError ? (
-        <ZulipText style={styles.errorText}>{amountError}</ZulipText>
+        <ZulipText style={customStyles.errorText}>{amountError}</ZulipText>
       ) : null}
     </View>
   );

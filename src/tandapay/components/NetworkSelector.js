@@ -2,10 +2,11 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
+import { TandaPayColors, TandaPayTypography, TandaPayLayout, TandaPayComponents } from '../styles';
 import { getSupportedNetworks, getNetworkConfig } from '../providers/ProviderManager';
 
 type Props = $ReadOnly<{|
@@ -21,15 +22,8 @@ type Props = $ReadOnly<{|
   |},
 |}>;
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
+// Only custom styles for this component
+const networkStyles = {
   networkOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -50,23 +44,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     marginTop: 2,
   },
-  selectedIndicator: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#4CAF50',
-    backgroundColor: '#4CAF50',
-  },
-  unselectedIndicator: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#ccc',
-    backgroundColor: 'transparent',
-  },
-});
+};
 
 export default function NetworkSelector(props: Props): Node {
   const { selectedNetwork, onNetworkSelect, switchingNetwork, disabled, customRpcConfig } = props;
@@ -74,8 +52,8 @@ export default function NetworkSelector(props: Props): Node {
   const supportedNetworks = getSupportedNetworks();
 
   return (
-    <View style={styles.container}>
-      <ZulipText style={styles.sectionTitle}>Select Network</ZulipText>
+    <View style={TandaPayLayout.section}>
+      <ZulipText style={TandaPayTypography.sectionTitle}>Select Network</ZulipText>
 
       {supportedNetworks.map((network) => {
         const config = getNetworkConfig(network);
@@ -86,20 +64,20 @@ export default function NetworkSelector(props: Props): Node {
           <TouchableOpacity
             key={network}
             style={[
-              styles.networkOption,
+              networkStyles.networkOption,
               { backgroundColor: themeData.cardColor },
-              isSwitching && styles.networkOptionLoading
+              isSwitching && networkStyles.networkOptionLoading
             ]}
             onPress={() => onNetworkSelect(network)}
             disabled={Boolean(disabled) || isSwitching || switchingNetwork != null}
             activeOpacity={0.7}
           >
-            <View style={isSelected ? styles.selectedIndicator : styles.unselectedIndicator} />
+            <View style={isSelected ? TandaPayComponents.selected : TandaPayComponents.unselected} />
             <View style={{ flex: 1 }}>
-              <ZulipText style={styles.networkText}>
+              <ZulipText style={networkStyles.networkText}>
                 {config.name}
               </ZulipText>
-              <ZulipText style={styles.networkDetail}>
+              <ZulipText style={networkStyles.networkDetail}>
                 {`Chain ID: ${config.chainId} • ${config.rpcUrl}`}
               </ZulipText>
             </View>
@@ -113,25 +91,25 @@ export default function NetworkSelector(props: Props): Node {
       {/* Custom Network Option */}
       <TouchableOpacity
         style={[
-          styles.networkOption,
+          networkStyles.networkOption,
           { backgroundColor: themeData.cardColor },
-          switchingNetwork === 'custom' && styles.networkOptionLoading
+          switchingNetwork === 'custom' && networkStyles.networkOptionLoading
         ]}
         onPress={() => customRpcConfig && onNetworkSelect('custom')}
         disabled={Boolean(disabled) || !customRpcConfig || switchingNetwork != null}
         activeOpacity={customRpcConfig ? 0.7 : 1}
       >
-        <View style={selectedNetwork === 'custom' ? styles.selectedIndicator : styles.unselectedIndicator} />
+        <View style={selectedNetwork === 'custom' ? TandaPayComponents.selected : TandaPayComponents.unselected} />
         <View style={{ flex: 1 }}>
           <ZulipText
             style={[
-              styles.networkText,
+              networkStyles.networkText,
               { opacity: customRpcConfig ? 1 : 0.5 }
             ]}
           >
             Custom Network
           </ZulipText>
-          <ZulipText style={styles.networkDetail}>
+          <ZulipText style={networkStyles.networkDetail}>
             {customRpcConfig
               ? `${customRpcConfig.name} • Chain ID: ${customRpcConfig.chainId}`
               : 'Configure custom RPC below'
@@ -139,7 +117,7 @@ export default function NetworkSelector(props: Props): Node {
           </ZulipText>
         </View>
         {switchingNetwork === 'custom' && (
-          <ActivityIndicator size="small" color="#007AFF" style={{ marginLeft: 8 }} />
+          <ActivityIndicator size="small" color={TandaPayColors.primary} style={{ marginLeft: 8 }} />
         )}
       </TouchableOpacity>
     </View>

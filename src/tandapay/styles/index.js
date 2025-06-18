@@ -1,9 +1,21 @@
 // @flow strict-local
 import buttons from './buttons';
+import layout from './layout';
+import components from './components';
+import typography from './typography';
 
-// export all of the TandaPay styles
+// Export individual style modules for direct access
+export { default as TandaPayColors } from './colors';
+export { default as TandaPayTypography } from './typography';
+export { default as TandaPayLayout } from './layout';
+export { default as TandaPayComponents } from './components';
+
+// Export all of the TandaPay styles as a combined object
 const TandaPayStyles = Object.freeze({
   ...buttons,
+  ...layout,
+  ...components,
+  ...typography,
 });
 
 export default TandaPayStyles;

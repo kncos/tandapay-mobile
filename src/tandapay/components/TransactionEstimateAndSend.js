@@ -2,12 +2,13 @@
 
 import React, { useState, useContext, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Alert, ActivityIndicator } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
+import { TandaPayColors, TandaPayTypography } from '../styles';
 import { useBalanceInvalidation } from '../hooks/useBalanceInvalidation';
 import { useSelector, useGlobalSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
@@ -67,7 +68,8 @@ type Props = $ReadOnly<{|
   onTransactionError?: (error: string) => void,
 |}>;
 
-const styles = StyleSheet.create({
+// Custom styles for this component
+const customStyles = {
   container: {
     marginTop: 16,
   },
@@ -78,8 +80,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   gasEstimateTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    ...TandaPayTypography.sectionTitle,
     marginBottom: 8,
   },
   row: {
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
   },
-});
+};
 
 export default function TransactionEstimateAndSend(props: Props): Node {
   const {
@@ -274,13 +275,13 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   ]);
 
   const renderDefaultGasEstimate = (estimate: GasEstimate): Node => (
-    <View style={[styles.gasEstimate, { backgroundColor: themeData.cardColor }]}>
-      <ZulipText style={styles.gasEstimateTitle}>
+    <View style={[customStyles.gasEstimate, { backgroundColor: themeData.cardColor }]}>
+      <ZulipText style={customStyles.gasEstimateTitle}>
         Gas Estimate
       </ZulipText>
 
-      <View style={styles.row}>
-        <ZulipText style={styles.label}>Gas Limit:</ZulipText>
+      <View style={customStyles.row}>
+        <ZulipText style={customStyles.label}>Gas Limit:</ZulipText>
         <ZulipText>
           {estimate.gasLimit}
           {' '}
@@ -288,8 +289,8 @@ export default function TransactionEstimateAndSend(props: Props): Node {
         </ZulipText>
       </View>
 
-      <View style={styles.row}>
-        <ZulipText style={styles.label}>Gas Price:</ZulipText>
+      <View style={customStyles.row}>
+        <ZulipText style={customStyles.label}>Gas Price:</ZulipText>
         <ZulipText>
           {estimate.gasPrice}
           {' '}
@@ -297,8 +298,8 @@ export default function TransactionEstimateAndSend(props: Props): Node {
         </ZulipText>
       </View>
 
-      <View style={styles.row}>
-        <ZulipText style={styles.label}>Estimated Cost:</ZulipText>
+      <View style={customStyles.row}>
+        <ZulipText style={customStyles.label}>Estimated Cost:</ZulipText>
         <ZulipText>
           {estimate.estimatedCost}
           {' '}
@@ -309,7 +310,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={customStyles.container}>
       {/* Estimate Gas Button */}
       <ZulipButton
         disabled={!isFormValid || estimating || disabled}
@@ -330,17 +331,17 @@ export default function TransactionEstimateAndSend(props: Props): Node {
           text={sending ? 'Processing...' : sendButtonText}
           onPress={handleSendTransaction}
           style={{
-            ...styles.sendButton,
-            backgroundColor: sending ? '#999' : '#4CAF50',
+            ...customStyles.sendButton,
+            backgroundColor: sending ? TandaPayColors.disabled : TandaPayColors.success,
           }}
         />
       )}
 
       {/* Loading Indicator */}
       {sending && (
-        <View style={styles.loadingContainer}>
+        <View style={customStyles.loadingContainer}>
           <ActivityIndicator size="large" />
-          <ZulipText style={styles.loadingText}>
+          <ZulipText style={customStyles.loadingText}>
             Processing
             {' '}
             {transactionDescription}

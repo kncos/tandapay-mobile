@@ -2,7 +2,7 @@
 
 import React, { useState, useContext, useCallback, useMemo } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
@@ -31,28 +31,26 @@ import type {
   SendTransactionCallback,
   GasEstimate,
 } from '../components';
+import { TandaPayColors, TandaPayLayout } from '../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-send'>,
   route: RouteProp<'wallet-send', void>,
 |}>;
 
-const styles = StyleSheet.create({
+const customStyles = {
   container: {
     flex: 1,
     padding: 16,
   },
-  section: {
-    marginBottom: 24,
-  },
   tokenInfo: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: TandaPayColors.gray100,
     padding: 16,
     borderRadius: 8,
     marginBottom: 24,
     alignItems: 'center',
   },
-});
+};
 
 export default function WalletSendScreen(props: Props): Node {
   const { navigation } = props;
@@ -205,7 +203,7 @@ export default function WalletSendScreen(props: Props): Node {
   if (!selectedToken) {
     return (
       <Screen title="Send" canGoBack>
-        <View style={styles.container}>
+        <View style={customStyles.container}>
           <ZulipText style={{ textAlign: 'center', marginTop: 50, fontSize: 16 }}>
             No token selected. Please select a token in your wallet first.
           </ZulipText>
@@ -221,9 +219,9 @@ export default function WalletSendScreen(props: Props): Node {
 
   return (
     <Screen title="Send" canGoBack>
-      <View style={styles.container}>
+      <View style={customStyles.container}>
         {/* Token Info */}
-        <View style={[styles.tokenInfo, { backgroundColor: themeData.cardColor }]}>
+        <View style={[customStyles.tokenInfo, { backgroundColor: themeData.cardColor }]}>
           <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
             Sending
             {' '}
@@ -241,7 +239,7 @@ export default function WalletSendScreen(props: Props): Node {
         />
 
         {/* Send Form */}
-        <View style={styles.section}>
+        <View style={TandaPayLayout.section}>
           <AddressInput
             value={toAddress}
             onChangeText={setToAddress}

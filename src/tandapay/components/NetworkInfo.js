@@ -2,11 +2,12 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { getNetworkConfig } from '../providers/ProviderManager';
+import { TandaPayColors, TandaPayLayout, TandaPayTypography } from '../styles';
 
 type Props = $ReadOnly<{|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
@@ -18,28 +19,6 @@ type Props = $ReadOnly<{|
   |},
   switchingNetwork?: ?string,
 |}>;
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  infoSection: {
-    padding: 16,
-    borderRadius: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  loadingIndicator: {
-    marginLeft: 8,
-  },
-});
 
 export default function NetworkInfo(props: Props): Node {
   const { selectedNetwork, customRpcConfig, switchingNetwork } = props;
@@ -105,18 +84,18 @@ export default function NetworkInfo(props: Props): Node {
       </>
     );
   };  return (
-    <View style={styles.container}>
-      <View style={styles.titleRow}>
-        <ZulipText style={styles.sectionTitle}>Current Network Info</ZulipText>
+    <View style={{ marginBottom: 24 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <ZulipText style={TandaPayTypography.sectionTitle}>Current Network Info</ZulipText>
         {switchingNetwork != null && switchingNetwork !== '' && (
           <ActivityIndicator
             size="small"
-            color="#007AFF"
-            style={styles.loadingIndicator}
+            color={TandaPayColors.primary}
+            style={{ marginLeft: 8 }}
           />
         )}
       </View>
-      <View style={[styles.infoSection, { backgroundColor: themeData.cardColor }]}>
+      <View style={[{ padding: 16, borderRadius: 8 }, { backgroundColor: themeData.cardColor }]}>
         {renderNetworkDetails()}
       </View>
     </View>

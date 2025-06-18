@@ -2,16 +2,16 @@
 
 import React, { useState } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import ZulipText from '../../common/ZulipText';
-import { BRAND_COLOR } from '../../styles/constants';
+import { TandaPayColors } from '../styles';
 
-const styles = StyleSheet.create({
+// Simple object for basic styles that don't need StyleSheet
+const ribbonStyles = {
   ribbon: {
     width: '100%',
     paddingVertical: 0,
     paddingHorizontal: 0,
-    // Optionally add shadow or border
   },
   labelRow: {
     flexDirection: 'row',
@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 0,
   },
-});
+};
 
 type Props = $ReadOnly<{|
   label: string,
@@ -49,7 +49,7 @@ type Props = $ReadOnly<{|
 export default function TandaRibbon(props: Props): Node {
   const {
     label,
-    backgroundColor = BRAND_COLOR,
+    backgroundColor = TandaPayColors.primary,
     initiallyCollapsed = false,
     marginTop = 8,
     marginBottom = 8,
@@ -62,21 +62,21 @@ export default function TandaRibbon(props: Props): Node {
   const [collapsed, setCollapsed] = useState(initiallyCollapsed);
 
   return (
-    <View style={[styles.ribbon, { marginTop, marginBottom, marginHorizontal }, ribbonStyle]}>
+    <View style={[ribbonStyles.ribbon, { marginTop, marginBottom, marginHorizontal }, ribbonStyle]}>
       <TouchableOpacity
         onPress={() => setCollapsed(c => !c)}
         activeOpacity={0.7}
-        style={[styles.labelRow, { backgroundColor }]}
+        style={[ribbonStyles.labelRow, { backgroundColor }]}
       >
-        <ZulipText style={[styles.labelText, labelStyle]}>{label}</ZulipText>
-        <ZulipText style={[styles.labelText, labelStyle, { textAlign: 'right' }]}>
+        <ZulipText style={[ribbonStyles.labelText, labelStyle]}>{label}</ZulipText>
+        <ZulipText style={[ribbonStyles.labelText, labelStyle, { textAlign: 'right' }]}>
           {collapsed ? '\u25BC' : '\u25B2'}
         </ZulipText>
       </TouchableOpacity>
       {!collapsed && (
         <View
           style={[
-            styles.contentContainer,
+            ribbonStyles.contentContainer,
             contentBackgroundColor != null ? { backgroundColor: contentBackgroundColor } : null,
           ]}
         >

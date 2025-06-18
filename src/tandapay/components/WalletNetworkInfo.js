@@ -2,11 +2,12 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { getNetworkConfig } from '../providers/ProviderManager';
+import { TandaPayLayout, TandaPayTypography } from '../styles';
 
 type Props = $ReadOnly<{|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
@@ -18,14 +19,7 @@ type Props = $ReadOnly<{|
   |},
 |}>;
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 16,
-  },
-  infoSection: {
-    padding: 12,
-    borderRadius: 8,
-  },
+const customStyles = {
   networkName: {
     fontWeight: 'bold',
     marginBottom: 4,
@@ -34,7 +28,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
   },
-});
+};
 
 export default function WalletNetworkInfo(props: Props): Node {
   const { selectedNetwork, customRpcConfig } = props;
@@ -44,10 +38,10 @@ export default function WalletNetworkInfo(props: Props): Node {
     if (selectedNetwork === 'custom' && customRpcConfig) {
       return (
         <>
-          <ZulipText style={styles.networkName}>
+          <ZulipText style={customStyles.networkName}>
             {customRpcConfig.name}
           </ZulipText>
-          <ZulipText style={styles.networkDetail}>
+          <ZulipText style={customStyles.networkDetail}>
             {`Chain ID: ${customRpcConfig.chainId}`}
           </ZulipText>
         </>
@@ -56,7 +50,7 @@ export default function WalletNetworkInfo(props: Props): Node {
 
     if (selectedNetwork === 'custom') {
       return (
-        <ZulipText style={styles.networkName}>
+        <ZulipText style={customStyles.networkName}>
           Custom Network (Not Configured)
         </ZulipText>
       );
@@ -64,7 +58,7 @@ export default function WalletNetworkInfo(props: Props): Node {
 
     if (!selectedNetwork) {
       return (
-        <ZulipText style={styles.networkName}>
+        <ZulipText style={customStyles.networkName}>
           Loading network...
         </ZulipText>
       );
@@ -73,10 +67,10 @@ export default function WalletNetworkInfo(props: Props): Node {
     const config = getNetworkConfig(selectedNetwork);
     return (
       <>
-        <ZulipText style={styles.networkName}>
+        <ZulipText style={customStyles.networkName}>
           {config.name}
         </ZulipText>
-        <ZulipText style={styles.networkDetail}>
+        <ZulipText style={customStyles.networkDetail}>
           {`Chain ID: ${config.chainId}`}
         </ZulipText>
       </>
@@ -84,8 +78,8 @@ export default function WalletNetworkInfo(props: Props): Node {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.infoSection, { backgroundColor: themeData.cardColor }]}>
+    <View style={{ marginBottom: 16 }}>
+      <View style={[{ padding: 12, borderRadius: 8 }, { backgroundColor: themeData.cardColor }]}>
         {renderNetworkDetails()}
       </View>
     </View>

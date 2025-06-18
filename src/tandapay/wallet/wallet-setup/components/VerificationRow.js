@@ -2,10 +2,11 @@
 
 import React from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 
 import ZulipText from '../../../../common/ZulipText';
 import WordChip from './WordChip';
+import { TandaPayColors } from '../../../styles';
 
 type Props = $ReadOnly<{|
   position: number,
@@ -13,7 +14,7 @@ type Props = $ReadOnly<{|
   onClear: (position: number) => void,
 |}>;
 
-const styles = StyleSheet.create({
+const customStyles = {
   verificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -30,18 +31,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   placeholderText: {
-    color: '#999',
+    color: TandaPayColors.disabled,
     fontStyle: 'italic',
   },
-});
+};
 
 export default function VerificationRow(props: Props): Node {
   const { position, selectedWord, onClear } = props;
 
   return (
-    <View style={styles.verificationRow}>
-      <ZulipText style={styles.positionText} text={`${position + 1}.`} />
-      <View style={styles.selectedWordsContainer}>
+    <View style={customStyles.verificationRow}>
+      <ZulipText style={customStyles.positionText} text={`${position + 1}.`} />
+      <View style={customStyles.selectedWordsContainer}>
         {selectedWord != null && selectedWord.length > 0 ? (
           <WordChip
             word={selectedWord}
@@ -51,7 +52,7 @@ export default function VerificationRow(props: Props): Node {
         ) : (
           <ZulipText
             text="Tap a word below"
-            style={styles.placeholderText}
+            style={customStyles.placeholderText}
           />
         )}
       </View>

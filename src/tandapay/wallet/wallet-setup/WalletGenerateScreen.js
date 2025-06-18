@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, Alert, StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import type { RouteProp } from '../../../react-navigation';
@@ -12,8 +12,8 @@ import ZulipButton from '../../../common/ZulipButton';
 import ZulipText from '../../../common/ZulipText';
 import { generateWallet } from '../WalletManager';
 import type { WalletInfo } from '../WalletManager';
-import TandaPayStyles from '../../styles';
 import { HALF_COLOR, kWarningColor } from '../../../styles/constants';
+import TandaPayStyles from '../../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-generate'>,

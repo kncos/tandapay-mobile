@@ -5,7 +5,8 @@ import type { Node } from 'react';
 import { View, Alert } from 'react-native';
 
 import { useSelector, useDispatch } from '../../react-redux';
-import { ThemeContext, createStyleSheet } from '../../styles';
+import { ThemeContext } from '../../styles';
+import { TandaPayColors } from '../styles';
 import { getAvailableTokens } from './tokenSelectors';
 import { addCustomToken, removeCustomToken } from '../redux/actions';
 import { validateCustomToken } from './tokenConfig';
@@ -22,7 +23,8 @@ type Props = $ReadOnly<{|
   route: RouteProp<'token-management', void>,
 |}>;
 
-const styles = createStyleSheet({
+// Custom styles for this component
+const customStyles = {
   container: {
     padding: 16,
   },
@@ -54,17 +56,17 @@ const styles = createStyleSheet({
     opacity: 0.7,
   },
   defaultBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: TandaPayColors.success,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   badgeText: {
-    color: 'white',
+    color: TandaPayColors.white,
     fontSize: 12,
     fontWeight: 'bold',
   },
-});
+};
 
 export default function TokenManagementScreen(props: Props): Node {
   const dispatch = useDispatch();
@@ -141,15 +143,15 @@ export default function TokenManagementScreen(props: Props): Node {
 
   return (
     <Screen title="Manage Tokens" canGoBack>
-      <View style={styles.container}>
+      <View style={customStyles.container}>
         {/* Add Custom Token Section */}
-        <View style={styles.section}>
+        <View style={customStyles.section}>
           <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>
             Add Custom Token
           </ZulipText>
 
           <Input
-            style={styles.input}
+            style={customStyles.input}
             placeholder="Token Symbol (e.g., USDT)"
             value={symbol}
             onChangeText={setSymbol}
@@ -157,7 +159,7 @@ export default function TokenManagementScreen(props: Props): Node {
           />
 
           <Input
-            style={styles.input}
+            style={customStyles.input}
             placeholder="Contract Address (0x...)"
             value={address}
             onChangeText={setAddress}
@@ -165,14 +167,14 @@ export default function TokenManagementScreen(props: Props): Node {
           />
 
           <Input
-            style={styles.input}
+            style={customStyles.input}
             placeholder="Token Name (e.g., Tether USD)"
             value={name}
             onChangeText={setName}
           />
 
           <Input
-            style={styles.input}
+            style={customStyles.input}
             placeholder="Decimals (usually 18)"
             value={decimals}
             onChangeText={setDecimals}
@@ -187,7 +189,7 @@ export default function TokenManagementScreen(props: Props): Node {
         </View>
 
         {/* Token List Section */}
-        <View style={styles.section}>
+        <View style={customStyles.section}>
           <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>
             Available Tokens
           </ZulipText>
@@ -196,34 +198,34 @@ export default function TokenManagementScreen(props: Props): Node {
             <View
               key={token.symbol}
               style={[
-                styles.tokenItem,
+                customStyles.tokenItem,
                 {
                   backgroundColor: themeData.cardColor,
                   borderColor: themeData.dividerColor,
                 },
               ]}
             >
-              <View style={styles.tokenInfo}>
-                <ZulipText style={[styles.tokenSymbol, { color: themeData.color }]}>
+              <View style={customStyles.tokenInfo}>
+                <ZulipText style={[customStyles.tokenSymbol, { color: themeData.color }]}>
                   {token.symbol}
                 </ZulipText>
-                <ZulipText style={[styles.tokenName, { color: themeData.color }]}>
+                <ZulipText style={[customStyles.tokenName, { color: themeData.color }]}>
                   {token.name}
                 </ZulipText>
                 {token.address != null && token.address !== '' && (
-                  <ZulipText style={[styles.tokenName, { color: themeData.color, fontSize: 12 }]}>
+                  <ZulipText style={[customStyles.tokenName, { color: themeData.color, fontSize: 12 }]}>
                     {token.address}
                   </ZulipText>
                 )}
               </View>
 
               {token.isDefault ? (
-                <View style={styles.defaultBadge}>
-                  <ZulipText style={styles.badgeText}>DEFAULT</ZulipText>
+                <View style={customStyles.defaultBadge}>
+                  <ZulipText style={customStyles.badgeText}>DEFAULT</ZulipText>
                 </View>
               ) : (
                 <ZulipButton
-                  style={{ backgroundColor: '#f44336' }}
+                  style={{ backgroundColor: TandaPayColors.error }}
                   text="Remove"
                   onPress={() => handleRemoveToken(token)}
                 />

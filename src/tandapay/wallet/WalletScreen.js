@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, ActivityIndicator, Linking } from 'react-native';
+import { View, ActivityIndicator, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import type { RouteProp } from '../../react-navigation';
@@ -25,14 +25,6 @@ type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet'>,
   route: RouteProp<'wallet', void>,
 |}>;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
 
 function SendReceiveButtonRow() {
   const navigation = useNavigation();
@@ -77,7 +69,7 @@ function SetupWalletButtonRow() {
 function WalletLoading() {
   return (
     <Screen title="Wallet Loading">
-      <View style={[styles.container, { justifyContent: 'center' }]}>
+      <View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, { justifyContent: 'center' }]}>
         <ActivityIndicator size="large" />
         <ZulipText text="Loading wallet..." style={{ marginTop: 16, textAlign: 'center' }} />
       </View>
@@ -88,7 +80,7 @@ function WalletLoading() {
 function WalletSetupScreen() {
   return (
     <Screen title="Wallet Setup">
-      <View style={styles.container}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ZulipText
           style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' }}
           text="No Wallet Found"
@@ -214,7 +206,7 @@ if (loading) {
 
   return (
     <Screen title="Wallet">
-      <View style={styles.container}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <WalletBalanceCard walletAddress={walletAddress} />
         <SendReceiveButtonRow />
         <TandaRibbon label="Transactions" backgroundColor={BRAND_COLOR}>

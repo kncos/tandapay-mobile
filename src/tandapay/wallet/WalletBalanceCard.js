@@ -17,6 +17,7 @@ import { useSelector, useDispatch } from '../../react-redux';
 import { selectToken } from '../redux/actions';
 import { getSelectedToken, getAvailableTokens } from '../tokens/tokenSelectors';
 import { useUpdateBalance } from './hooks/useUpdateBalance';
+import { TandaPayColors } from '../styles';
 
 import type { Token } from '../tokens/tokenTypes';
 
@@ -50,7 +51,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
-    backgroundColor: '#fff',
+    backgroundColor: TandaPayColors.white,
     borderWidth: 2,
   },
   label: {
@@ -68,9 +69,9 @@ const styles = StyleSheet.create({
     marginTop: 18,
     padding: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: TandaPayColors.whiteOverlay10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: TandaPayColors.whiteOverlay20,
     alignSelf: 'center',
   },
   pickerChip: {

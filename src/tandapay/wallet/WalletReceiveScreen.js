@@ -16,6 +16,7 @@ import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { HALF_COLOR } from '../../styles';
 import { getWalletAddress } from './WalletManager';
+import { TandaPayColors, TandaPayLayout } from '../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-receive'>,
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     fontSize: 12,
-    color: '#f39c12',
+    color: TandaPayColors.warning,
     textAlign: 'center',
     marginTop: 20,
     fontWeight: 'bold',
@@ -74,7 +75,7 @@ function QRCodeComponent({ value }: { value: string }) {
         value={value}
         size={200}
         backgroundColor="transparent"
-        color="#000"
+        color={TandaPayColors.black}
       />
     </View>
   );
