@@ -12,6 +12,7 @@ import {
   TANDAPAY_TOKEN_ADD_CUSTOM,
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
+  TANDAPAY_TOKEN_INVALIDATE_BALANCE,
 } from '../../actionConstants';
 
 // =============================================================================
@@ -71,6 +72,24 @@ export function updateTokenBalance(tokenSymbol: string, balance: string): PerAcc
     tokenSymbol,
     balance,
   };
+}
+
+/**
+ * Action to invalidate the cached balance for a token, forcing a refresh
+ */
+export function invalidateTokenBalance(tokenSymbol: string): PerAccountAction {
+  return {
+    type: TANDAPAY_TOKEN_INVALIDATE_BALANCE,
+    tokenSymbol,
+  };
+}
+
+/**
+ * Helper function to invalidate all token balances (useful after transactions)
+ * Returns an array of actions to dispatch
+ */
+export function invalidateAllTokenBalances(tokenSymbols: $ReadOnlyArray<string>): $ReadOnlyArray<PerAccountAction> {
+  return tokenSymbols.map(symbol => invalidateTokenBalance(symbol));
 }
 
 // =============================================================================

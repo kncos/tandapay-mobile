@@ -7,6 +7,7 @@ import {
   TANDAPAY_TOKEN_ADD_CUSTOM,
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
+  TANDAPAY_TOKEN_INVALIDATE_BALANCE,
 } from '../../../actionConstants';
 import type { TokenState, Token } from '../../tokens/tokenTypes';
 import { validateCustomToken } from '../../tokens/tokenConfig';
@@ -175,6 +176,27 @@ export default (state: TokenState = initialState, action: Action): TokenState =>
         lastUpdated: {
           ...state.lastUpdated,
           [action.tokenSymbol]: Date.now(),
+        },
+      };
+    }
+
+    case TANDAPAY_TOKEN_INVALIDATE_BALANCE: {
+      // Type-safe access to action properties
+      if (action.type !== TANDAPAY_TOKEN_INVALIDATE_BALANCE) {
+        return state;
+      }
+
+      // Validate inputs
+      if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
+        return state;
+      }
+
+      // Invalidate balance by setting lastUpdated to 0, which will make it stale
+      return {
+        ...state,
+        lastUpdated: {
+          ...state.lastUpdated,
+          [action.tokenSymbol]: 0,
         },
       };
     }

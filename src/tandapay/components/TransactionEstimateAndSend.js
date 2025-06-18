@@ -7,6 +7,7 @@ import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
+import { useBalanceInvalidation } from '../hooks/useBalanceInvalidation';
 
 export type GasEstimate = {|
   gasLimit: string,
@@ -113,6 +114,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   } = props;
 
   const themeData = useContext(ThemeContext);
+  const { invalidateAllTokens } = useBalanceInvalidation();
   const [gasEstimate, setGasEstimate] = useState<?GasEstimate>(null);
   const [estimating, setEstimating] = useState(false);
   const [sending, setSending] = useState(false);
@@ -175,6 +177,9 @@ export default function TransactionEstimateAndSend(props: Props): Node {
                   [{
                     text: 'OK',
                     onPress: () => {
+                      // Invalidate all token balances to force refresh on next visit
+                      invalidateAllTokens();
+
                       if (result.txHash != null) {
                         onTransactionSuccess?.(result.txHash);
                       }

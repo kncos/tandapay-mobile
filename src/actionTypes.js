@@ -68,6 +68,7 @@ import {
   TANDAPAY_TOKEN_ADD_CUSTOM,
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
+  TANDAPAY_TOKEN_INVALIDATE_BALANCE,
 } from './actionConstants';
 
 import type { UserMessageFlag } from './api/modelTypes';
@@ -703,12 +704,18 @@ type TandaPayTokenUpdateBalanceAction = $ReadOnly<{|
   balance: string,
 |}>;
 
+type TandaPayTokenInvalidateBalanceAction = $ReadOnly<{|
+  type: typeof TANDAPAY_TOKEN_INVALIDATE_BALANCE,
+  tokenSymbol: string,
+|}>;
+
 type TandaPayAction =
   | TandaPaySettingsUpdateAction
   | TandaPayTokenSelectAction
   | TandaPayTokenAddCustomAction
   | TandaPayTokenRemoveCustomAction
-  | TandaPayTokenUpdateBalanceAction;
+  | TandaPayTokenUpdateBalanceAction
+  | TandaPayTokenInvalidateBalanceAction;
 
 //
 // Then, the primary subtypes of `Action`.  Each of these should have some
@@ -878,6 +885,7 @@ export function isPerAccountApplicableAction(action: Action): boolean {
     case TANDAPAY_TOKEN_ADD_CUSTOM:
     case TANDAPAY_TOKEN_REMOVE_CUSTOM:
     case TANDAPAY_TOKEN_UPDATE_BALANCE:
+    case TANDAPAY_TOKEN_INVALIDATE_BALANCE:
       (action: PerAccountAction);
       (action: PerAccountApplicableAction);
       return true;
