@@ -1,17 +1,16 @@
 // @flow strict-local
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import type { Node } from 'react';
 import { Alert } from 'react-native';
 
 import type { AppNavigationProp } from '../nav/AppNavigator';
 import type { RouteProp } from '../react-navigation';
 import Screen from '../common/Screen';
-import SwitchRow from '../common/SwitchRow';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
 import ZulipButton from '../common/ZulipButton';
-import { IconWallet, IconNotifications, IconSmartphone, IconLanguage, IconPlusCircle } from '../common/Icons';
+import { IconWallet, IconSmartphone, IconLanguage, IconPlusCircle } from '../common/Icons';
 import { deleteWallet } from './wallet/WalletManager';
 
 type Props = $ReadOnly<{|
@@ -65,7 +64,7 @@ export default function TandaPaySettingsScreen(props: Props): Node {
         leftElement={{ type: 'icon', Component: IconWallet }}
         title="Wallet Settings"
         onPress={() => {
-          navigation.push('wallet');
+          navigation.push('wallet-settings');
         }}
         subtitle="Manage your crypto wallet preferences"
       />

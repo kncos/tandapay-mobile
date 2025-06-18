@@ -59,6 +59,7 @@ import TandaPayNetworkSettingsScreen from '../tandapay/TandaPayNetworkSettingsSc
 import WalletScreen from '../tandapay/wallet/WalletScreen';
 import WalletSendScreen from '../tandapay/wallet/WalletSendScreen';
 import WalletReceiveScreen from '../tandapay/wallet/WalletReceiveScreen';
+import WalletSettingsScreen from '../tandapay/wallet/WalletSettingsScreen';
 import WalletSetupScreen from '../tandapay/wallet/wallet-setup/WalletSetupScreen';
 import WalletGenerateScreen from '../tandapay/wallet/wallet-setup/WalletGenerateScreen';
 import WalletImportScreen from '../tandapay/wallet/wallet-setup/WalletImportScreen';
@@ -104,6 +105,7 @@ export type AppNavigatorParamList = {|
   +wallet: void,
   +'wallet-send': void,
   +'wallet-receive': void,
+  +'wallet-settings': void,
   +'wallet-setup': void,
   +'wallet-generate': {| setupScreenCount?: number |} | void,
   +'wallet-import': {| setupScreenCount?: number |} | void,
@@ -236,6 +238,7 @@ export default function AppNavigator(props: Props): Node {
       <Stack.Screen name="wallet" component={useHaveServerDataGate(WalletScreen)} />
       <Stack.Screen name="wallet-send" component={useHaveServerDataGate(WalletSendScreen)} />
       <Stack.Screen name="wallet-receive" component={useHaveServerDataGate(WalletReceiveScreen)} />
+      <Stack.Screen name="wallet-settings" component={useHaveServerDataGate(WalletSettingsScreen)} />
       <Stack.Screen name="wallet-setup" component={WalletSetupScreen} />
       <Stack.Screen name="wallet-generate" component={WalletGenerateScreen} />
       <Stack.Screen name="wallet-import" component={WalletImportScreen} />
