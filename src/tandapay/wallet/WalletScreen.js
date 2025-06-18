@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 import type { RouteProp } from '../../react-navigation';
@@ -12,11 +12,14 @@ import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import WalletBalanceCard from './WalletBalanceCard';
 import ZulipText from '../../common/ZulipText';
-import { TandaRibbon, TandaPayBanner } from '../components';
-import { BRAND_COLOR, QUARTER_COLOR } from '../../styles';
-import { hasWallet, getWalletAddress } from './WalletManager';
+import { TandaRibbon } from '../components';
+import { BRAND_COLOR } from '../../styles';
+import { hasWallet, getWalletAddress, hasEtherscanApiKey } from './WalletManager';
 import { useNavigation } from '../../react-navigation';
 import TandaPayStyles from '../styles';
+import { getExplorerAddressUrl, getExplorerTransactionUrl } from './ExplorerUtils';
+import useTransactionHistory from './useTransactionHistory';
+import TransactionList from './TransactionList';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet'>,
@@ -104,6 +107,15 @@ export default function WalletScreen(props: Props): Node {
   const [walletAddress, setWalletAddress] = useState<?string>(null);
   const [loading, setLoading] = useState(true);
   const [walletExists, setWalletExists] = useState(false);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+
+  const navigation = useNavigation();
+
+  // Use the custom hook for transaction management
+  const { transactionState, loadMoreState, loadMore, refresh } = useTransactionHistory({
+    walletAddress,
+    apiKeyConfigured,
+  });
 
   const checkWallet = useCallback(async () => {
     try {
@@ -114,8 +126,18 @@ export default function WalletScreen(props: Props): Node {
       if (exists) {
         const address = await getWalletAddress();
         setWalletAddress(address);
+
+        // Check if API key is configured
+        const hasApiKey = await hasEtherscanApiKey();
+        setApiKeyConfigured(hasApiKey);
+
+        // Refresh the transaction history when wallet changes
+        if (address != null && address !== '' && hasApiKey) {
+          refresh();
+        }
       } else {
         setWalletAddress(null);
+        setApiKeyConfigured(false);
       }
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -123,7 +145,7 @@ export default function WalletScreen(props: Props): Node {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     checkWallet();
@@ -136,7 +158,49 @@ export default function WalletScreen(props: Props): Node {
     }, [checkWallet]),
   );
 
-  if (loading) {
+  const handleViewExplorer = useCallback(() => {
+    if (walletAddress == null || walletAddress === '') {
+      return;
+    }
+
+    const explorerUrl = getExplorerAddressUrl(walletAddress);
+    if (explorerUrl != null && explorerUrl !== '') {
+      Linking.openURL(explorerUrl).catch(() => {
+        // Handle error silently
+      });
+    }
+  }, [walletAddress]);
+
+  const handleGoToSettings = useCallback(() => {
+    navigation.push('wallet-settings');
+  }, [navigation]);
+
+  const handleViewTransactionInExplorer = useCallback((txHash: string) => {
+    const explorerUrl = getExplorerTransactionUrl(txHash);
+    if (explorerUrl != null && explorerUrl !== '') {
+      Linking.openURL(explorerUrl).catch(() => {
+        // Handle error silently
+      });
+    }
+  }, []);
+
+  const renderTransactionContent = () =>
+    // TransactionList handles all the transaction display logic including API key check
+     (
+       <TransactionList
+         walletAddress={walletAddress || ''}
+         apiKeyConfigured={apiKeyConfigured}
+         transactionState={transactionState}
+         loadMoreState={loadMoreState}
+         onLoadMore={() => {
+          loadMore();
+        }}
+         onGoToSettings={handleGoToSettings}
+         onViewExplorer={handleViewExplorer}
+         onViewTransactionInExplorer={handleViewTransactionInExplorer}
+       />
+    );
+if (loading) {
     return (
       <WalletLoading />
     );
@@ -154,18 +218,7 @@ export default function WalletScreen(props: Props): Node {
         <WalletBalanceCard walletAddress={walletAddress} />
         <SendReceiveButtonRow />
         <TandaRibbon label="Transactions" backgroundColor={BRAND_COLOR}>
-          <TandaPayBanner
-            visible
-            text="All Caught Up!"
-            backgroundColor={QUARTER_COLOR}
-            buttons={[
-              {
-                id: 'view-explorer',
-                label: 'View on Explorer',
-                onPress: () => {},
-              },
-            ]}
-          />
+          {renderTransactionContent()}
         </TandaRibbon>
       </View>
     </Screen>
