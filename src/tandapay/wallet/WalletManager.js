@@ -10,6 +10,7 @@ import { ethers } from 'ethers';
 const MNEMONIC_STORAGE_KEY = 'wallet_mnemonic';
 const WALLET_ADDRESS_STORAGE_KEY = 'wallet_address';
 const HAS_WALLET_KEY = 'has_wallet';
+const ETHERSCAN_API_KEY_STORAGE_KEY = 'etherscan_api_key';
 
 export type WalletInfo = {|
   address: string,
@@ -51,7 +52,7 @@ export async function generateWallet(): Promise<WalletInfo> {
 
     // Store the mnemonic and address securely
     await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
-      requireAuthentication: false, // We'll handle auth at app level
+      requireAuthentication: true,
     });
     await SecureStore.setItemAsync(WALLET_ADDRESS_STORAGE_KEY, wallet.address, {
       requireAuthentication: false,
@@ -80,7 +81,7 @@ export async function importWallet(mnemonic: string): Promise<WalletInfo> {
 
     // Store the mnemonic and address securely
     await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
-      requireAuthentication: false,
+      requireAuthentication: true,
     });
     await SecureStore.setItemAsync(WALLET_ADDRESS_STORAGE_KEY, wallet.address, {
       requireAuthentication: false,
@@ -138,6 +139,7 @@ export async function deleteWallet(): Promise<void> {
     await SecureStore.deleteItemAsync(MNEMONIC_STORAGE_KEY);
     await SecureStore.deleteItemAsync(WALLET_ADDRESS_STORAGE_KEY);
     await SecureStore.deleteItemAsync(HAS_WALLET_KEY);
+    await SecureStore.deleteItemAsync(ETHERSCAN_API_KEY_STORAGE_KEY);
   } catch (error) {
     // Error deleting wallet
     throw new Error('Failed to delete wallet');
@@ -153,5 +155,56 @@ export function validateMnemonic(mnemonic: string): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Check if an Etherscan API key is stored
+ */
+export async function hasEtherscanApiKey(): Promise<boolean> {
+  try {
+    const apiKey = await SecureStore.getItemAsync(ETHERSCAN_API_KEY_STORAGE_KEY);
+    return apiKey !== null && apiKey.trim() !== '';
+  } catch (error) {
+    // Error checking API key existence
+    return false;
+  }
+}
+
+/**
+ * Store Etherscan API key securely
+ */
+export async function storeEtherscanApiKey(apiKey: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(ETHERSCAN_API_KEY_STORAGE_KEY, apiKey.trim(), {
+      requireAuthentication: false,
+    });
+  } catch (error) {
+    // Error storing API key
+    throw new Error('Failed to store Etherscan API key');
+  }
+}
+
+/**
+ * Get the stored Etherscan API key
+ */
+export async function getEtherscanApiKey(): Promise<?string> {
+  try {
+    return await SecureStore.getItemAsync(ETHERSCAN_API_KEY_STORAGE_KEY);
+  } catch (error) {
+    // Error getting API key
+    return null;
+  }
+}
+
+/**
+ * Delete the stored Etherscan API key
+ */
+export async function deleteEtherscanApiKey(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(ETHERSCAN_API_KEY_STORAGE_KEY);
+  } catch (error) {
+    // Error deleting API key
+    throw new Error('Failed to delete Etherscan API key');
   }
 }

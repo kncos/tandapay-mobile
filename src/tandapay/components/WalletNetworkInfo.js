@@ -7,7 +7,6 @@ import { View, StyleSheet } from 'react-native';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { getNetworkConfig } from '../providers/ProviderManager';
-import { HIGHLIGHT_COLOR } from '../../styles/constants';
 
 type Props = $ReadOnly<{|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
