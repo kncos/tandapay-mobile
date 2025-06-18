@@ -15,7 +15,7 @@ import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getSelectedToken } from '../tokens/tokenSelectors';
-import { getTandaPaySelectedNetwork } from '../redux/selectors';
+import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { transferToken, estimateTransferGas } from '../web3';
 import { getWalletInstance } from './WalletManager';
 import {
@@ -23,6 +23,7 @@ import {
   AmountInput,
   validateEthereumAddress,
   TransactionEstimateAndSend,
+  WalletNetworkInfo,
 } from '../components';
 import type {
   TransactionParams,
@@ -51,13 +52,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     alignItems: 'center',
   },
-  warningText: {
-    color: '#ff9800',
-    fontSize: 14,
-    marginBottom: 16,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
 });
 
 export default function WalletSendScreen(props: Props): Node {
@@ -65,6 +59,7 @@ export default function WalletSendScreen(props: Props): Node {
   const themeData = useContext(ThemeContext);
   const selectedToken = useSelector(getSelectedToken);
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
+  const customRpcConfig = useSelector(getTandaPayCustomRpcConfig);
 
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
@@ -227,10 +222,6 @@ export default function WalletSendScreen(props: Props): Node {
   return (
     <Screen title="Send" canGoBack>
       <View style={styles.container}>
-        <ZulipText style={styles.warningText}>
-          ⚠️ This transaction will be sent on Ethereum Sepolia testnet
-        </ZulipText>
-
         {/* Token Info */}
         <View style={[styles.tokenInfo, { backgroundColor: themeData.cardColor }]}>
           <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>
@@ -242,6 +233,12 @@ export default function WalletSendScreen(props: Props): Node {
             {selectedToken.name}
           </ZulipText>
         </View>
+
+        {/* Network Info */}
+        <WalletNetworkInfo
+          selectedNetwork={selectedNetwork}
+          customRpcConfig={customRpcConfig}
+        />
 
         {/* Send Form */}
         <View style={styles.section}>
