@@ -8,7 +8,7 @@ import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import Input from '../../common/Input';
 import { ThemeContext } from '../../styles';
-import { TandaPayLayout, TandaPayTypography } from '../styles';
+import TandaPayStyles from '../styles';
 
 type Props = $ReadOnly<{|
   cacheExpirationMs: number,
@@ -30,41 +30,10 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  sectionDescription: {
-    fontSize: 14,
-    marginBottom: 16,
-    opacity: 0.7,
-  },
   formSection: {
     padding: 16,
     borderRadius: 8,
     marginTop: 12,
-  },
-  input: {
-    marginBottom: 12,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  inputDescription: {
-    fontSize: 12,
-    opacity: 0.6,
-    marginBottom: 8,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    marginTop: 16,
-  },
-  button: {
-    flex: 1,
-    marginHorizontal: 6,
   },
   currentValues: {
     marginTop: 16,
@@ -153,20 +122,19 @@ export default function NetworkPerformanceSettings(props: Props): Node {
 
   return (
     <View style={styles.container}>
-      <ZulipText style={styles.sectionTitle}>Network Performance Settings</ZulipText>
-      <ZulipText style={styles.sectionDescription}>
+      <ZulipText style={TandaPayStyles.sectionTitle}>Network Performance Settings</ZulipText>
+      <ZulipText style={TandaPayStyles.description}>
         Configure caching, rate limiting, and retry behavior for blockchain network calls.
         These settings affect how the app interacts with TandaPay contracts.
       </ZulipText>
 
       <View style={[styles.formSection, { backgroundColor: themeData.cardColor }]}>
         {/* Cache Expiration */}
-        <ZulipText style={styles.inputLabel}>Cache Expiration Time</ZulipText>
-        <ZulipText style={styles.inputDescription}>
+        <ZulipText style={TandaPayStyles.inputLabel}>Cache Expiration Time</ZulipText>
+        <ZulipText style={TandaPayStyles.description}>
           How long (in milliseconds) to cache contract data before refreshing. Default: 30000ms (30 seconds)
         </ZulipText>
         <Input
-          style={styles.input}
           placeholder="30000"
           value={localCacheExpiration}
           onChangeText={setLocalCacheExpiration}
@@ -176,12 +144,11 @@ export default function NetworkPerformanceSettings(props: Props): Node {
         />
 
         {/* Rate Limit Delay */}
-        <ZulipText style={styles.inputLabel}>Rate Limit Delay</ZulipText>
-        <ZulipText style={styles.inputDescription}>
+        <ZulipText style={TandaPayStyles.inputLabel}>Rate Limit Delay</ZulipText>
+        <ZulipText style={TandaPayStyles.description}>
           Delay (in milliseconds) between consecutive blockchain calls. Default: 100ms
         </ZulipText>
         <Input
-          style={styles.input}
           placeholder="100"
           value={localRateLimitDelay}
           onChangeText={setLocalRateLimitDelay}
@@ -191,12 +158,11 @@ export default function NetworkPerformanceSettings(props: Props): Node {
         />
 
         {/* Retry Attempts */}
-        <ZulipText style={styles.inputLabel}>Retry Attempts</ZulipText>
-        <ZulipText style={styles.inputDescription}>
+        <ZulipText style={TandaPayStyles.inputLabel}>Retry Attempts</ZulipText>
+        <ZulipText style={TandaPayStyles.description}>
           Number of times to retry failed network calls. Default: 3 attempts
         </ZulipText>
         <Input
-          style={styles.input}
           placeholder="3"
           value={localRetryAttempts}
           onChangeText={setLocalRetryAttempts}
@@ -205,16 +171,16 @@ export default function NetworkPerformanceSettings(props: Props): Node {
           editable={!disabled}
         />
 
-        <View style={styles.buttonRow}>
+        <View style={TandaPayStyles.buttonRow}>
           <ZulipButton
-            style={styles.button}
+            style={TandaPayStyles.button}
             disabled={Boolean(disabled) || !isFormValid() || !hasChanges()}
             text="Apply Settings"
             onPress={handleApplyAll}
           />
 
           <ZulipButton
-            style={styles.button}
+            style={TandaPayStyles.button}
             disabled={Boolean(disabled)}
             text="Reset to Defaults"
             onPress={handleResetToDefaults}

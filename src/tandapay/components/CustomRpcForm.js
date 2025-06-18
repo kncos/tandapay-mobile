@@ -37,12 +37,6 @@ export default function CustomRpcForm(props: Props): Node {
   const [customChainId, setCustomChainId] = useState(initialConfig?.chainId.toString() || '');
   const [customExplorerUrl, setCustomExplorerUrl] = useState(initialConfig?.blockExplorerUrl || '');
 
-  const customStyles = {
-    input: {
-      marginBottom: 12,
-    },
-  };
-
   const handleSave = () => {
     if (!customName.trim() || !customRpcUrl.trim() || !customChainId.trim()) {
       return;
@@ -81,7 +75,6 @@ export default function CustomRpcForm(props: Props): Node {
 
       <View style={[{ padding: 16, borderRadius: 8, marginTop: 12 }, { backgroundColor: themeData.cardColor }]}>
         <Input
-          style={customStyles.input}
           placeholder="Network Name (e.g., Local Ganache)"
           value={customName}
           onChangeText={setCustomName}
@@ -91,7 +84,6 @@ export default function CustomRpcForm(props: Props): Node {
         />
 
         <Input
-          style={customStyles.input}
           placeholder="RPC URL (e.g., http://localhost:8545)"
           value={customRpcUrl}
           onChangeText={setCustomRpcUrl}
@@ -101,7 +93,6 @@ export default function CustomRpcForm(props: Props): Node {
         />
 
         <Input
-          style={customStyles.input}
           placeholder="Chain ID (e.g., 1337)"
           value={customChainId}
           onChangeText={setCustomChainId}
@@ -111,7 +102,6 @@ export default function CustomRpcForm(props: Props): Node {
         />
 
         <Input
-          style={customStyles.input}
           placeholder="Block Explorer URL (optional)"
           value={customExplorerUrl}
           onChangeText={setCustomExplorerUrl}
