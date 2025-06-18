@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { switchNetwork, setCustomRpc, clearCustomRpc } from '../redux/actions';
 import { validateCustomRpcConfig } from '../providers/ProviderManager';
+import { useBalanceInvalidation } from './useBalanceInvalidation';
 
 type NetworkHookReturn = {|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
@@ -35,6 +36,7 @@ export function useNetworkSettings(): NetworkHookReturn {
   const dispatch = useDispatch();
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const customRpcConfig = useSelector(getTandaPayCustomRpcConfig);
+  const { invalidateAllTokens } = useBalanceInvalidation();
 
   const [loading, setLoading] = useState(false);
   const [switchingNetwork, setSwitchingNetwork] = useState(null);
@@ -57,13 +59,16 @@ export function useNetworkSettings(): NetworkHookReturn {
       // Wait for state to update
       await new Promise(resolve => setTimeout(resolve, 200));
 
+      // Invalidate all token balances since they are different on different networks
+      invalidateAllTokens();
+
       Alert.alert('Network Switched', `Successfully switched to ${networkName}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to switch network. Please try again.');
     } finally {
       setSwitchingNetwork(null);
     }
-  }, [selectedNetwork, customRpcConfig, dispatch, switchingNetwork]);
+  }, [selectedNetwork, customRpcConfig, dispatch, switchingNetwork, invalidateAllTokens]);
 
   const handleSaveCustomRpc = useCallback(async (config) => {
     setLoading(true);
