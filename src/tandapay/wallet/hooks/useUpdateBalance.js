@@ -5,12 +5,14 @@ import { useSelector, useDispatch } from '../../../react-redux';
 import { updateTokenBalance } from '../../redux/actions';
 import { getTokenBalance, isTokenBalanceStale } from '../../tokens/tokenSelectors';
 import { fetchBalance } from '../../web3';
+import TandaPayErrorHandler from '../../errors/ErrorHandler';
 import type { Token } from '../../tokens/tokenTypes';
+import type { TandaPayError } from '../../errors/types';
 
 export type BalanceState = {|
   balance: ?string,
   loading: boolean,
-  error: ?string,
+  error: ?TandaPayError,
 |};
 
 export type BalanceActions = {|
@@ -24,7 +26,7 @@ export function useUpdateBalance(
 ): {| ...BalanceState, ...BalanceActions |} {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<?string>(null);
+  const [error, setError] = useState<?TandaPayError>(null);
 
   const balance = useSelector(state =>
     token ? getTokenBalance(state, token.symbol) : null
@@ -50,12 +52,23 @@ export function useUpdateBalance(
       setLoading(true);
       setError(null);
 
-      const fetchedBalance = await fetchBalance(token, walletAddress, network);
-      dispatch(updateTokenBalance(token.symbol, fetchedBalance));
+      const result = await fetchBalance(token, walletAddress, network);
+      if (result.success) {
+        dispatch(updateTokenBalance(token.symbol, result.data));
+      } else {
+        setError(result.error);
+      }
     } catch (err) {
-      const errorMessage = err?.message ?? 'Failed to fetch balance';
-      setError(errorMessage);
-      // Error fetching balance handled by state
+      // Fallback error handling for unexpected errors
+      const fallbackError = TandaPayErrorHandler.createError(
+        'UNKNOWN_ERROR',
+        err?.message ?? 'Failed to fetch balance',
+        {
+          userMessage: 'An unexpected error occurred. Please try again.',
+          retryable: true,
+        }
+      );
+      setError(fallbackError);
     } finally {
       setLoading(false);
     }
@@ -86,16 +99,30 @@ export function useUpdateBalance(
       setError(null);
 
       fetchBalance(token, walletAddress, network)
-        .then(bal => {
-          if (isMounted && token) {
-            dispatch(updateTokenBalance(token.symbol, bal));
-            setLoading(false);
+        .then(result => {
+          if (!isMounted) {
+            return;
           }
+
+          if (result.success) {
+            dispatch(updateTokenBalance(token.symbol, result.data));
+          } else {
+            setError(result.error);
+          }
+          setLoading(false);
         })
         .catch(err => {
           if (isMounted) {
-            const errorMessage = err?.message ?? 'Failed to fetch balance';
-            setError(errorMessage);
+            // Fallback error handling for unexpected errors
+            const fallbackError = TandaPayErrorHandler.createError(
+              'UNKNOWN_ERROR',
+              err?.message ?? 'Failed to fetch balance',
+              {
+                userMessage: 'An unexpected error occurred. Please try again.',
+                retryable: true,
+              }
+            );
+            setError(fallbackError);
             setLoading(false);
           }
         });

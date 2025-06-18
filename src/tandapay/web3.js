@@ -6,6 +6,8 @@ import '@ethersproject/shims';
 import { ethers } from 'ethers';
 
 import type { Token } from './tokens/tokenTypes';
+import type { TandaPayResult } from './errors/types';
+import TandaPayErrorHandler from './errors/ErrorHandler';
 import { createProvider } from './providers/ProviderManager';
 
 // Redux store import for getting current network
@@ -84,37 +86,89 @@ export function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum'
 }
 
 /**
- * Fetches the balance for a given token and address.
+ * Fetches the balance for a given token and address with comprehensive error handling.
  * If token.address is null, fetches ETH balance. Otherwise, fetches ERC20 balance.
- * Returns a string representing the balance (in human-readable units).
+ * Returns a TandaPayResult with either the balance string or structured error information.
  */
 export async function fetchBalance(
   token: Token,
   address: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<string> {
-  const provider = getProvider(network);
+): Promise<TandaPayResult<string>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      // Input validation
+      if (!ethers.utils.isAddress(address)) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Invalid address format',
+          'Please provide a valid Ethereum address'
+        );
+      }
 
-  try {
-    if (!address || address === '') {
-      return '0';
-    }
+      if (!token || !token.symbol) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Invalid token',
+          'Token information is missing'
+        );
+      }
 
-    if (token.address == null) {
-      // ETH balance
-      const bal = await provider.getBalance(address);
-      return ethers.utils.formatEther(bal);
-    } else {
-      // ERC20 balance
-      const contract = new ethers.Contract(token.address, ERC20_ABI, provider);
-      const balance = await contract.balanceOf(address);
-      return ethers.utils.formatUnits(balance, token.decimals);
-    }
-  } catch (e) {
-    // Error fetching balance
-    // Error fetching balance for token, returning 0
-    return '0';
-  }
+      const provider = getProvider(network);
+
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(TandaPayErrorHandler.createError(
+            'TIMEOUT_ERROR',
+            'Balance fetch timed out',
+            {
+              userMessage: 'Network request timed out. Please try again.',
+              retryable: true
+            }
+          ));
+        }, 10000); // 10 second timeout
+      });
+
+      let balancePromise: Promise<string>;
+
+      if (token.address == null) {
+        // ETH balance
+        balancePromise = provider.getBalance(address)
+          .then(bal => ethers.utils.formatEther(bal));
+      } else {
+        // ERC20 balance
+        try {
+          const contract = new ethers.Contract(token.address, ERC20_ABI, provider);
+          balancePromise = contract.balanceOf(address)
+            .then(balance => ethers.utils.formatUnits(balance, token.decimals));
+        } catch (contractError) {
+          throw TandaPayErrorHandler.createContractError(
+            'Failed to create token contract',
+            { tokenAddress: token.address, contractError }
+          );
+        }
+      }
+
+      // Race between balance fetch and timeout
+      const balance = await Promise.race([balancePromise, timeoutPromise]);
+
+      // Validate the result
+      if (typeof balance !== 'string' || Number.isNaN(parseFloat(balance))) {
+        throw TandaPayErrorHandler.createError(
+          'PARSING_ERROR',
+          'Invalid balance format received',
+          {
+            userMessage: 'Received invalid balance data. Please try again.',
+            details: { balance, token: token.symbol }
+          }
+        );
+      }
+
+      return balance;
+    },
+    'NETWORK_ERROR',
+    'Unable to fetch balance. Please check your network connection or token configuration\nand try again.',
+    'BALANCE_FETCH_FAILED'
+  );
 }
 
 /**
@@ -263,6 +317,28 @@ export async function getGasPrice(
     return ethers.utils.formatUnits(gasPrice, 'gwei');
   } catch (error) {
     // Error fetching gas price
+    return '0';
+  }
+}
+
+/**
+ * LEGACY WRAPPER: Backward compatibility for existing code during migration.
+ * @deprecated Use fetchBalance() which returns TandaPayResult<string> instead.
+ * This function maintains the old API (returns string, silent failures) but internally
+ * uses the new error handling system.
+ */
+export async function fetchBalanceLegacy(
+  token: Token,
+  address: string,
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+): Promise<string> {
+  const result = await fetchBalance(token, address, network);
+  if (result.success) {
+    return result.data;
+  } else {
+    // Log the error for debugging but maintain silent failure behavior for legacy code
+    // eslint-disable-next-line no-console
+    console.warn('[TandaPay Migration] Balance fetch failed:', result.error.message);
     return '0';
   }
 }

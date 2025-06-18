@@ -9,10 +9,10 @@ import { Picker } from '@react-native-picker/picker';
 
 import ZulipText from '../../common/ZulipText';
 import Touchable from '../../common/Touchable';
-import { IconRefresh } from '../../common/Icons';
+import { IconRefresh, IconAlertTriangle } from '../../common/Icons';
 import AnimatedRotateComponent from '../../animation/AnimatedRotateComponent';
 import { ThemeContext } from '../../styles';
-import { BRAND_COLOR, HIGHLIGHT_COLOR } from '../../styles/constants';
+import { BRAND_COLOR, HIGHLIGHT_COLOR, kErrorColor } from '../../styles/constants';
 import { useSelector, useDispatch } from '../../react-redux';
 import { selectToken } from '../redux/actions';
 import { getSelectedToken, getAvailableTokens } from '../tokens/tokenSelectors';
@@ -79,6 +79,45 @@ const styles = {
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  // Error display styles
+  errorContainer: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)', // Light red background
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 67, 54, 0.3)',
+  },
+  errorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: kErrorColor,
+    marginLeft: 6,
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: kErrorColor,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: kErrorColor,
+    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+  },
+  retryButtonText: {
+    color: TandaPayColors.white,
+    fontSize: 13,
+    fontWeight: '600',
   },
 };
 
@@ -155,7 +194,7 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
   const themeData = useContext(ThemeContext);
 
   // Use the custom hook for balance management
-  const { balance, loading, refreshBalance } = useUpdateBalance(selectedToken, walletAddress);
+  const { balance, loading, error, refreshBalance } = useUpdateBalance(selectedToken, walletAddress);
 
   const handleTokenSelect = (token: Token) => {
     dispatch(selectToken(token.symbol));
@@ -193,6 +232,28 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
             </ZulipText>
           )}
         </View>
+
+        {/* Error Display Section */}
+        {error != null && !loading && (
+          <View style={styles.errorContainer}>
+            <View style={styles.errorHeader}>
+              <IconAlertTriangle size={18} color={kErrorColor} />
+              <ZulipText style={styles.errorTitle}>Balance Update Failed</ZulipText>
+            </View>
+            <ZulipText style={styles.errorMessage}>
+              {error.userMessage != null && error.userMessage.length > 0 ? error.userMessage : error.message}
+            </ZulipText>
+            {error.retryable === true && (
+              <Touchable
+                style={styles.retryButton}
+                onPress={refreshBalance}
+                accessibilityLabel="Retry balance fetch"
+              >
+                <ZulipText style={styles.retryButtonText}>Try Again</ZulipText>
+              </Touchable>
+            )}
+          </View>
+        )}
         <View style={styles.pickerContainer}>
           <TokenPicker
             selectedToken={selectedToken}
