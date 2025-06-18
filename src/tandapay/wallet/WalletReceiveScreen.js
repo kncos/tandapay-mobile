@@ -16,7 +16,7 @@ import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { HALF_COLOR } from '../../styles';
 import { getWalletAddress } from './WalletManager';
-import { TandaPayColors, TandaPayLayout } from '../styles';
+import { TandaPayColors } from '../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-receive'>,

@@ -7,7 +7,6 @@ import { View } from 'react-native';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { getNetworkConfig } from '../providers/ProviderManager';
-import { TandaPayLayout, TandaPayTypography } from '../styles';
 
 type Props = $ReadOnly<{|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
