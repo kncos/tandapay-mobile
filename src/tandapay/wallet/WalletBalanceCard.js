@@ -225,10 +225,10 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
             <ActivityIndicator size="large" />
           ) : (
             <ZulipText
-              style={[styles.hugeBalanceText, { fontSize: getFontSizeForStringLength(balance) }]}
+              style={[styles.hugeBalanceText, { fontSize: getFontSizeForStringLength(error != null ? '--' : balance) }]}
               numberOfLines={2} // allow up to 2 lines, no ellipsis
             >
-              {balance !== null && balance !== undefined ? balance : '--'}
+              {error != null ? '--' : (balance !== null && balance !== undefined ? balance : '--')}
             </ZulipText>
           )}
         </View>
