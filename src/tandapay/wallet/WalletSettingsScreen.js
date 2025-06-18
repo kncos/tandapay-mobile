@@ -1,17 +1,17 @@
 // @flow strict-local
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert, TextInput } from 'react-native';
+import { View, StyleSheet, Alert, TextInput, ScrollView } from 'react-native';
 
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import NavRow from '../../common/NavRow';
-import { IconPrivate, IconWallet } from '../../common/Icons';
-import { TandaRibbon } from '../components';
+import { IconPrivate } from '../../common/Icons';
+import { ThemeContext } from '../../styles';
+import { BRAND_COLOR, HIGHLIGHT_COLOR, HALF_COLOR } from '../../styles/constants';
 import {
   hasEtherscanApiKey,
   storeEtherscanApiKey,
@@ -27,41 +27,86 @@ type Props = $ReadOnly<{|
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContainer: {
+    flex: 1,
     padding: 16,
   },
   section: {
     marginBottom: 24,
   },
-  inputContainer: {
-    marginVertical: 16,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
   },
-  label: {
+  sectionDescription: {
+    fontSize: 14,
+    marginBottom: 16,
+    opacity: 0.7,
+  },
+  card: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 2,
+  },
+  statusIcon: {
+    marginRight: 12,
+  },
+  statusContent: {
+    flex: 1,
+  },
+  statusTitle: {
     fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  statusSubtitle: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    marginBottom: 8,
   },
   apiKeyContainer: {
-    backgroundColor: '#f5f5f5',
     padding: 16,
     borderRadius: 8,
-    marginVertical: 8,
+    marginBottom: 16,
+    borderWidth: 1,
   },
   apiKeyText: {
     fontFamily: 'monospace',
     fontSize: 14,
-    color: '#333',
+    marginBottom: 12,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginBottom: 16,
   },
   button: {
     flex: 1,
@@ -71,10 +116,12 @@ const styles = StyleSheet.create({
 
 export default function WalletSettingsScreen(props: Props): Node {
   const { navigation } = props;
+  const themeData = useContext(ThemeContext);
   const [hasApiKey, setHasApiKey] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [revealedApiKey, setRevealedApiKey] = useState<?string>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Check if API key exists on component mount
   useEffect(() => {
@@ -98,15 +145,22 @@ export default function WalletSettingsScreen(props: Props): Node {
       return;
     }
 
-    try {
-      await storeEtherscanApiKey(apiKeyInput.trim());
-      setHasApiKey(true);
-      setApiKeyInput('');
-      setRevealedApiKey(null);
-      Alert.alert('Success', 'Etherscan API key has been saved successfully.');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save API key. Please try again.');
-    }
+    setSaving(true);
+
+    // Use setTimeout to ensure state update happens before async operation
+    setTimeout(async () => {
+      try {
+        await storeEtherscanApiKey(apiKeyInput.trim());
+        setHasApiKey(true);
+        setApiKeyInput('');
+        setRevealedApiKey(null);
+        Alert.alert('Success', 'Etherscan API key has been saved successfully.');
+      } catch (error) {
+        Alert.alert('Error', 'Failed to save API key. Please try again.');
+      } finally {
+        setSaving(false);
+      }
+    }, 0);
   }, [apiKeyInput]);
 
   const handleRevealApiKey = useCallback(async () => {
@@ -165,107 +219,125 @@ export default function WalletSettingsScreen(props: Props): Node {
 
   return (
     <Screen title="Wallet Settings" canGoBack>
-      <View style={styles.container}>
-        <TandaRibbon label="Etherscan API Configuration" marginTop={0}>
-          <ZulipText
-            text="Configure your Etherscan API key to enable transaction history and enhanced blockchain data features."
-            style={{ marginBottom: 16, fontSize: 14, color: '#666' }}
-          />
+      <ScrollView style={styles.container}>
+        <View style={styles.scrollContainer}>
+          {/* Etherscan API Configuration Section */}
+          <View style={styles.section}>
+            <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>
+              Etherscan API Configuration
+            </ZulipText>
+            <ZulipText style={[styles.sectionDescription, { color: themeData.color }]}>
+              Configure your Etherscan API key to enable transaction history and enhanced blockchain data features.
+            </ZulipText>
 
-          {!hasApiKey ? (
-            <>
-              <NavRow
-                leftElement={{ type: 'icon', Component: IconPrivate }}
-                title="No API Key Set"
-                subtitle="Add an Etherscan API key to enhance functionality"
-                onPress={() => {}}
-              />
-
-              <View style={styles.inputContainer}>
-                <ZulipText style={styles.label} text="Etherscan API Key" />
-                <TextInput
-                  style={styles.textInput}
-                  value={apiKeyInput}
-                  onChangeText={setApiKeyInput}
-                  placeholder="Enter your Etherscan API key"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+            {/* Status Card */}
+            <View
+              style={[
+                styles.statusCard,
+                {
+                  backgroundColor: themeData.cardColor,
+                  borderColor: hasApiKey ? BRAND_COLOR : HIGHLIGHT_COLOR,
+                },
+              ]}
+            >
+              <View style={styles.statusIcon}>
+                <IconPrivate size={24} color={hasApiKey ? BRAND_COLOR : HALF_COLOR} />
               </View>
+              <View style={styles.statusContent}>
+                <ZulipText style={[styles.statusTitle, { color: themeData.color }]}>
+                  {hasApiKey ? 'API Key Configured' : 'No API Key Set'}
+                </ZulipText>
+                <ZulipText style={[styles.statusSubtitle, { color: themeData.color }]}>
+                  {hasApiKey
+                    ? 'Etherscan API key is set and active'
+                    : 'Add an Etherscan API key to enhance functionality'}
+                </ZulipText>
+              </View>
+            </View>
 
-              <ZulipButton
-                text="Save API Key"
-                onPress={handleSetApiKey}
-                disabled={!apiKeyInput.trim()}
-              />
-            </>
-          ) : (
-            <>
-              <NavRow
-                leftElement={{ type: 'icon', Component: IconPrivate }}
-                title="API Key Configured"
-                subtitle="Etherscan API key is set and active"
-                onPress={() => {}}
-              />
-
-              {revealedApiKey != null && revealedApiKey !== '' ? (
-                <View style={styles.apiKeyContainer}>
-                  <ZulipText style={styles.label} text="Your API Key:" />
-                  <ZulipText style={styles.apiKeyText} text={revealedApiKey} />
-                  <ZulipButton
-                    text="Hide"
-                    onPress={handleHideApiKey}
-                    secondary
-                    style={{ marginTop: 12 }}
-                  />
-                </View>
-              ) : (
+            {/* API Key Management */}
+            {hasApiKey && (
+              <>
+                {/* Reveal/Delete buttons */}
                 <View style={styles.buttonRow}>
                   <ZulipButton
                     style={styles.button}
-                    text="Reveal"
+                    text="Reveal Key"
                     onPress={handleRevealApiKey}
                     secondary
                   />
                   <ZulipButton
                     style={styles.button}
-                    text="Delete"
+                    text="Delete Key"
                     onPress={handleDeleteApiKey}
                     secondary
                   />
                 </View>
-              )}
 
+                {/* Revealed API Key */}
+                {revealedApiKey != null && revealedApiKey !== '' && (
+                  <View
+                    style={[
+                      styles.apiKeyContainer,
+                      {
+                        backgroundColor: themeData.cardColor,
+                        borderColor: HIGHLIGHT_COLOR,
+                      },
+                    ]}
+                  >
+                    <ZulipText style={[styles.inputLabel, { color: themeData.color }]}>
+                      Your API Key:
+                    </ZulipText>
+                    <ZulipText style={[styles.apiKeyText, { color: themeData.color }]}>
+                      {revealedApiKey}
+                    </ZulipText>
+                    <ZulipButton text="Hide" onPress={handleHideApiKey} secondary />
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Input Card */}
+            <View style={[styles.card, { backgroundColor: themeData.cardColor }]}>
               <View style={styles.inputContainer}>
-                <ZulipText style={styles.label} text="Update API Key" />
+                <ZulipText style={[styles.inputLabel, { color: themeData.color }]}>
+                  {hasApiKey ? 'Update API Key' : 'Etherscan API Key'}
+                </ZulipText>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    {
+                      borderColor: themeData.dividerColor,
+                      backgroundColor: themeData.backgroundColor,
+                      color: themeData.color,
+                    },
+                  ]}
                   value={apiKeyInput}
                   onChangeText={setApiKeyInput}
-                  placeholder="Enter new Etherscan API key"
+                  placeholder={hasApiKey ? 'Enter new Etherscan API key' : 'Enter your Etherscan API key'}
+                  placeholderTextColor={HALF_COLOR}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
                 <ZulipButton
-                  text="Update API Key"
+                  text={saving ? 'Saving...' : (hasApiKey ? 'Update API Key' : 'Save API Key')}
                   onPress={handleSetApiKey}
-                  disabled={!apiKeyInput.trim()}
-                  style={{ marginTop: 12 }}
+                  disabled={!apiKeyInput.trim() || saving}
+                  progress={saving}
                 />
               </View>
-            </>
-          )}
-        </TandaRibbon>
+            </View>
+          </View>
 
-        <TandaRibbon label="General Settings">
-          <NavRow
-            leftElement={{ type: 'icon', Component: IconWallet }}
-            title="Back to Wallet"
+          {/* Back to Wallet Button */}
+          <ZulipButton
+            style={{ marginTop: 16 }}
+            text="Back to Wallet"
             onPress={() => navigation.push('wallet')}
-            subtitle="Return to main wallet screen"
+            secondary
           />
-        </TandaRibbon>
-      </View>
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
