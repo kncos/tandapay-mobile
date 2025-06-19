@@ -10,6 +10,7 @@ import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
 import store from '../../boot/store';
 import { tryGetActiveAccountState } from '../../selectors';
+import TandaPayColors from '../styles/colors';
 
 export type EtherscanTransaction = {|
   blockNumber: string,
@@ -458,4 +459,182 @@ export function getTransactionInfo(transaction: EtherscanTransaction, walletAddr
     direction: isReceived ? 'received' : 'sent',
     counterparty: isReceived ? transaction.from : transaction.to,
   };
+}
+
+/**
+ * Enhanced transaction information including ERC20 details
+ */
+export type TransactionDetails = {|
+  direction: 'sent' | 'received',
+  counterparty: string,
+  isERC20Transfer: boolean,
+  tokenInfo?: {|
+    symbol: string,
+    amount: string,
+    contractAddress: string,
+  |},
+  ethValue: string,
+  formattedDate: string,
+  status: 'success' | 'failed',
+|};
+
+// ERC20 transfer function signature
+const ERC20_TRANSFER_SIGNATURE = '0xa9059cbb';
+
+/**
+ * Detect if a transaction is an ERC20 transfer
+ */
+export function isERC20Transfer(transaction: EtherscanTransaction): boolean {
+  return transaction.input.startsWith(ERC20_TRANSFER_SIGNATURE) && transaction.input.length >= 138;
+}
+
+/**
+ * Parse ERC20 transfer data from transaction input
+ */
+export function parseERC20Transfer(transaction: EtherscanTransaction): ?{|
+  to: string,
+  amount: string,
+|} {
+  if (!isERC20Transfer(transaction)) {
+    return null;
+  }
+
+  try {
+    // Remove function signature (first 10 characters: 0xa9059cbb)
+    const inputData = transaction.input.slice(10);
+
+    // Extract to address (first 32 bytes, last 20 bytes are the address)
+    const toAddress = `0x${inputData.slice(24, 64)}`;
+
+    // Extract amount (next 32 bytes)
+    const amountHex = inputData.slice(64, 128);
+    const amount = ethers.BigNumber.from(`0x${amountHex}`).toString();
+
+    return { to: toAddress, amount };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Format token amount with proper decimal handling
+ */
+export function formatTokenAmount(amountWei: string, decimals: number = 18, symbol: string = 'TOKEN'): string {
+  try {
+    const tokenAmount = ethers.utils.formatUnits(amountWei, decimals);
+    const value = parseFloat(tokenAmount);
+
+    if (value === 0) {
+      return `0 ${symbol}`;
+    }
+    if (value < 0.0001) {
+      return `< 0.0001 ${symbol}`;
+    }
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(2)}M ${symbol}`;
+    }
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(2)}K ${symbol}`;
+    }
+    return `${value.toFixed(4)} ${symbol}`;
+  } catch {
+    return `0 ${symbol}`;
+  }
+}
+
+/**
+ * Get enhanced transaction information with ERC20 detection
+ */
+export function getTransactionDetails(transaction: EtherscanTransaction, walletAddress: string): TransactionDetails {
+  const normalizedWallet = walletAddress.toLowerCase();
+  const isERC20 = isERC20Transfer(transaction);
+
+  let direction: 'sent' | 'received';
+  let counterparty: string;
+
+  if (isERC20) {
+    const erc20Data = parseERC20Transfer(transaction);
+    if (erc20Data) {
+      // For ERC20 transfers, check if the recipient matches our wallet
+      direction = erc20Data.to.toLowerCase() === normalizedWallet ? 'received' : 'sent';
+      counterparty = direction === 'received' ? transaction.from : erc20Data.to;
+    } else {
+      // Fallback to regular transaction logic if parsing fails
+      direction = transaction.to.toLowerCase() === normalizedWallet ? 'received' : 'sent';
+      counterparty = direction === 'received' ? transaction.from : transaction.to;
+    }
+  } else {
+    // Regular ETH transaction
+    direction = transaction.to.toLowerCase() === normalizedWallet ? 'received' : 'sent';
+    counterparty = direction === 'received' ? transaction.from : transaction.to;
+  }
+
+  // Determine transaction status
+  const status: 'success' | 'failed' = transaction.isError === '0' && transaction.txreceipt_status === '1'
+    ? 'success'
+    : 'failed';
+
+  const result: TransactionDetails = {
+    direction,
+    counterparty,
+    isERC20Transfer: isERC20,
+    ethValue: formatTransactionValue(transaction.value),
+    formattedDate: formatTransactionDate(transaction.timeStamp),
+    status,
+  };
+
+  // Add token info for ERC20 transfers
+  if (isERC20) {
+    const erc20Data = parseERC20Transfer(transaction);
+    if (erc20Data) {
+      result.tokenInfo = {
+        symbol: 'TOKEN', // Default symbol - can be enhanced with contract calls
+        amount: formatTokenAmount(erc20Data.amount),
+        contractAddress: transaction.to,
+      };
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Get color for transaction based on direction and status
+ */
+export function getTransactionColor(details: TransactionDetails): string {
+  if (details.status === 'failed') {
+    return TandaPayColors.error;
+  }
+
+  return details.direction === 'received' ? TandaPayColors.success : TandaPayColors.primary;
+}
+
+/**
+ * Format transaction display text with proper formatting
+ */
+export function formatTransactionDisplay(transaction: EtherscanTransaction, walletAddress: string): {|
+  text: string,
+  color: string,
+  details: TransactionDetails,
+|} {
+  const details = getTransactionDetails(transaction, walletAddress);
+  const color = getTransactionColor(details);
+
+  let text: string;
+
+  if (details.isERC20Transfer && details.tokenInfo) {
+    // ERC20 transfer display - no hash, cleaner format
+    const action = details.direction === 'sent' ? 'Sent' : 'Received';
+    text = `${action} ${details.tokenInfo.amount}`;
+  } else {
+    // Regular ETH transaction display - no hash, cleaner format
+    const action = details.direction === 'sent' ? 'Sent' : 'Received';
+    text = `${action} ${details.ethValue}`;
+  }
+
+  if (details.status === 'failed') {
+    text = `❌ ${text}`;
+  }
+
+  return { text, color, details };
 }

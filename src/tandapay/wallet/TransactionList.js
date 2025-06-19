@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { Node } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
@@ -8,9 +8,11 @@ import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { TandaPayBanner } from '../components';
 import { QUARTER_COLOR } from '../../styles';
-import { formatTransactionValue, getTransactionInfo } from './TransactionService';
+import { formatTransactionDisplay } from './TransactionService';
+import TransactionDetailsModal from './TransactionDetailsModal';
 import type { TransactionState, LoadMoreState } from './useTransactionHistory';
 import type { TandaPayError } from '../errors/types';
+import type { EtherscanTransaction } from './TransactionService';
 import buttons from '../styles/buttons';
 
 type Props = {|
@@ -36,6 +38,18 @@ export default function TransactionList({
   onViewExplorer,
   onViewTransactionInExplorer,
 }: Props): Node {
+  const [selectedTransaction, setSelectedTransaction] = useState<?EtherscanTransaction>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const showTransactionDetails = (transaction: EtherscanTransaction) => {
+    setSelectedTransaction(transaction);
+    setModalVisible(true);
+  };
+
+  const hideTransactionDetails = () => {
+    setModalVisible(false);
+    setSelectedTransaction(null);
+  };
   // No API key configured
   if (!apiKeyConfigured) {
     return (
@@ -144,26 +158,33 @@ export default function TransactionList({
     return (
       <>
         {transactionState.transactions.map((transaction) => {
-          const { direction } = getTransactionInfo(transaction, walletAddress);
-          const value = formatTransactionValue(transaction.value);
-          const truncatedHash = `${transaction.hash.substring(0, 10)}...${transaction.hash.substring(transaction.hash.length - 8)}`;
+          const displayInfo = formatTransactionDisplay(transaction, walletAddress);
 
           return (
             <TandaPayBanner
               key={transaction.hash}
               visible
-              text={`${direction === 'sent' ? 'Sent' : 'Received'} ${value} • ${truncatedHash}`}
+              text={displayInfo.text}
               backgroundColor={QUARTER_COLOR}
               buttons={[
                 {
-                  id: 'view-transaction',
-                  label: 'View in Explorer',
-                  onPress: () => onViewTransactionInExplorer(transaction.hash),
+                  id: 'more-details',
+                  label: 'More',
+                  onPress: () => showTransactionDetails(transaction),
                 },
               ]}
             />
           );
         })}
+
+        {/* Transaction Details Modal */}
+        <TransactionDetailsModal
+          visible={modalVisible}
+          transaction={selectedTransaction}
+          walletAddress={walletAddress}
+          onClose={hideTransactionDetails}
+          onViewInExplorer={onViewTransactionInExplorer}
+        />
 
         {/* Load More Button - only show if there might be more transactions */}
         {transactionState.hasMore || loadMoreState.status === 'loading' || loadMoreState.status === 'complete' ? (

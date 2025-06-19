@@ -54,7 +54,7 @@ export default function useTransactionHistory({
 
       if (result.success) {
         const hasMore = result.data.length === 10;
-        
+
         setTransactionState({
           status: 'success',
           transactions: result.data,
