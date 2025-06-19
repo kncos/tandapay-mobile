@@ -164,27 +164,34 @@ export async function fetchTransactionHistory(
   page: number = 1,
   offset: number = 10,
 ): Promise<TransactionFetchResult> {
-  return TandaPayErrorHandler.withErrorHandling(
-    async () => {
-      // Input validation
-      if (!walletAddress || walletAddress.trim() === '') {
-        throw TandaPayErrorHandler.createValidationError(
+  try {
+    // Input validation
+    if (!walletAddress || walletAddress.trim() === '') {
+      return {
+        success: false,
+        error: TandaPayErrorHandler.createValidationError(
           'Invalid wallet address',
           'Please provide a valid wallet address'
-        );
-      }
+        )
+      };
+    }
 
-      if (page < 1 || offset < 1 || offset > 10000) {
-        throw TandaPayErrorHandler.createValidationError(
+    if (page < 1 || offset < 1 || offset > 10000) {
+      return {
+        success: false,
+        error: TandaPayErrorHandler.createValidationError(
           'Invalid pagination parameters',
           'Page must be >= 1 and offset must be between 1 and 10000'
-        );
-      }
+        )
+      };
+    }
 
-      // Check if API key is configured
-      const apiKey = await getEtherscanApiKey();
-      if (apiKey == null || apiKey === '') {
-        throw TandaPayErrorHandler.createError(
+    // Check if API key is configured
+    const apiKey = await getEtherscanApiKey();
+    if (apiKey == null || apiKey === '') {
+      return {
+        success: false,
+        error: TandaPayErrorHandler.createError(
           'API_ERROR',
           'No Etherscan API key configured',
           {
@@ -192,14 +199,17 @@ export async function fetchTransactionHistory(
             code: 'NO_API_KEY',
             retryable: false
           }
-        );
-      }
+        )
+      };
+    }
 
-      // Get network information from Redux state
-      const networkInfo = getNetworkInfo();
+    // Get network information from Redux state
+    const networkInfo = getNetworkInfo();
 
-      if (!networkInfo.supportsEtherscan) {
-        throw TandaPayErrorHandler.createError(
+    if (!networkInfo.supportsEtherscan) {
+      return {
+        success: false,
+        error: TandaPayErrorHandler.createError(
           'API_ERROR',
           `Transaction history not supported for ${networkInfo.selectedNetwork} network`,
           {
@@ -207,11 +217,14 @@ export async function fetchTransactionHistory(
             code: 'UNSUPPORTED_NETWORK',
             retryable: false
           }
-        );
-      }
+        )
+      };
+    }
 
-      if (networkInfo.chainId == null || networkInfo.chainId === 0) {
-        throw TandaPayErrorHandler.createError(
+    if (networkInfo.chainId == null || networkInfo.chainId === 0) {
+      return {
+        success: false,
+        error: TandaPayErrorHandler.createError(
           'API_ERROR',
           `Invalid chain ID for ${networkInfo.selectedNetwork} network`,
           {
@@ -219,39 +232,42 @@ export async function fetchTransactionHistory(
             code: 'INVALID_CHAIN_ID',
             retryable: false
           }
-        );
-      }
+        )
+      };
+    }
 
-      const apiUrl = 'https://api.etherscan.io/v2/api'; // Default Etherscan API URL
+    const apiUrl = 'https://api.etherscan.io/v2/api'; // Default Etherscan API URL
 
-      // Build API URL
-      const url = new URL(apiUrl);
-      url.searchParams.set('chainid', String(networkInfo.chainId));
-      url.searchParams.set('module', 'account');
-      url.searchParams.set('action', 'txlist');
-      url.searchParams.set('address', walletAddress);
-      url.searchParams.set('startblock', '0');
-      url.searchParams.set('endblock', '99999999');
-      url.searchParams.set('page', String(page));
-      url.searchParams.set('offset', String(offset));
-      url.searchParams.set('sort', 'desc'); // Most recent first
-      url.searchParams.set('apikey', apiKey);
+    // Build API URL
+    const url = new URL(apiUrl);
+    url.searchParams.set('chainid', String(networkInfo.chainId));
+    url.searchParams.set('module', 'account');
+    url.searchParams.set('action', 'txlist');
+    url.searchParams.set('address', walletAddress);
+    url.searchParams.set('startblock', '0');
+    url.searchParams.set('endblock', '99999999');
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('offset', String(offset));
+    url.searchParams.set('sort', 'desc'); // Most recent first
+    url.searchParams.set('apikey', apiKey);
 
-      // Add timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-      try {
-        // Make API request
-        const response = await fetch(url.toString(), {
-          signal: controller.signal
-        });
+    try {
+      // Make API request
+      const response = await fetch(url.toString(), {
+        signal: controller.signal
+      });
 
-        clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-        if (!response.ok) {
-          if (response.status === 429) {
-            throw TandaPayErrorHandler.createError(
+      if (!response.ok) {
+        if (response.status === 429) {
+          return {
+            success: false,
+            error: TandaPayErrorHandler.createError(
               'RATE_LIMITED',
               'Too many requests to Etherscan API',
               {
@@ -259,9 +275,12 @@ export async function fetchTransactionHistory(
                 retryable: true,
                 details: { status: response.status, statusText: response.statusText }
               }
-            );
-          } else if (response.status === 401) {
-            throw TandaPayErrorHandler.createError(
+            )
+          };
+        } else if (response.status === 401) {
+          return {
+            success: false,
+            error: TandaPayErrorHandler.createError(
               'API_ERROR',
               'Invalid Etherscan API key',
               {
@@ -269,31 +288,54 @@ export async function fetchTransactionHistory(
                 code: 'INVALID_API_KEY',
                 retryable: false
               }
-            );
-          } else {
-            throw TandaPayErrorHandler.createNetworkError(
+            )
+          };
+        } else {
+          return {
+            success: false,
+            error: TandaPayErrorHandler.createNetworkError(
               `HTTP ${response.status}: ${response.statusText}`,
               {
                 userMessage: 'Network error while fetching transactions. Please try again.',
                 details: { status: response.status, statusText: response.statusText }
               }
-            );
-          }
+            )
+          };
+        }
+      }
+
+      const data: EtherscanResponse = await response.json();
+
+      if (data.status !== '1') {
+        // Check if it's a "no transactions found" case (common for pagination)
+        if (data.message && data.message.toLowerCase().includes('no transactions found')) {
+          return { success: true, data: [] }; // Return empty array for no more transactions
         }
 
-        const data: EtherscanResponse = await response.json();
+        // For any other error, use the result field as the error message
+        // Etherscan provides good error messages in the result field when status is "0"
+        const errorMessage = String(data.result || data.message || 'Unknown API error');
 
-        if (data.status !== '1') {
-          // Check if it's a "no transactions found" case (common for pagination)
-          if (data.message && data.message.toLowerCase().includes('no transactions found')) {
-            return []; // Return empty array for no more transactions
-          }
+        // Check if it's an API key error specifically
+        if (errorMessage.toLowerCase().includes('invalid api key')) {
+          return {
+            success: false,
+            error: TandaPayErrorHandler.createError(
+              'API_ERROR',
+              `Etherscan API error: ${errorMessage}`,
+              {
+                userMessage: errorMessage,
+                code: 'INVALID_API_KEY',
+                retryable: false,
+                details: { apiMessage: data.message, apiResult: data.result }
+              }
+            )
+          };
+        }
 
-          // For any other error, use the result field as the error message
-          // Etherscan provides good error messages in the result field when status is "0"
-          const errorMessage = String(data.result || data.message || 'Unknown API error');
-
-          throw TandaPayErrorHandler.createError(
+        return {
+          success: false,
+          error: TandaPayErrorHandler.createError(
             'API_ERROR',
             `Etherscan API error: ${errorMessage}`,
             {
@@ -302,55 +344,74 @@ export async function fetchTransactionHistory(
               retryable: true,
               details: { apiMessage: data.message, apiResult: data.result }
             }
-          );
-        }
+          )
+        };
+      }
 
-        // Validate the result
-        if (!Array.isArray(data.result)) {
-          throw TandaPayErrorHandler.createError(
+      // Validate the result
+      if (!Array.isArray(data.result)) {
+        return {
+          success: false,
+          error: TandaPayErrorHandler.createError(
             'PARSING_ERROR',
             'Invalid transaction data format received',
             {
               userMessage: 'Received invalid transaction data. Please try again.',
               details: { result: data.result }
             }
-          );
-        }
+          )
+        };
+      }
 
-        return data.result;
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
+      return { success: true, data: data.result };
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
 
-        if (fetchError.name === 'AbortError') {
-          throw TandaPayErrorHandler.createError(
+      if (fetchError.name === 'AbortError') {
+        return {
+          success: false,
+          error: TandaPayErrorHandler.createError(
             'TIMEOUT_ERROR',
             'Transaction history request timed out',
             {
               userMessage: 'Request timed out. Please check your connection and try again.',
               retryable: true
             }
-          );
-        }
+          )
+        };
+      }
 
-        // Re-throw if it's already a TandaPayError
-        if (fetchError.type) {
-          throw fetchError;
-        }
+      // Re-throw if it's already a TandaPayError
+      if (fetchError.type) {
+        return { success: false, error: fetchError };
+      }
 
-        // Handle other fetch errors
-        throw TandaPayErrorHandler.createNetworkError(
+      // Handle other fetch errors
+      return {
+        success: false,
+        error: TandaPayErrorHandler.createNetworkError(
           `Network request failed: ${fetchError.message}`,
           {
             userMessage: 'Network error while fetching transactions. Please check your connection.',
             details: { originalError: fetchError.message }
           }
-        );
-      }
-    },
-    'API_ERROR',
-    'Failed to load transaction history. Please check your connection and try again.',
-    'TRANSACTION_HISTORY_FETCH'
-  );
+        )
+      };
+    }
+  } catch (error) {
+    // Handle any other unexpected errors
+    return {
+      success: false,
+      error: TandaPayErrorHandler.createError(
+        'API_ERROR',
+        error.message || 'Failed to fetch transaction history',
+        {
+          userMessage: 'Failed to load transaction history. Please try again.',
+          details: error
+        }
+      )
+    };
+  }
 }
 
 /**

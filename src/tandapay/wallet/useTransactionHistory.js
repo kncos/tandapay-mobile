@@ -42,9 +42,7 @@ export default function useTransactionHistory({
     setTransactionState({ status: 'idle' });
     setLoadMoreState({ status: 'idle' });
     setCurrentPage(1);
-  }, [walletAddress, apiKeyConfigured]);
-
-  const fetchInitialTransactions = useCallback(async () => {
+  }, [walletAddress, apiKeyConfigured]);  const fetchInitialTransactions = useCallback(async () => {
     if (walletAddress == null || walletAddress === '') {
       return;
     }
@@ -55,10 +53,12 @@ export default function useTransactionHistory({
       const result = await fetchTransactionHistory(walletAddress, 1, 10);
 
       if (result.success) {
+        const hasMore = result.data.length === 10;
+        
         setTransactionState({
           status: 'success',
           transactions: result.data,
-          hasMore: result.data.length === 10,
+          hasMore,
         });
         setCurrentPage(1);
       } else {
@@ -91,9 +91,7 @@ export default function useTransactionHistory({
     ) {
       fetchInitialTransactions();
     }
-  }, [walletAddress, apiKeyConfigured, transactionState.status, fetchInitialTransactions]);
-
-  const loadMore = useCallback(async () => {
+  }, [walletAddress, apiKeyConfigured, transactionState.status, fetchInitialTransactions]);  const loadMore = useCallback(async () => {
     if (
       walletAddress == null
       || walletAddress === ''
@@ -109,6 +107,7 @@ export default function useTransactionHistory({
 
     try {
       const nextPage = currentPage + 1;
+
       const result = await fetchTransactionHistory(walletAddress, nextPage, 10);
 
       if (result.success) {

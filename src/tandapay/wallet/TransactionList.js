@@ -165,23 +165,27 @@ export default function TransactionList({
           );
         })}
 
-        {/* Load More Button */}
-        <View style={buttons.buttonRow}>
-          <ZulipButton
-            style={buttons.button}
-            text={
-              loadMoreState.status === 'complete'
-                ? 'All caught up!'
-                : loadMoreState.status === 'loading'
-                  ? 'Loading...'
-                  : 'Load More Transactions'
-            }
-            onPress={onLoadMore}
-            progress={loadMoreState.status === 'loading'}
-            disabled={loadMoreState.status === 'loading' || loadMoreState.status === 'complete'}
-            secondary
-          />
-        </View>
+        {/* Load More Button - only show if there might be more transactions */}
+        {transactionState.hasMore || loadMoreState.status === 'loading' || loadMoreState.status === 'complete' ? (
+          <View style={buttons.buttonRow}>
+            <ZulipButton
+              style={buttons.button}
+              text={
+                loadMoreState.status === 'complete'
+                  ? 'All caught up!'
+                  : loadMoreState.status === 'loading'
+                    ? 'Loading...'
+                    : 'Load More Transactions'
+              }
+              onPress={() => {
+                onLoadMore();
+              }}
+              progress={loadMoreState.status === 'loading'}
+              disabled={loadMoreState.status === 'loading' || loadMoreState.status === 'complete' || !transactionState.hasMore}
+              secondary
+            />
+          </View>
+        ) : null}
       </>
     );
   }
