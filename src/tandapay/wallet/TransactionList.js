@@ -10,6 +10,7 @@ import { TandaPayBanner } from '../components';
 import { QUARTER_COLOR } from '../../styles';
 import { formatTransactionValue, getTransactionInfo } from './TransactionService';
 import type { TransactionState, LoadMoreState } from './useTransactionHistory';
+import type { TandaPayError } from '../errors/types';
 import buttons from '../styles/buttons';
 
 type Props = {|
@@ -18,6 +19,7 @@ type Props = {|
   transactionState: TransactionState,
   loadMoreState: LoadMoreState,
   onLoadMore: () => void,
+  onRefresh: () => void,
   onGoToSettings: () => void,
   onViewExplorer: () => void,
   onViewTransactionInExplorer: (txHash: string) => void,
@@ -29,6 +31,7 @@ export default function TransactionList({
   transactionState,
   loadMoreState,
   onLoadMore,
+  onRefresh,
   onGoToSettings,
   onViewExplorer,
   onViewTransactionInExplorer,
@@ -68,23 +71,70 @@ export default function TransactionList({
 
   // Error loading transactions
   if (transactionState.status === 'error') {
+    const error: TandaPayError = transactionState.error;
+    const errorMessage = error.userMessage != null && error.userMessage !== ''
+      ? error.userMessage
+      : error.message != null && error.message !== ''
+        ? error.message
+        : 'Failed to load transactions';
+
+    // Build buttons array based on error type and retryability
+    const errorButtons = [];
+
+    // Always add retry button for retryable errors
+    if (error.retryable === true) {
+      errorButtons.push({
+        id: 'retry-transactions',
+        label: 'Retry',
+        onPress: onRefresh,
+      });
+    }
+
+    // Add settings button for API key related errors
+    if (error.code === 'NO_API_KEY' || error.code === 'INVALID_API_KEY') {
+      errorButtons.push({
+        id: 'wallet-settings',
+        label: 'Go to Settings',
+        onPress: onGoToSettings,
+      });
+    }
+
+    // Add specific actions for rate limiting
+    if (error.code === 'ETHERSCAN_RATE_LIMIT') {
+      // For rate limiting, only show retry (which is already added above if retryable)
+      // and suggest viewing on explorer as alternative
+      errorButtons.push({
+        id: 'view-explorer',
+        label: 'View on Explorer',
+        onPress: onViewExplorer,
+      });
+    } else if (error.code === 'UNSUPPORTED_CHAIN_ID' || error.code === 'UNSUPPORTED_NETWORK') {
+      // For unsupported networks, suggest viewing on explorer and settings
+      errorButtons.push({
+        id: 'view-explorer',
+        label: 'View on Explorer',
+        onPress: onViewExplorer,
+      });
+      errorButtons.push({
+        id: 'wallet-settings',
+        label: 'Network Settings',
+        onPress: onGoToSettings,
+      });
+    } else {
+      // Add explorer button as fallback for other errors
+      errorButtons.push({
+        id: 'view-explorer',
+        label: 'View on Explorer',
+        onPress: onViewExplorer,
+      });
+    }
+
     return (
       <TandaPayBanner
         visible
-        text={`Failed to load transactions: ${transactionState.error}`}
+        text={errorMessage}
         backgroundColor={QUARTER_COLOR}
-        buttons={[
-          {
-            id: 'wallet-settings',
-            label: 'Go to Settings',
-            onPress: onGoToSettings,
-          },
-          {
-            id: 'view-explorer',
-            label: 'View on Explorer',
-            onPress: onViewExplorer,
-          },
-        ]}
+        buttons={errorButtons}
       />
     );
   }

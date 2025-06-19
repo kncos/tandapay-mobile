@@ -187,6 +187,7 @@ export default function WalletScreen(props: Props): Node {
          onLoadMore={() => {
           loadMore();
         }}
+         onRefresh={refresh}
          onGoToSettings={handleGoToSettings}
          onViewExplorer={handleViewExplorer}
          onViewTransactionInExplorer={handleViewTransactionInExplorer}

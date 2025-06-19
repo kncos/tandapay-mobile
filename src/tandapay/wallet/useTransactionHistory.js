@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchTransactionHistory } from './TransactionService';
 import type { EtherscanTransaction } from './TransactionService';
+import type { TandaPayError } from '../errors/types';
+import TandaPayErrorHandler from '../errors/ErrorHandler';
 
 export type TransactionState =
   | {| status: 'idle' |}
   | {| status: 'loading' |}
   | {| status: 'success', transactions: $ReadOnlyArray<EtherscanTransaction>, hasMore: boolean |}
-  | {| status: 'error', error: string |};
+  | {| status: 'error', error: TandaPayError |};
 
 export type LoadMoreState =
   | {| status: 'idle' |}
@@ -55,17 +57,26 @@ export default function useTransactionHistory({
       if (result.success) {
         setTransactionState({
           status: 'success',
-          transactions: result.transactions,
-          hasMore: result.transactions.length === 10,
+          transactions: result.data,
+          hasMore: result.data.length === 10,
         });
         setCurrentPage(1);
       } else {
         setTransactionState({ status: 'error', error: result.error });
       }
     } catch (error) {
+      // Create a TandaPayError for unexpected errors
+      const tandaPayError = TandaPayErrorHandler.createError(
+        'API_ERROR',
+        error.message || 'Failed to fetch transactions',
+        {
+          userMessage: 'Failed to load transaction history. Please try again.',
+          details: error
+        }
+      );
       setTransactionState({
         status: 'error',
-        error: error.message || 'Failed to fetch transactions',
+        error: tandaPayError,
       });
     }
   }, [walletAddress]);
@@ -101,11 +112,11 @@ export default function useTransactionHistory({
       const result = await fetchTransactionHistory(walletAddress, nextPage, 10);
 
       if (result.success) {
-        const hasMore = result.transactions.length === 10;
+        const hasMore = result.data.length === 10;
 
         setTransactionState({
           status: 'success',
-          transactions: [...transactionState.transactions, ...result.transactions],
+          transactions: [...transactionState.transactions, ...result.data],
           hasMore,
         });
 
