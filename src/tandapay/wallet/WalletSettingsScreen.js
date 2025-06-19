@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import type { Node } from 'react';
 import { View, Alert, TextInput, ScrollView } from 'react-native';
+// $FlowFixMe[untyped-import]
+import Clipboard from '@react-native-clipboard/clipboard';
 
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
@@ -11,7 +13,7 @@ import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { IconPrivate } from '../../common/Icons';
 import { ThemeContext } from '../../styles';
-import { TandaPayTypography, TandaPayLayout } from '../styles';
+import TandaPayStyles, { TandaPayTypography, TandaPayLayout } from '../styles';
 import { BRAND_COLOR, HIGHLIGHT_COLOR, HALF_COLOR } from '../../styles/constants';
 import {
   hasEtherscanApiKey,
@@ -26,38 +28,13 @@ type Props = $ReadOnly<{|
   route: RouteProp<'wallet-settings', void>,
 |}>;
 
-// Only custom styles that can't be centralized
+// Only minimal custom styles that truly can't be centralized
 const customStyles = {
   statusIcon: {
     marginRight: 12,
   },
   statusContent: {
     flex: 1,
-  },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  statusSubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  buttonRowWithSpacing: {
-    ...TandaPayLayout.buttonRow,
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  button: {
-    flex: 1,
-    marginHorizontal: 4,
   },
 };
 
@@ -154,6 +131,13 @@ export default function WalletSettingsScreen(props: Props): Node {
     setRevealedApiKey(null);
   }, []);
 
+  const handleCopyApiKey = useCallback(() => {
+    if (revealedApiKey != null && revealedApiKey !== '') {
+      Clipboard.setString(revealedApiKey);
+      Alert.alert('Copied', 'API key copied to clipboard');
+    }
+  }, [revealedApiKey]);
+
   if (loading) {
     return (
       <Screen title="Wallet Settings" canGoBack>
@@ -188,10 +172,10 @@ export default function WalletSettingsScreen(props: Props): Node {
                 <IconPrivate size={24} color={hasApiKey ? BRAND_COLOR : HALF_COLOR} />
               </View>
               <View style={customStyles.statusContent}>
-                <ZulipText style={[customStyles.statusTitle, { color: themeData.color }]}>
+                <ZulipText style={[TandaPayTypography.subsectionTitle, { color: themeData.color }]}>
                   {hasApiKey ? 'API Key Configured' : 'No API Key Set'}
                 </ZulipText>
-                <ZulipText style={[customStyles.statusSubtitle, { color: themeData.color }]}>
+                <ZulipText style={[TandaPayTypography.description, { color: themeData.color }]}>
                   {hasApiKey
                     ? 'Etherscan API key is set and active'
                     : 'Add an Etherscan API key to enhance functionality'}
@@ -203,15 +187,15 @@ export default function WalletSettingsScreen(props: Props): Node {
             {hasApiKey && (
               <>
                 {/* Reveal/Delete buttons */}
-                <View style={customStyles.buttonRowWithSpacing}>
+                <View style={[TandaPayStyles.buttonRow, { marginTop: 16 }]}>
                   <ZulipButton
-                    style={customStyles.button}
+                    style={TandaPayStyles.button}
                     text="Reveal Key"
                     onPress={handleRevealApiKey}
                     secondary
                   />
                   <ZulipButton
-                    style={customStyles.button}
+                    style={TandaPayStyles.button}
                     text="Delete Key"
                     onPress={handleDeleteApiKey}
                     secondary
@@ -220,28 +204,41 @@ export default function WalletSettingsScreen(props: Props): Node {
 
                 {/* Revealed API Key */}
                 {revealedApiKey != null && revealedApiKey !== '' && (
-                  <Card style={{ borderWidth: 1, borderColor: HIGHLIGHT_COLOR }}>
-                    <ZulipText style={[TandaPayTypography.inputLabel, { color: themeData.color }]}>
+                  <Card style={{ borderWidth: 1, borderColor: HIGHLIGHT_COLOR, marginTop: 16 }}>
+                    <ZulipText style={[TandaPayTypography.inputLabel, { color: themeData.color, marginBottom: 8 }]}>
                       Your API Key:
                     </ZulipText>
-                    <ZulipText style={[TandaPayTypography.monospace, { color: themeData.color }]}>
+                    <ZulipText style={[TandaPayTypography.monospace, { color: themeData.color, marginBottom: 16 }]}>
                       {revealedApiKey}
                     </ZulipText>
-                    <ZulipButton text="Hide" onPress={handleHideApiKey} secondary />
+                    <View style={TandaPayStyles.buttonRow}>
+                      <ZulipButton
+                        style={TandaPayStyles.button}
+                        text="Copy to Clipboard"
+                        onPress={handleCopyApiKey}
+                        secondary
+                      />
+                      <ZulipButton
+                        style={TandaPayStyles.button}
+                        text="Hide"
+                        onPress={handleHideApiKey}
+                        secondary
+                      />
+                    </View>
                   </Card>
                 )}
               </>
             )}
 
             {/* Input Card */}
-            <Card>
+            <Card style={{ marginTop: 16 }}>
               <View style={TandaPayLayout.inputContainer}>
                 <ZulipText style={[TandaPayTypography.inputLabel, { color: themeData.color }]}>
                   {hasApiKey ? 'Update API Key' : 'Etherscan API Key'}
                 </ZulipText>
                 <TextInput
                   style={[
-                    customStyles.textInput,
+                    TandaPayStyles.base,
                     {
                       borderColor: themeData.dividerColor,
                       backgroundColor: themeData.backgroundColor,
