@@ -8,6 +8,8 @@ import { getTandaPayReadActions } from './read';
 import { TandaPayInfo } from './TandaPay';
 import { getTandaPayNetworkPerformance } from '../redux/selectors';
 import { tryGetActiveAccountState } from '../../selectors';
+import TandaPayErrorHandler from '../errors/ErrorHandler';
+import type { TandaPayResult } from '../errors/types';
 import store from '../../boot/store';
 
 // Configuration type for the community info class
@@ -101,7 +103,10 @@ class TandaPayCommunityInfo {
 
     const method = this.readActions[methodName];
     if (typeof method !== 'function') {
-      throw new Error(`Method ${methodName} not found on read actions`);
+      throw TandaPayErrorHandler.createContractError(
+        `Method ${methodName} not found on read actions`,
+        'Contract method not available. Please check the contract configuration.'
+      );
     }
 
     let lastError: Error;

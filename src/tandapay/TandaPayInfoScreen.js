@@ -16,6 +16,7 @@ import { IconServer, IconTandaPayInfo, IconAlertTriangle, IconGroup } from '../c
 import { createProvider } from './providers/ProviderManager';
 import { useSelector } from '../react-redux';
 import { getTandaPaySelectedNetwork } from './redux/selectors';
+import TandaPayErrorHandler from './errors/ErrorHandler';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-info'>,
@@ -40,9 +41,14 @@ export default function TandaPayInfoScreen(props: Props): Node {
     setError(null);
 
     const fetchBlockchainData = async () => {
-      try {
+      const result = await TandaPayErrorHandler.withErrorHandling(async () => {
         // Use centralized provider management with selected network
-        const provider = createProvider(selectedNetwork);
+        const providerResult = createProvider(selectedNetwork);
+        if (!providerResult.success) {
+          throw providerResult.error;
+        }
+        
+        const provider = providerResult.data;
         const [balance, blockNumber] = await Promise.all([
           // $FlowFixMe[unclear-type] - ethers provider methods
           (provider: any).getBalance('0x195605c92F0C875a98c7c144CF817A23D779C310'),
@@ -50,24 +56,21 @@ export default function TandaPayInfoScreen(props: Props): Node {
           (provider: any).getBlockNumber(),
         ]);
 
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setBlockchainData({
-            balance: ethers.utils.formatEther(balance),
-            blockNumber: blockNumber.toString(),
-          });
+        return {
+          balance: ethers.utils.formatEther(balance),
+          blockNumber: blockNumber.toString(),
+        };
+      }, 'NETWORK_ERROR');
+
+      // Only update state if component is still mounted
+      if (isMounted) {
+        if (result.success) {
+          setBlockchainData(result.data);
           setError(null);
+        } else {
+          setError(result.error.userMessage);
         }
-      } catch (e) {
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setError(e.message);
-        }
-      } finally {
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 

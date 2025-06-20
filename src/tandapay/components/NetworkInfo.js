@@ -63,7 +63,18 @@ export default function NetworkInfo(props: Props): Node {
       );
     }
 
-    const config = getNetworkConfig(selectedNetwork);
+    const configResult = getNetworkConfig(selectedNetwork);
+    if (!configResult.success) {
+      const errorMessage = configResult.error.userMessage != null ? configResult.error.userMessage : 'Unknown error';
+      return (
+        <ZulipText>
+          Network configuration error:
+          {errorMessage}
+        </ZulipText>
+      );
+    }
+    
+    const config = configResult.data;
     return (
       <>
         <ZulipText style={{ fontWeight: 'bold' }}>

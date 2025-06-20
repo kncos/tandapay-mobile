@@ -79,9 +79,17 @@ export function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum'
     if (!customConfig) {
       throw new Error('Custom network requires customRpcConfig in Redux state');
     }
-    return createProvider(network, customConfig);
+    const providerResult = createProvider(network, customConfig);
+    if (!providerResult.success) {
+      throw providerResult.error;
+    }
+    return providerResult.data;
   } else {
-    return createProvider(network);
+    const providerResult = createProvider(network);
+    if (!providerResult.success) {
+      throw providerResult.error;
+    }
+    return providerResult.data;
   }
 }
 

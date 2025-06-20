@@ -74,8 +74,13 @@ export function useNetworkSettings(): NetworkHookReturn {
     setLoading(true);
 
     try {
-      const validatedConfig = validateCustomRpcConfig(config);
-      dispatch(setCustomRpc(validatedConfig));
+      const validationResult = validateCustomRpcConfig(config);
+      if (!validationResult.success) {
+        Alert.alert('Invalid Configuration', validationResult.error.userMessage != null ? validationResult.error.userMessage : 'Please check your RPC configuration');
+        return;
+      }
+      
+      dispatch(setCustomRpc(validationResult.data));
 
       Alert.alert(
         'Custom RPC Saved',

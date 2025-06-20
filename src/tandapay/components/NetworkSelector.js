@@ -50,7 +50,11 @@ export default function NetworkSelector(props: Props): Node {
       <ZulipText style={TandaPayTypography.sectionTitle}>Select Network</ZulipText>
 
       {supportedNetworks.map((network) => {
-        const config = getNetworkConfig(network);
+        const configResult = getNetworkConfig(network);
+        if (!configResult.success) {
+          return null; // Skip networks with invalid config
+        }
+        const config = configResult.data;
         const isSelected = selectedNetwork === network;
         const isSwitching = switchingNetwork === network;
 

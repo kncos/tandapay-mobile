@@ -2,6 +2,8 @@
 
 import { ethers } from 'ethers';
 import { TandaPayInfo } from './TandaPay';
+import TandaPayErrorHandler from '../errors/ErrorHandler';
+import type { TandaPayResult } from '../errors/types';
 
 import type {
   SubgroupInfo,
@@ -259,17 +261,38 @@ export function getTandaPayReadActions(client: any, contractAddress: string): Ta
  * @param provider An ethers.js Provider instance
  * @returns An object with all the TandaPay contract read methods
  */
-export default function getTandaPayReader(contractAddress: string, provider: any): TandaPayReadActions {
-  if (!ethers.utils.isAddress(contractAddress)) {
-    throw new Error('Invalid TandaPay contract address');
-  }
-  if (!provider) {
-    throw new Error('Invalid provider');
-  }
-  // this one shouldn't happen but will catch a programming mistake
-  if (!TandaPayInfo.abi || !Array.isArray(TandaPayInfo.abi)) {
-    throw new Error('Invalid TandaPay ABI');
-  }
+export default function getTandaPayReader(contractAddress: string, provider: any): TandaPayResult<TandaPayReadActions> {
+  try {
+    if (!ethers.utils.isAddress(contractAddress)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid TandaPay contract address',
+        'Please provide a valid Ethereum contract address.'
+      );
+    }
+    if (!provider) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid provider',
+        'Please provide a valid network provider.'
+      );
+    }
+    // this one shouldn't happen but will catch a programming mistake
+    if (!TandaPayInfo.abi || !Array.isArray(TandaPayInfo.abi)) {
+      throw TandaPayErrorHandler.createContractError(
+        'Invalid TandaPay ABI',
+        'Contract ABI is not available. Please check the contract configuration.'
+      );
+    }
 
-  return getTandaPayReadActions(provider, contractAddress);
+    const actions = getTandaPayReadActions(provider, contractAddress);
+    return { success: true, data: actions };
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+    const tandaPayError = TandaPayErrorHandler.createContractError(
+      'Failed to create TandaPay contract reader',
+      'Unable to initialize contract reader. Please check the contract address and network connection.'
+    );
+    return { success: false, error: tandaPayError };
+  }
 }

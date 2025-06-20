@@ -3,6 +3,8 @@
 import '@ethersproject/shims';
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
+import TandaPayErrorHandler from '../errors/ErrorHandler';
+import type { TandaPayResult } from '../errors/types';
 
 // i don't care about this:
 const alchemy_api = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
@@ -88,39 +90,62 @@ function evictLRUIfNeeded(): void {
 }
 
 /**
- * Get provider instance for a specific network or custom configuration
+ * Get provider instance for a specific network or custom configuration with error handling
  */
 export function createProvider(
   network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
   customConfig?: NetworkConfig
-): mixed {
-  let cacheKey = network;
-  let config;
+): TandaPayResult<mixed> {
+  try {
+    let cacheKey = network;
+    let config;
 
-  if (network === 'custom' && customConfig) {
-    cacheKey = `custom-${customConfig.chainId}`;
-    config = customConfig;
-  } else if (network !== 'custom') {
-    config = NETWORK_CONFIGS[network];
-    if (!config) {
-      throw new Error(`Unsupported network: ${network}`);
+    if (network === 'custom') {
+      if (!customConfig) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Custom network configuration required',
+          'Please provide a valid custom network configuration.'
+        );
+      }
+      cacheKey = `custom-${customConfig.chainId}`;
+      config = customConfig;
+    } else {
+      config = NETWORK_CONFIGS[network];
+      if (!config) {
+        throw TandaPayErrorHandler.createValidationError(
+          `Unsupported network: ${network}`,
+          'Please select a supported network from the list.'
+        );
+      }
     }
-  } else {
-    throw new Error('Custom network requires customConfig parameter');
-  }
 
-  if (providerCache.has(cacheKey)) {
+    if (providerCache.has(cacheKey)) {
+      updateCacheAccess(cacheKey);
+      return { success: true, data: providerCache.get(cacheKey) };
+    }
+
+    // Evict old entries before adding new one
+    evictLRUIfNeeded();
+
+    const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
+    providerCache.set(cacheKey, provider);
     updateCacheAccess(cacheKey);
-    return providerCache.get(cacheKey);
+    return { success: true, data: provider };
+  } catch (error) {
+    if (error?.type) {
+      // Already a TandaPayError
+      return { success: false, error };
+    }
+    const tandaPayError = TandaPayErrorHandler.createError(
+      'NETWORK_ERROR',
+      error?.message || 'Failed to create network provider',
+      {
+        userMessage: 'Unable to connect to the selected network. Please check your internet connection and try again.',
+        details: error
+      }
+    );
+    return { success: false, error: tandaPayError };
   }
-
-  // Evict old entries before adding new one
-  evictLRUIfNeeded();
-
-  const provider = new ethers.providers.JsonRpcProvider(config.rpcUrl);
-  providerCache.set(cacheKey, provider);
-  updateCacheAccess(cacheKey);
-  return provider;
 }
 
 /**
@@ -149,14 +174,28 @@ export function getCacheStats(): {| size: number, maxSize: number, keys: Array<s
 }
 
 /**
- * Get network configuration
+ * Get network configuration with error handling
  */
-export function getNetworkConfig(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): NetworkConfig {
-  const config = NETWORK_CONFIGS[network];
-  if (!config) {
-    throw new Error(`Unsupported network: ${network}`);
+export function getNetworkConfig(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): TandaPayResult<NetworkConfig> {
+  try {
+    const config = NETWORK_CONFIGS[network];
+    if (!config) {
+      throw TandaPayErrorHandler.createValidationError(
+        `Unsupported network: ${network}`,
+        'Please select a supported network from the list.'
+      );
+    }
+    return { success: true, data: config };
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+    const tandaPayError = TandaPayErrorHandler.createValidationError(
+      `Invalid network: ${network}`,
+      'Please select a valid network configuration.'
+    );
+    return { success: false, error: tandaPayError };
   }
-  return config;
 }
 
 /**
@@ -167,25 +206,45 @@ export function getSupportedNetworks(): $ReadOnlyArray<'mainnet' | 'sepolia' | '
 }
 
 /**
- * Validate custom RPC configuration
+ * Validate custom RPC configuration with error handling
  */
 export function validateCustomRpcConfig(config: {
   name: string,
   rpcUrl: string,
   chainId: number,
   blockExplorerUrl?: string,
-}): NetworkConfig {
-  if (!config.name || !config.rpcUrl || !config.chainId) {
-    throw new Error('Custom RPC config must include name, rpcUrl, and chainId');
-  }
+}): TandaPayResult<NetworkConfig> {
+  try {
+    if (!config.name || !config.rpcUrl || !config.chainId) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Custom RPC config must include name, rpcUrl, and chainId',
+        'Please provide all required network configuration fields.'
+      );
+    }
 
-  if (config.chainId <= 0) {
-    throw new Error('Chain ID must be a positive number');
-  }
+    if (config.chainId <= 0) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Chain ID must be a positive number',
+        'Please enter a valid chain ID greater than 0.'
+      );
+    }
 
-  if (!config.rpcUrl.startsWith('http://') && !config.rpcUrl.startsWith('https://')) {
-    throw new Error('RPC URL must be a valid HTTP or HTTPS URL');
-  }
+    if (!config.rpcUrl.startsWith('http://') && !config.rpcUrl.startsWith('https://')) {
+      throw TandaPayErrorHandler.createValidationError(
+        'RPC URL must be a valid HTTP or HTTPS URL',
+        'Please enter a valid RPC URL starting with http:// or https://.'
+      );
+    }
 
-  return config;
+    return { success: true, data: config };
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+    const tandaPayError = TandaPayErrorHandler.createValidationError(
+      'Invalid RPC configuration',
+      'Please check your custom RPC configuration and try again.'
+    );
+    return { success: false, error: tandaPayError };
+  }
 }

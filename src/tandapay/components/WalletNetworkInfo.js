@@ -63,7 +63,16 @@ export default function WalletNetworkInfo(props: Props): Node {
       );
     }
 
-    const config = getNetworkConfig(selectedNetwork);
+    const configResult = getNetworkConfig(selectedNetwork);
+    if (!configResult.success) {
+      return (
+        <ZulipText style={customStyles.networkName}>
+          Network configuration error
+        </ZulipText>
+      );
+    }
+    
+    const config = configResult.data;
     return (
       <>
         <ZulipText style={customStyles.networkName}>

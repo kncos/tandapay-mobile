@@ -8,7 +8,8 @@ import { View, Alert, TouchableOpacity, Modal } from 'react-native';
 import { ethers } from 'ethers';
 // $FlowFixMe[untyped-import]
 import { BarCodeScanner } from 'expo-barcode-scanner';
-// $FlowFixMe[untyped-import]
+
+import TandaPayErrorHandler from '../errors/ErrorHandler';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import Input from '../../common/Input';
@@ -68,12 +69,12 @@ export default function AddressInput(props: Props): Node {
 
   // Validate Ethereum address with proper checksumming
   const validateAddress = useCallback((address: string): boolean => {
-    try {
+    const result = TandaPayErrorHandler.withSyncErrorHandling(() => {
       ethers.utils.getAddress(address.toLowerCase()); // Convert to lowercase first to handle mixed-case input
       return true;
-    } catch {
-      return false;
-    }
+    }, 'VALIDATION_ERROR');
+    
+    return result.success;
   }, []);
 
   // Handle address input change with validation
@@ -195,10 +196,10 @@ export default function AddressInput(props: Props): Node {
 
 // Export validation function for external use
 export const validateEthereumAddress = (address: string): boolean => {
-  try {
+  const result = TandaPayErrorHandler.withSyncErrorHandling(() => {
     ethers.utils.getAddress(address.toLowerCase());
     return true;
-  } catch {
-    return false;
-  }
+  }, 'VALIDATION_ERROR');
+  
+  return result.success;
 };

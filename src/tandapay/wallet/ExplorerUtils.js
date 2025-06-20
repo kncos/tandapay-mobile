@@ -23,9 +23,9 @@ export function getExplorerAddressUrl(address: string): ?string {
     if (selectedNetwork === 'custom' && customRpcConfig?.blockExplorerUrl != null && customRpcConfig.blockExplorerUrl !== '') {
       return `${customRpcConfig.blockExplorerUrl}/address/${address}`;
     } else if (selectedNetwork !== 'custom') {
-      const networkConfig = getNetworkConfig(selectedNetwork);
-      if (networkConfig.blockExplorerUrl != null && networkConfig.blockExplorerUrl !== '') {
-        return `${networkConfig.blockExplorerUrl}/address/${address}`;
+      const networkConfigResult = getNetworkConfig(selectedNetwork);
+      if (networkConfigResult.success && networkConfigResult.data.blockExplorerUrl != null && networkConfigResult.data.blockExplorerUrl !== '') {
+        return `${networkConfigResult.data.blockExplorerUrl}/address/${address}`;
       }
     }
 
@@ -53,9 +53,9 @@ export function getExplorerTransactionUrl(txHash: string): ?string {
     if (selectedNetwork === 'custom' && customRpcConfig?.blockExplorerUrl != null && customRpcConfig.blockExplorerUrl !== '') {
       return `${customRpcConfig.blockExplorerUrl}/tx/${txHash}`;
     } else if (selectedNetwork !== 'custom') {
-      const networkConfig = getNetworkConfig(selectedNetwork);
-      if (networkConfig.blockExplorerUrl != null && networkConfig.blockExplorerUrl !== '') {
-        return `${networkConfig.blockExplorerUrl}/tx/${txHash}`;
+      const networkConfigResult = getNetworkConfig(selectedNetwork);
+      if (networkConfigResult.success && networkConfigResult.data.blockExplorerUrl != null && networkConfigResult.data.blockExplorerUrl !== '') {
+        return `${networkConfigResult.data.blockExplorerUrl}/tx/${txHash}`;
       }
     }
 

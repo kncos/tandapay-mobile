@@ -15,6 +15,8 @@ import {
   IconTrendingUp,
 } from '../../common/Icons';
 
+import TandaPayErrorHandler from '../errors/ErrorHandler';
+
 /**
  * Standardized write transaction object
  */
@@ -39,23 +41,30 @@ export type WriteTransaction = {|
 // =============================================================================
 
 const createSimulation = (contractMethod: string, paramTransform?: (...args: any[]) => any[]) => async (contract: any, ...args: any[]) => {
-    try {
+    const executionResult = await TandaPayErrorHandler.withErrorHandling(async () => {
       const transformedArgs = paramTransform ? paramTransform(...args) : args;
-      const result = await contract.callStatic[contractMethod](...transformedArgs);
+      const callResult = await contract.callStatic[contractMethod](...transformedArgs);
       const gasEstimate = await contract.estimateGas[contractMethod](...transformedArgs);
 
       return {
-        success: true,
-        result,
+        result: callResult,
         gasEstimate: gasEstimate.toString(),
+      };
+    }, 'CONTRACT_ERROR');
+
+    if (executionResult.success) {
+      return {
+        success: true,
+        result: executionResult.data.result,
+        gasEstimate: executionResult.data.gasEstimate,
         error: null,
       };
-    } catch (error) {
+    } else {
       return {
         success: false,
         result: null,
         gasEstimate: null,
-        error: error.message || 'Simulation failed',
+        error: executionResult.error.userMessage,
       };
     }
   };

@@ -139,9 +139,9 @@ export default function TransactionEstimateAndSend(props: Props): Node {
       if (selectedNetwork === 'custom' && customRpcConfig?.blockExplorerUrl != null && customRpcConfig.blockExplorerUrl !== '') {
         return `${customRpcConfig.blockExplorerUrl}/tx/${txHash}`;
       } else if (selectedNetwork !== 'custom') {
-        const networkConfig = getNetworkConfig(selectedNetwork);
-        if (networkConfig.blockExplorerUrl != null && networkConfig.blockExplorerUrl !== '') {
-          return `${networkConfig.blockExplorerUrl}/tx/${txHash}`;
+        const networkConfigResult = getNetworkConfig(selectedNetwork);
+        if (networkConfigResult.success && networkConfigResult.data.blockExplorerUrl != null && networkConfigResult.data.blockExplorerUrl !== '') {
+          return `${networkConfigResult.data.blockExplorerUrl}/tx/${txHash}`;
         }
       }
       return null;
