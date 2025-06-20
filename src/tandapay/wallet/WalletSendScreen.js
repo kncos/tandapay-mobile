@@ -16,7 +16,7 @@ import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getSelectedToken } from '../tokens/tokenSelectors';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
-import { transferTokenLegacy as transferToken, estimateTransferGasLegacy as estimateTransferGas } from '../web3';
+import { transferToken, estimateTransferGas } from '../web3';
 import { getWalletInstance } from './WalletManager';
 import {
   AddressInput,
@@ -116,10 +116,10 @@ export default function WalletSendScreen(props: Props): Node {
         selectedNetwork,
       );
 
-      if (result.success && result.gasEstimate != null && result.gasPrice != null) {
-        const gasLimitValue = result.gasEstimate;
-        const gasPriceValue = result.gasPrice;
-        const estimatedCost = ((parseFloat(gasLimitValue) * parseFloat(gasPriceValue)) / 1e9).toFixed(8);
+      if (result.success) {
+        const gasLimitValue = result.data.gasLimit;
+        const gasPriceValue = result.data.gasPrice;
+        const estimatedCost = result.data.estimatedCost;
 
         return {
           success: true,
@@ -132,7 +132,7 @@ export default function WalletSendScreen(props: Props): Node {
       } else {
         return {
           success: false,
-          error: result.error ?? 'Unable to estimate gas costs.',
+          error: result.error.userMessage ?? result.error.message,
         };
       }
     } catch (error) {
@@ -168,15 +168,15 @@ export default function WalletSendScreen(props: Props): Node {
         selectedNetwork,
       );
 
-      if (result.success && result.txHash != null) {
+      if (result.success) {
         return {
           success: true,
-          txHash: result.txHash,
+          txHash: result.data,
         };
       } else {
         return {
           success: false,
-          error: result.error ?? 'Unknown error occurred.',
+          error: result.error.userMessage ?? result.error.message,
         };
       }
     } catch (error) {

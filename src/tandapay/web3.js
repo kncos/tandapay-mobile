@@ -95,7 +95,7 @@ export async function fetchBalance(
   address: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<TandaPayResult<string>> {
-  return TandaPayErrorHandler.withErrorHandling(
+  return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
       // Input validation
       if (!ethers.utils.isAddress(address)) {
@@ -165,8 +165,7 @@ export async function fetchBalance(
 
       return balance;
     },
-    'NETWORK_ERROR',
-    'Unable to fetch balance. Please check your network connection or token configuration\nand try again.',
+    'Unable to fetch balance. Please check your network connection or token configuration and try again.',
     'BALANCE_FETCH_FAILED'
   );
 }
@@ -182,7 +181,7 @@ export async function transferToken(
   amount: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<TandaPayResult<string>> {
-  return TandaPayErrorHandler.withErrorHandling(
+  return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
       const provider = getProvider(network);
 
@@ -332,8 +331,7 @@ export async function transferToken(
 
       return tx.hash;
     },
-    'NETWORK_ERROR',
-    'Transaction failed due to network issues. Please check your connection and try again.',
+    'Transaction failed. Please check your network connection and try again.',
     'TRANSFER_FAILED'
   );
 }
@@ -346,7 +344,7 @@ export async function getTokenInfo(
   contractAddress: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<TandaPayResult<TokenInfo>> {
-  return TandaPayErrorHandler.withErrorHandling(
+  return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
       // Input validation
       if (!contractAddress || contractAddress.trim() === '') {
@@ -418,7 +416,6 @@ export async function getTokenInfo(
         decimals: Number(decimals),
       };
     },
-    'NETWORK_ERROR',
     'Unable to fetch token information. Please check your network connection and try again.',
     'TOKEN_INFO_FAILED'
   );
@@ -435,7 +432,7 @@ export async function estimateTransferGas(
   amount: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<TandaPayResult<GasEstimateData>> {
-  return TandaPayErrorHandler.withErrorHandling(
+  return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
       // Input validation
       if (!token) {
@@ -571,8 +568,8 @@ export async function estimateTransferGas(
         estimatedCost,
       };
     },
-    'NETWORK_ERROR',
-    'Unable to estimate gas cost. Please check your network connection and try again.',
+    // No fallback user message - let ethers error parsing handle it
+    undefined,
     'GAS_ESTIMATION_FAILED'
   );
 }
@@ -590,120 +587,5 @@ export async function getGasPrice(
   } catch (error) {
     // Error fetching gas price
     return '0';
-  }
-}
-
-/**
- * LEGACY WRAPPER: Backward compatibility for existing code during migration.
- * @deprecated Use fetchBalance() which returns TandaPayResult<string> instead.
- * This function maintains the old API (returns string, silent failures) but internally
- * uses the new error handling system.
- */
-export async function fetchBalanceLegacy(
-  token: Token,
-  address: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<string> {
-  const result = await fetchBalance(token, address, network);
-  if (result.success) {
-    return result.data;
-  } else {
-    // Log the error for debugging but maintain silent failure behavior for legacy code
-    // eslint-disable-next-line no-console
-    console.warn('[TandaPay Migration] Balance fetch failed:', result.error.message);
-    return '0';
-  }
-}
-
-/**
- * LEGACY WRAPPER: Backward compatibility for transferToken during migration.
- * @deprecated Use transferToken() which returns TandaPayResult<string> instead.
- * This function maintains the old API ({success: boolean, txHash?: string, error?: string})
- * but internally uses the new error handling system.
- */
-export async function transferTokenLegacy(
-  token: Token,
-  fromPrivateKey: string,
-  toAddress: string,
-  amount: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<{| success: boolean, txHash?: string, error?: string |}> {
-  const result = await transferToken(token, fromPrivateKey, toAddress, amount, network);
-  if (result.success) {
-    return { success: true, txHash: result.data };
-  } else {
-    // Log the error for debugging but maintain legacy error format
-    // eslint-disable-next-line no-console
-    console.warn('[TandaPay Migration] Transfer failed:', result.error.message);
-    return {
-      success: false,
-      error: result.error.userMessage ?? result.error.message,
-    };
-  }
-}
-
-/**
- * LEGACY WRAPPER: Backward compatibility for estimateTransferGas during migration.
- * @deprecated Use estimateTransferGas() which returns TandaPayResult<GasEstimateData> instead.
- * This function maintains the old API ({success: boolean, gasEstimate?: string, gasPrice?: string, error?: string})
- * but internally uses the new error handling system.
- */
-export async function estimateTransferGasLegacy(
-  token: Token,
-  fromAddress: string,
-  toAddress: string,
-  amount: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<{| success: boolean, gasEstimate?: string, gasPrice?: string, error?: string |}> {
-  const result = await estimateTransferGas(token, fromAddress, toAddress, amount, network);
-  if (result.success) {
-    return {
-      success: true,
-      gasEstimate: result.data.gasLimit,
-      gasPrice: result.data.gasPrice,
-    };
-  } else {
-    // Log the error for debugging but maintain legacy error format
-    // eslint-disable-next-line no-console
-    console.warn('[TandaPay Migration] Gas estimation failed:', result.error.message);
-    return {
-      success: false,
-      error: result.error.userMessage ?? result.error.message,
-    };
-  }
-}
-
-/**
- * LEGACY WRAPPER: Backward compatibility for getTokenInfo during migration.
- * @deprecated Use getTokenInfo() which returns TandaPayResult<TokenInfo> instead.
- * This function maintains the old API ({success: boolean, tokenInfo?: TokenInfo, error?: string})
- * but internally uses the new error handling system.
- */
-export async function getTokenInfoLegacy(
-  contractAddress: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<{|
-  success: boolean,
-  tokenInfo?: {| symbol: string, name: string, decimals: number |},
-  error?: string
-|}> {
-  const result = await getTokenInfo(contractAddress, network);
-  if (result.success) {
-    return {
-      success: true,
-      tokenInfo: {
-        symbol: result.data.symbol,
-        name: result.data.name,
-        decimals: result.data.decimals,
-      },
-    };
-  } else {
-    // Log the error for debugging but maintain legacy error format
-    // eslint-disable-next-line no-console
-    console.warn('[TandaPay Migration] Token info fetch failed:', result.error.message);
-    return {
-      success: false,
-      error: result.error.userMessage ?? result.error.message,
-    };
   }
 }

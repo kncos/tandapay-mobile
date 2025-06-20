@@ -208,6 +208,183 @@ class TandaPayErrorHandler {
   static createApiError(message: string, code?: string, details?: mixed): TandaPayError {
     return this.createError('API_ERROR', message, { code, details });
   }
+
+  /**
+   * Parse common ethers.js errors and return user-friendly messages
+   */
+  static parseEthersError(error: mixed): {| message: string, userMessage: string, type: ErrorType |} {
+    let errorMessage = 'Unknown error';
+    let errorCode = null;
+
+    // Safely extract error message and code
+    if (error != null && typeof error === 'object') {
+      if (typeof error.message === 'string') {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      if (typeof error.code === 'string') {
+        errorCode = error.code;
+      }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+
+    // Insufficient funds errors (broader detection)
+    if (errorMessage.includes('insufficient funds')
+        || errorMessage.includes('insufficient balance')
+        || errorMessage.includes('sender doesn\'t have enough funds')
+        || errorMessage.includes('transfer amount exceeds balance')
+        || errorCode === 'INSUFFICIENT_FUNDS') {
+      return {
+        message: 'Insufficient funds for transaction',
+        userMessage: 'You don\'t have enough funds to complete this transaction. Please check your balance.',
+        type: 'INSUFFICIENT_FUNDS'
+      };
+    }
+
+    // Network detection errors
+    if (errorMessage.includes('could not detect network')
+        || errorMessage.includes('network is not configured')
+        || errorMessage.includes('failed to connect')
+        || errorCode === 'NETWORK_ERROR') {
+      return {
+        message: 'Network connection failed',
+        userMessage: 'Unable to connect to the blockchain network. Please check your internet connection and try again.',
+        type: 'NETWORK_ERROR'
+      };
+    }
+
+    // Gas estimation errors (enhanced detection for insufficient funds during gas estimation)
+    if (errorMessage.includes('cannot estimate gas')
+        || errorMessage.includes('execution reverted')
+        || errorMessage.includes('gas required exceeds allowance')
+        || errorMessage.includes('revert')
+        || errorMessage.includes('always failing transaction')
+        || errorMessage.includes('transaction may fail or may require manual gas limit')) {
+      // Check if it's likely an insufficient funds issue during gas estimation
+      // Be more specific to avoid false positives like "gas required exceeds allowance"
+      if ((errorMessage.includes('insufficient') && errorMessage.includes('funds'))
+          || (errorMessage.includes('insufficient') && errorMessage.includes('balance'))
+          || (errorMessage.includes('transfer amount') && errorMessage.includes('exceeds'))
+          || (errorMessage.includes('balance') && errorMessage.includes('exceeds'))
+          || errorMessage.includes('sender doesn\'t have enough')
+          || errorMessage.includes('insufficient balance for transfer')) {
+        return {
+          message: 'Insufficient funds for gas estimation',
+          userMessage: 'You don\'t have enough funds to complete this transaction. Please check your balance.',
+          type: 'INSUFFICIENT_FUNDS'
+        };
+      }
+
+      return {
+        message: 'Gas estimation failed',
+        userMessage: 'Unable to estimate transaction cost. This may be due to insufficient funds or an invalid transaction.',
+        type: 'CONTRACT_ERROR'
+      };
+    }
+
+    // Transaction timeout errors
+    if (errorMessage.includes('timeout')
+        || errorMessage.includes('timed out')
+        || errorCode === 'TIMEOUT') {
+      return {
+        message: 'Operation timed out',
+        userMessage: 'The operation took too long to complete. Please try again.',
+        type: 'TIMEOUT_ERROR'
+      };
+    }
+
+    // Nonce errors
+    if (errorMessage.includes('nonce too low')
+        || errorMessage.includes('nonce too high')
+        || errorMessage.includes('replacement transaction underpriced')) {
+      return {
+        message: 'Transaction nonce error',
+        userMessage: 'There was an issue with the transaction sequence. Please try again.',
+        type: 'NETWORK_ERROR'
+      };
+    }
+
+    // Gas price errors
+    if (errorMessage.includes('gas price too low')
+        || errorMessage.includes('transaction underpriced')) {
+      return {
+        message: 'Gas price too low',
+        userMessage: 'The network is busy. Please try again with higher gas fees.',
+        type: 'NETWORK_ERROR'
+      };
+    }
+
+    // Invalid address errors
+    if (errorMessage.includes('invalid address')
+        || errorMessage.includes('bad address checksum')
+        || errorMessage.includes('invalid recipient')) {
+      return {
+        message: 'Invalid address format',
+        userMessage: 'The address format is invalid. Please check the address and try again.',
+        type: 'VALIDATION_ERROR'
+      };
+    }
+
+    // Contract interaction errors
+    if (errorMessage.includes('call exception')
+        || errorMessage.includes('contract call failed')
+        || errorMessage.includes('missing response')) {
+      return {
+        message: 'Contract interaction failed',
+        userMessage: 'Unable to interact with the smart contract. Please try again later.',
+        type: 'CONTRACT_ERROR'
+      };
+    }
+
+    // Rate limiting errors
+    if (errorMessage.includes('rate limit')
+        || errorMessage.includes('too many requests')
+        || errorMessage.includes('request throttled')) {
+      return {
+        message: 'Rate limited by provider',
+        userMessage: 'Too many requests. Please wait a moment and try again.',
+        type: 'RATE_LIMITED'
+      };
+    }
+
+    // Default case - return a generic but friendly message
+    return {
+      message: errorMessage,
+      userMessage: 'An unexpected error occurred. Please try again or contact support if the problem persists.',
+      type: 'UNKNOWN_ERROR'
+    };
+  }
+
+  /**
+   * Enhanced wrapper for async operations that handles ethers.js errors specifically
+   */
+  static async withEthersErrorHandling<T>(
+    operation: () => Promise<T>,
+    userMessage?: string,
+    code?: string,
+    defaultErrorType: ErrorType = 'NETWORK_ERROR'
+  ): Promise<TandaPayResult<T>> {
+    try {
+      const data = await operation();
+      return { success: true, data };
+    } catch (error) {
+      // Use our enhanced ethers error parser
+      const parsedError = this.parseEthersError(error);
+
+      const tandaPayError = this.createError(
+        parsedError.type,
+        parsedError.message,
+        {
+          userMessage: (userMessage != null && userMessage.length > 0) ? userMessage : parsedError.userMessage,
+          code: (code != null && code.length > 0) ? code : undefined,
+          details: error?.stack || error
+        }
+      );
+      return { success: false, error: tandaPayError };
+    }
+  }
 }
 
 export default TandaPayErrorHandler;
