@@ -7,7 +7,7 @@ import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography, TandaPayLayout, TandaPayComponents } from '../styles';
-import { getSupportedNetworks, getNetworkConfig } from '../providers/ProviderManager';
+import { getSupportedNetworks, getNetworkDisplayInfo } from '../providers/ProviderManager';
 import Card from './Card';
 
 type Props = $ReadOnly<{|
@@ -50,11 +50,7 @@ export default function NetworkSelector(props: Props): Node {
       <ZulipText style={TandaPayTypography.sectionTitle}>Select Network</ZulipText>
 
       {supportedNetworks.map((network) => {
-        const configResult = getNetworkConfig(network);
-        if (!configResult.success) {
-          return null; // Skip networks with invalid config
-        }
-        const config = configResult.data;
+        const config = getNetworkDisplayInfo(network);
         const isSelected = selectedNetwork === network;
         const isSwitching = switchingNetwork === network;
 
@@ -77,7 +73,7 @@ export default function NetworkSelector(props: Props): Node {
                   {config.name}
                 </ZulipText>
                 <ZulipText style={networkStyles.networkDetail}>
-                  {`Chain ID: ${config.chainId} • ${config.rpcUrl}`}
+                  {`Chain ID: ${config.chainId}`}
                 </ZulipText>
               </View>
               {isSwitching && (

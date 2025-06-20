@@ -41,7 +41,7 @@ const ERC20_ABI = [
  * Falls back to parameter or default if Redux state is unavailable
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
-export function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'): any {
+export async function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'): Promise<any> {
   // Try to get network from Redux state first
   let network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'; // default fallback
   let customConfig = null;
@@ -79,13 +79,13 @@ export function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum'
     if (!customConfig) {
       throw new Error('Custom network requires customRpcConfig in Redux state');
     }
-    const providerResult = createProvider(network, customConfig);
+    const providerResult = await createProvider(network, customConfig);
     if (!providerResult.success) {
       throw providerResult.error;
     }
     return providerResult.data;
   } else {
-    const providerResult = createProvider(network);
+    const providerResult = await createProvider(network);
     if (!providerResult.success) {
       throw providerResult.error;
     }
@@ -120,7 +120,7 @@ export async function fetchBalance(
         );
       }
 
-      const provider = getProvider(network);
+      const provider = await getProvider(network);
 
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise((_, reject) => {
@@ -191,7 +191,7 @@ export async function transferToken(
 ): Promise<TandaPayResult<string>> {
   return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
-      const provider = getProvider(network);
+      const provider = await getProvider(network);
 
       // Validate input parameters
       if (!token) {
@@ -372,7 +372,7 @@ export async function getTokenInfo(
         );
       }
 
-      const provider = getProvider(network);
+      const provider = await getProvider(network);
 
       // Add timeout protection
       const timeoutPromise = new Promise((_, reject) => {
@@ -471,7 +471,7 @@ export async function estimateTransferGas(
         );
       }
 
-      const provider = getProvider(network);
+      const provider = await getProvider(network);
 
       // Add timeout protection for gas estimation
       const timeoutPromise = new Promise((_, reject) => {
@@ -589,7 +589,7 @@ export async function getGasPrice(
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
 ): Promise<string> {
   try {
-    const provider = getProvider(network);
+    const provider = await getProvider(network);
     const gasPrice = await provider.getGasPrice();
     return ethers.utils.formatUnits(gasPrice, 'gwei');
   } catch (error) {

@@ -120,8 +120,6 @@ export default function WalletSettingsScreen(props: Props): Node {
               inputLabel={hasApiKey ? 'Update API Key' : 'Etherscan API Key'}
               inputPlaceholder="Enter your Etherscan API key"
               updateInputPlaceholder="Enter new Etherscan API key"
-              saveButtonText="Save API Key"
-              updateButtonText="Update API Key"
               apiKeyMethods={etherscanApiKeyMethods}
               onApiKeyChange={handleApiKeyChange}
             />
@@ -134,8 +132,6 @@ export default function WalletSettingsScreen(props: Props): Node {
               inputLabel="Alchemy API Key"
               inputPlaceholder="Enter your Alchemy API key"
               updateInputPlaceholder="Enter new Alchemy API key"
-              saveButtonText="Save Alchemy Key"
-              updateButtonText="Update Alchemy Key"
               apiKeyMethods={{
                 hasApiKey: hasAlchemyApiKey,
                 getApiKey: getAlchemyApiKey,

@@ -6,7 +6,7 @@ import { View } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
-import { getNetworkConfig } from '../providers/ProviderManager';
+import { getNetworkDisplayInfo } from '../providers/ProviderManager';
 
 type Props = $ReadOnly<{|
   selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
@@ -53,9 +53,7 @@ export default function WalletNetworkInfo(props: Props): Node {
           Custom Network (Not Configured)
         </ZulipText>
       );
-    }
-
-    if (!selectedNetwork) {
+    }    if (!selectedNetwork) {
       return (
         <ZulipText style={customStyles.networkName}>
           Loading network...
@@ -63,16 +61,7 @@ export default function WalletNetworkInfo(props: Props): Node {
       );
     }
 
-    const configResult = getNetworkConfig(selectedNetwork);
-    if (!configResult.success) {
-      return (
-        <ZulipText style={customStyles.networkName}>
-          Network configuration error
-        </ZulipText>
-      );
-    }
-    
-    const config = configResult.data;
+    const config = getNetworkDisplayInfo(selectedNetwork);
     return (
       <>
         <ZulipText style={customStyles.networkName}>

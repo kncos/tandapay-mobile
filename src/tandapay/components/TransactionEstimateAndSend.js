@@ -12,7 +12,7 @@ import { useBalanceInvalidation } from '../hooks/useBalanceInvalidation';
 import { useSelector, useGlobalSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { getGlobalSettings } from '../../directSelectors';
-import { getNetworkConfig } from '../providers/ProviderManager';
+import { getNetworkDisplayInfo } from '../providers/ProviderManager';
 import { openLinkWithUserPreference } from '../../utils/openLink';
 import { showToast } from '../../utils/info';
 import Card from './Card';
@@ -139,9 +139,9 @@ export default function TransactionEstimateAndSend(props: Props): Node {
       if (selectedNetwork === 'custom' && customRpcConfig?.blockExplorerUrl != null && customRpcConfig.blockExplorerUrl !== '') {
         return `${customRpcConfig.blockExplorerUrl}/tx/${txHash}`;
       } else if (selectedNetwork !== 'custom') {
-        const networkConfigResult = getNetworkConfig(selectedNetwork);
-        if (networkConfigResult.success && networkConfigResult.data.blockExplorerUrl != null && networkConfigResult.data.blockExplorerUrl !== '') {
-          return `${networkConfigResult.data.blockExplorerUrl}/tx/${txHash}`;
+        const networkConfig = getNetworkDisplayInfo(selectedNetwork);
+        if (networkConfig.blockExplorerUrl != null && networkConfig.blockExplorerUrl !== '') {
+          return `${networkConfig.blockExplorerUrl}/tx/${txHash}`;
         }
       }
       return null;

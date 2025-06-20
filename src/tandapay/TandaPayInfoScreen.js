@@ -43,7 +43,7 @@ export default function TandaPayInfoScreen(props: Props): Node {
     const fetchBlockchainData = async () => {
       const result = await TandaPayErrorHandler.withErrorHandling(async () => {
         // Use centralized provider management with selected network
-        const providerResult = createProvider(selectedNetwork);
+        const providerResult = await createProvider(selectedNetwork);
         if (!providerResult.success) {
           throw providerResult.error;
         }

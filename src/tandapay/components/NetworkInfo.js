@@ -5,7 +5,7 @@ import type { Node } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
-import { getNetworkConfig } from '../providers/ProviderManager';
+import { getNetworkDisplayInfo } from '../providers/ProviderManager';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from './Card';
 
@@ -63,25 +63,11 @@ export default function NetworkInfo(props: Props): Node {
       );
     }
 
-    const configResult = getNetworkConfig(selectedNetwork);
-    if (!configResult.success) {
-      const errorMessage = configResult.error.userMessage != null ? configResult.error.userMessage : 'Unknown error';
-      return (
-        <ZulipText>
-          Network configuration error:
-          {errorMessage}
-        </ZulipText>
-      );
-    }
-    
-    const config = configResult.data;
+    const config = getNetworkDisplayInfo(selectedNetwork);
     return (
       <>
         <ZulipText style={{ fontWeight: 'bold' }}>
           {`Name: ${config.name}`}
-        </ZulipText>
-        <ZulipText>
-          {`RPC URL: ${config.rpcUrl}`}
         </ZulipText>
         <ZulipText>
           {`Chain ID: ${config.chainId}`}

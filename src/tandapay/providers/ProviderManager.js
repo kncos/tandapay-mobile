@@ -5,10 +5,22 @@ import '@ethersproject/shims';
 import { ethers } from 'ethers';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
+import { getAlchemyApiKey } from '../wallet/WalletManager';
 
-// i don't care about this:
-const alchemy_api = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
-export const alchemy_sepolia_url = `https://eth-sepolia.g.alchemy.com/v2/${alchemy_api}`;
+// Fallback Alchemy API key for development (will be replaced with user's key when available)
+const FALLBACK_ALCHEMY_API = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
+
+/**
+ * Dynamically get Alchemy RPC URL with user's API key
+ */
+async function getAlchemySepoliaUrl(): Promise<string> {
+  const result = await getAlchemyApiKey();
+  const apiKey = (result.success && result.data != null && result.data.trim() !== '') ? result.data : FALLBACK_ALCHEMY_API;
+  return `https://eth-sepolia.g.alchemy.com/v2/${apiKey}`;
+}
+
+// Export for backward compatibility (will use fallback key)
+export const alchemy_sepolia_url = `https://eth-sepolia.g.alchemy.com/v2/${FALLBACK_ALCHEMY_API}`;
 
 /**
  * Network configuration for providers
@@ -20,37 +32,43 @@ type NetworkConfig = {|
   blockExplorerUrl?: string,
 |};
 
-const NETWORK_CONFIGS: {|
-  mainnet: NetworkConfig,
-  sepolia: NetworkConfig,
-  arbitrum: NetworkConfig,
-  polygon: NetworkConfig
-|} = {
-  mainnet: {
-    name: 'Ethereum Mainnet',
-    rpcUrl: 'https://eth.merkle.io', // Free public node
-    chainId: 1,
-    blockExplorerUrl: 'https://etherscan.io',
-  },
-  sepolia: {
-    name: 'Sepolia Testnet',
-    rpcUrl: alchemy_sepolia_url,
-    chainId: 11155111,
-    blockExplorerUrl: 'https://sepolia.etherscan.io',
-  },
-  arbitrum: {
-    name: 'Arbitrum One',
-    rpcUrl: 'https://arb1.arbitrum.io/rpc', // Free public node
-    chainId: 42161,
-    blockExplorerUrl: 'https://arbiscan.io',
-  },
-  polygon: {
-    name: 'Polygon',
-    rpcUrl: 'https://polygon-rpc.com', // Free public node
-    chainId: 137,
-    blockExplorerUrl: 'https://polygonscan.com',
-  },
-};
+/**
+ * Get network configuration dynamically (for networks that need API keys)
+ */
+async function getNetworkConfig(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): Promise<NetworkConfig> {
+  const staticConfigs = {
+    mainnet: {
+      name: 'Ethereum Mainnet',
+      rpcUrl: 'https://eth.merkle.io', // Free public node
+      chainId: 1,
+      blockExplorerUrl: 'https://etherscan.io',
+    },
+    arbitrum: {
+      name: 'Arbitrum One',
+      rpcUrl: 'https://arb1.arbitrum.io/rpc', // Free public node
+      chainId: 42161,
+      blockExplorerUrl: 'https://arbiscan.io',
+    },
+    polygon: {
+      name: 'Polygon',
+      rpcUrl: 'https://polygon-rpc.com', // Free public node
+      chainId: 137,
+      blockExplorerUrl: 'https://polygonscan.com',
+    },
+  };
+
+  if (network === 'sepolia') {
+    const sepoliaUrl = await getAlchemySepoliaUrl();
+    return {
+      name: 'Sepolia Testnet',
+      rpcUrl: sepoliaUrl,
+      chainId: 11155111,
+      blockExplorerUrl: 'https://sepolia.etherscan.io',
+    };
+  }
+
+  return staticConfigs[network];
+}
 
 /**
  * Provider cache to avoid creating multiple instances
@@ -92,10 +110,10 @@ function evictLRUIfNeeded(): void {
 /**
  * Get provider instance for a specific network or custom configuration with error handling
  */
-export function createProvider(
+export async function createProvider(
   network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
   customConfig?: NetworkConfig
-): TandaPayResult<mixed> {
+): Promise<TandaPayResult<mixed>> {
   try {
     let cacheKey = network;
     let config;
@@ -110,7 +128,7 @@ export function createProvider(
       cacheKey = `custom-${customConfig.chainId}`;
       config = customConfig;
     } else {
-      config = NETWORK_CONFIGS[network];
+      config = await getNetworkConfig(network);
       if (!config) {
         throw TandaPayErrorHandler.createValidationError(
           `Unsupported network: ${network}`,
@@ -174,35 +192,10 @@ export function getCacheStats(): {| size: number, maxSize: number, keys: Array<s
 }
 
 /**
- * Get network configuration with error handling
- */
-export function getNetworkConfig(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): TandaPayResult<NetworkConfig> {
-  try {
-    const config = NETWORK_CONFIGS[network];
-    if (!config) {
-      throw TandaPayErrorHandler.createValidationError(
-        `Unsupported network: ${network}`,
-        'Please select a supported network from the list.'
-      );
-    }
-    return { success: true, data: config };
-  } catch (error) {
-    if (error?.type) {
-      return { success: false, error };
-    }
-    const tandaPayError = TandaPayErrorHandler.createValidationError(
-      `Invalid network: ${network}`,
-      'Please select a valid network configuration.'
-    );
-    return { success: false, error: tandaPayError };
-  }
-}
-
-/**
  * Get all supported networks
  */
 export function getSupportedNetworks(): $ReadOnlyArray<'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'> {
-  return Object.keys(NETWORK_CONFIGS);
+  return ['mainnet', 'sepolia', 'arbitrum', 'polygon'];
 }
 
 /**
@@ -247,4 +240,39 @@ export function validateCustomRpcConfig(config: {
     );
     return { success: false, error: tandaPayError };
   }
+}
+
+/**
+ * Get basic network configuration synchronously (for UI display purposes)
+ * Note: For sepolia, this returns static info without the dynamic API key URL
+ */
+export function getNetworkDisplayInfo(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): {|
+  name: string,
+  chainId: number,
+  blockExplorerUrl?: string,
+|} {
+  const configs = {
+    mainnet: {
+      name: 'Ethereum Mainnet',
+      chainId: 1,
+      blockExplorerUrl: 'https://etherscan.io',
+    },
+    sepolia: {
+      name: 'Sepolia Testnet',
+      chainId: 11155111,
+      blockExplorerUrl: 'https://sepolia.etherscan.io',
+    },
+    arbitrum: {
+      name: 'Arbitrum One',
+      chainId: 42161,
+      blockExplorerUrl: 'https://arbiscan.io',
+    },
+    polygon: {
+      name: 'Polygon',
+      chainId: 137,
+      blockExplorerUrl: 'https://polygonscan.com',
+    },
+  };
+
+  return configs[network];
 }
