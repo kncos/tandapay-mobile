@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { Node } from 'react';
 import { View, Alert, ActivityIndicator } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -34,6 +34,13 @@ export type EstimateGasCallback = (params: TransactionParams) => Promise<{|
 |}>;
 
 export type SendTransactionCallback = (params: TransactionParams, gasEstimate: GasEstimate) => Promise<{|
+  success: boolean,
+  txHash?: string,
+  error?: string,
+|}>;
+
+// Encapsulated transaction function type
+export type TransactionFunction = () => Promise<{|
   success: boolean,
   txHash?: string,
   error?: string,
@@ -122,6 +129,8 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   const [gasEstimate, setGasEstimate] = useState<?GasEstimate>(null);
   const [estimating, setEstimating] = useState(false);
   const [sending, setSending] = useState(false);
+  // Store the transaction function created during gas estimation
+  const [transactionFunction, setTransactionFunction] = useState<?TransactionFunction>(null);
 
   // Get explorer URL for the current network
   const getExplorerUrl = useCallback((txHash: string): string | null => {
@@ -148,12 +157,23 @@ export default function TransactionEstimateAndSend(props: Props): Node {
 
     setEstimating(true);
     setGasEstimate(null);
+    setTransactionFunction(null);
 
     try {
-      const result = await onEstimateGas(transactionParams);
+      // Capture the current transaction parameters at estimation time
+      const capturedParams = { ...transactionParams };
+      
+      const result = await onEstimateGas(capturedParams);
 
       if (result.success && result.gasEstimate) {
-        setGasEstimate(result.gasEstimate);
+        const capturedGasEstimate = result.gasEstimate;
+        setGasEstimate(capturedGasEstimate);
+        
+        // Create a transaction function that uses the captured parameters and gas estimate
+        const txFunction: TransactionFunction = async () =>
+          onSendTransaction(capturedParams, capturedGasEstimate);
+        
+        setTransactionFunction(txFunction);
       } else {
         Alert.alert('Gas Estimation Failed', result.error ?? 'Unable to estimate gas costs.');
       }
@@ -162,10 +182,10 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     } finally {
       setEstimating(false);
     }
-  }, [isFormValid, onEstimateGas, transactionParams]);
+  }, [isFormValid, onEstimateGas, onSendTransaction, transactionParams]);
 
   const handleSendTransaction = useCallback(async () => {
-    if (!gasEstimate) {
+    if (!gasEstimate || !transactionFunction) {
       Alert.alert('No Gas Estimate', 'Please estimate gas costs first.');
       return;
     }
@@ -187,9 +207,11 @@ export default function TransactionEstimateAndSend(props: Props): Node {
           onPress: async () => {
             setSending(true);
             try {
-              const result = await onSendTransaction(transactionParams, gasEstimate);
+              // Use the stored transaction function with captured parameters
+              const result = await transactionFunction();
 
               if (result.success && result.txHash != null && result.txHash !== '') {
+                // ...existing success handling...
                 const successMessage = `Your ${transactionDescription} has been submitted to the network.\n\nTransaction Hash: ${result.txHash}\n\nIt may take a few minutes to confirm.`;
                 const explorerUrl = getExplorerUrl(result.txHash);
 
@@ -255,11 +277,11 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     );
   }, [
     gasEstimate,
+    transactionFunction,
     transactionDescription,
     confirmationTitle,
     getConfirmationMessage,
     transactionParams,
-    onSendTransaction,
     onTransactionSuccess,
     onTransactionError,
     getExplorerUrl,
@@ -301,6 +323,13 @@ export default function TransactionEstimateAndSend(props: Props): Node {
       </View>
     </Card>
   );
+
+  // Clear stored transaction function when transaction parameters change
+  // This forces users to re-estimate gas if they change inputs
+  useEffect(() => {
+    setGasEstimate(null);
+    setTransactionFunction(null);
+  }, [transactionParams]);
 
   return (
     <View style={customStyles.container}>
