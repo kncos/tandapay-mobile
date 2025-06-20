@@ -217,18 +217,10 @@ export default function ApiKeyCard(props: Props): Node {
         <View style={[TandaPayStyles.buttonRow, { marginBottom: (revealedApiKey != null && revealedApiKey !== '') ? 16 : 0 }]}>
           <ZulipButton
             style={TandaPayStyles.button}
-            text="Reveal Key"
-            onPress={handleRevealApiKey}
+            text={(revealedApiKey != null && revealedApiKey !== '') ? 'Hide Key' : 'Reveal Key'}
+            onPress={(revealedApiKey != null && revealedApiKey !== '') ? handleHideApiKey : handleRevealApiKey}
             secondary
           />
-          {(revealedApiKey != null && revealedApiKey !== '') && (
-            <ZulipButton
-              style={TandaPayStyles.button}
-              text="Hide Key"
-              onPress={handleHideApiKey}
-              secondary
-            />
-          )}
         </View>
       )}
 
