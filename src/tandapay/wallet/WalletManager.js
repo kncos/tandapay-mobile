@@ -14,6 +14,7 @@ const MNEMONIC_STORAGE_KEY = 'wallet_mnemonic';
 const WALLET_ADDRESS_STORAGE_KEY = 'wallet_address';
 const HAS_WALLET_KEY = 'has_wallet';
 const ETHERSCAN_API_KEY_STORAGE_KEY = 'etherscan_api_key';
+const ALCHEMY_API_KEY_STORAGE_KEY = 'alchemy_api_key';
 
 export type WalletInfo = {|
   address: string,
@@ -211,6 +212,7 @@ export async function deleteWallet(): Promise<TandaPayResult<void>> {
         SecureStore.deleteItemAsync(WALLET_ADDRESS_STORAGE_KEY),
         SecureStore.deleteItemAsync(HAS_WALLET_KEY),
         SecureStore.deleteItemAsync(ETHERSCAN_API_KEY_STORAGE_KEY),
+        SecureStore.deleteItemAsync(ALCHEMY_API_KEY_STORAGE_KEY),
       ];
 
       // Wait for all deletions to complete
@@ -311,5 +313,74 @@ export async function deleteEtherscanApiKey(): Promise<TandaPayResult<void>> {
     'STORAGE_ERROR',
     'Failed to delete Etherscan API key. Please try again.',
     'API_KEY_DELETION'
+  );
+}
+
+/**
+ * Check if an Alchemy API key is stored
+ */
+export async function hasAlchemyApiKey(): Promise<TandaPayResult<boolean>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const apiKey = await SecureStore.getItemAsync(ALCHEMY_API_KEY_STORAGE_KEY);
+      return apiKey !== null && apiKey.trim() !== '';
+    },
+    'STORAGE_ERROR',
+    'Unable to check Alchemy API key status. Please try restarting the app.',
+    'ALCHEMY_API_KEY_STATUS_CHECK'
+  );
+}
+
+/**
+ * Store Alchemy API key securely
+ */
+export async function storeAlchemyApiKey(apiKey: string): Promise<TandaPayResult<void>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const trimmedApiKey = apiKey.trim();
+      if (!trimmedApiKey) {
+        throw TandaPayErrorHandler.createError(
+          'VALIDATION_ERROR',
+          'Empty API key provided',
+          { userMessage: 'Please enter a valid Alchemy API key.' }
+        );
+      }
+
+      await SecureStore.setItemAsync(ALCHEMY_API_KEY_STORAGE_KEY, trimmedApiKey, {
+        requireAuthentication: false,
+      });
+    },
+    'STORAGE_ERROR',
+    'Failed to store Alchemy API key. Please try again.',
+    'ALCHEMY_API_KEY_STORAGE'
+  );
+}
+
+/**
+ * Get the stored Alchemy API key
+ */
+export async function getAlchemyApiKey(): Promise<TandaPayResult<?string>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const apiKey = await SecureStore.getItemAsync(ALCHEMY_API_KEY_STORAGE_KEY);
+      return apiKey; // Can be null if no API key is stored
+    },
+    'STORAGE_ERROR',
+    'Unable to access Alchemy API key. Please try restarting the app.',
+    'ALCHEMY_API_KEY_FETCH'
+  );
+}
+
+/**
+ * Delete the stored Alchemy API key
+ */
+export async function deleteAlchemyApiKey(): Promise<TandaPayResult<void>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      await SecureStore.deleteItemAsync(ALCHEMY_API_KEY_STORAGE_KEY);
+    },
+    'STORAGE_ERROR',
+    'Failed to delete Alchemy API key. Please try again.',
+    'ALCHEMY_API_KEY_DELETION'
   );
 }

@@ -18,6 +18,10 @@ import {
   storeEtherscanApiKey,
   getEtherscanApiKey,
   deleteEtherscanApiKey,
+  hasAlchemyApiKey,
+  storeAlchemyApiKey,
+  getAlchemyApiKey,
+  deleteAlchemyApiKey,
 } from './WalletManager';
 import Card from '../components/Card';
 import ApiKeyCard from './components/ApiKeyCard';
@@ -88,13 +92,6 @@ export default function WalletSettingsScreen(props: Props): Node {
         <View style={TandaPayLayout.scrollPadded}>
           {/* Etherscan API Configuration Section */}
           <View style={TandaPayLayout.section}>
-            <ZulipText style={[TandaPayTypography.sectionTitle, { color: themeData.color }]}>
-              Etherscan API Configuration
-            </ZulipText>
-            <ZulipText style={[TandaPayTypography.description, { color: themeData.color }]}>
-              Configure your Etherscan API key to enable transaction history and enhanced blockchain data features.
-            </ZulipText>
-
             {/* Status Card */}
             <Card
               style={[
@@ -128,6 +125,24 @@ export default function WalletSettingsScreen(props: Props): Node {
               updateButtonText="Update API Key"
               apiKeyMethods={etherscanApiKeyMethods}
               onApiKeyChange={handleApiKeyChange}
+            />
+          </View>
+
+          <View style={TandaPayLayout.section}>
+            <ApiKeyCard
+              title="Alchemy API Key"
+              description="Configure your Alchemy API key for enhanced transaction data and better performance."
+              inputLabel="Alchemy API Key"
+              inputPlaceholder="Enter your Alchemy API key"
+              updateInputPlaceholder="Enter new Alchemy API key"
+              saveButtonText="Save Alchemy Key"
+              updateButtonText="Update Alchemy Key"
+              apiKeyMethods={{
+                hasApiKey: hasAlchemyApiKey,
+                getApiKey: getAlchemyApiKey,
+                storeApiKey: storeAlchemyApiKey,
+                deleteApiKey: deleteAlchemyApiKey,
+              }}
             />
           </View>
 
