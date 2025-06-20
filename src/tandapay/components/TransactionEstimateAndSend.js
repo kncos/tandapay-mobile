@@ -129,6 +129,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   const [gasEstimate, setGasEstimate] = useState<?GasEstimate>(null);
   const [estimating, setEstimating] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showingConfirmation, setShowingConfirmation] = useState(false);
   // Store the transaction function created during gas estimation
   const [transactionFunction, setTransactionFunction] = useState<?TransactionFunction>(null);
 
@@ -155,25 +156,31 @@ export default function TransactionEstimateAndSend(props: Props): Node {
       return;
     }
 
+    // Prevent multiple estimation requests
+    if (estimating) {
+      return;
+    }
+
     setEstimating(true);
     setGasEstimate(null);
-    setTransactionFunction(null);
+    setTransactionFunction((): ?TransactionFunction => null);
 
     try {
       // Capture the current transaction parameters at estimation time
       const capturedParams = { ...transactionParams };
-      
+
       const result = await onEstimateGas(capturedParams);
 
       if (result.success && result.gasEstimate) {
         const capturedGasEstimate = result.gasEstimate;
         setGasEstimate(capturedGasEstimate);
-        
+
         // Create a transaction function that uses the captured parameters and gas estimate
         const txFunction: TransactionFunction = async () =>
           onSendTransaction(capturedParams, capturedGasEstimate);
-        
-        setTransactionFunction(txFunction);
+
+        // Use function form of setState to avoid React treating the function as a state updater
+        setTransactionFunction((): TransactionFunction => txFunction);
       } else {
         Alert.alert('Gas Estimation Failed', result.error ?? 'Unable to estimate gas costs.');
       }
@@ -182,13 +189,20 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     } finally {
       setEstimating(false);
     }
-  }, [isFormValid, onEstimateGas, onSendTransaction, transactionParams]);
+  }, [isFormValid, onEstimateGas, onSendTransaction, transactionParams, estimating]);
 
   const handleSendTransaction = useCallback(async () => {
     if (!gasEstimate || !transactionFunction) {
       Alert.alert('No Gas Estimate', 'Please estimate gas costs first.');
       return;
     }
+
+    // Prevent multiple confirmation dialogs
+    if (showingConfirmation || sending) {
+      return;
+    }
+
+    setShowingConfirmation(true);
 
     const defaultConfirmationMessage = `Are you sure you want to proceed with this ${transactionDescription}?\n\nEstimated Gas: ${gasEstimate.gasLimit} units\nGas Price: ${gasEstimate.gasPrice} gwei\nEstimated Cost: ${gasEstimate.estimatedCost} ETH`;
 
@@ -200,11 +214,23 @@ export default function TransactionEstimateAndSend(props: Props): Node {
       confirmationTitle,
       confirmationMessage,
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            setShowingConfirmation(false);
+          },
+        },
         {
           text: 'Confirm',
           style: 'destructive',
           onPress: async () => {
+            // Prevent multiple transactions by checking if already sending
+            if (sending) {
+              setShowingConfirmation(false);
+              return;
+            }
+
             setSending(true);
             try {
               // Use the stored transaction function with captured parameters
@@ -270,6 +296,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
               onTransactionError?.(errorMessage);
             } finally {
               setSending(false);
+              setShowingConfirmation(false);
             }
           },
         },
@@ -287,6 +314,8 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     getExplorerUrl,
     globalSettings,
     invalidateAllTokens,
+    showingConfirmation,
+    sending,
   ]);
 
   const renderDefaultGasEstimate = (estimate: GasEstimate): Node => (
@@ -328,7 +357,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   // This forces users to re-estimate gas if they change inputs
   useEffect(() => {
     setGasEstimate(null);
-    setTransactionFunction(null);
+    setTransactionFunction((): ?TransactionFunction => null);
   }, [transactionParams]);
 
   return (
@@ -349,12 +378,12 @@ export default function TransactionEstimateAndSend(props: Props): Node {
       {/* Send Transaction Button */}
       {gasEstimate && (
         <ZulipButton
-          disabled={!isFormValid || sending || disabled}
+          disabled={!isFormValid || sending || showingConfirmation || disabled}
           text={sending ? 'Processing...' : sendButtonText}
           onPress={handleSendTransaction}
           style={{
             ...customStyles.sendButton,
-            backgroundColor: sending ? TandaPayColors.disabled : TandaPayColors.success,
+            backgroundColor: (sending || showingConfirmation) ? TandaPayColors.disabled : TandaPayColors.success,
           }}
         />
       )}

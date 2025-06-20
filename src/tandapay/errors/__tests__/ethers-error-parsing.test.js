@@ -7,7 +7,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles insufficient funds errors', () => {
       const error = new Error('insufficient funds for gas * price + value');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('INSUFFICIENT_FUNDS');
       expect(result.userMessage).toContain('don\'t have enough funds');
       expect(result.message).toBe('Insufficient funds for transaction');
@@ -16,7 +16,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles network detection errors', () => {
       const error = new Error('could not detect network');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('NETWORK_ERROR');
       expect(result.userMessage).toContain('Unable to connect to the blockchain network');
       expect(result.message).toBe('Network connection failed');
@@ -25,7 +25,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles gas estimation errors', () => {
       const error = new Error('cannot estimate gas; transaction may fail or may require manual gas limit');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('CONTRACT_ERROR');
       expect(result.userMessage).toContain('Unable to estimate transaction cost');
       expect(result.message).toBe('Gas estimation failed');
@@ -34,7 +34,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles timeout errors', () => {
       const error = new Error('timeout of 5000ms exceeded');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('TIMEOUT_ERROR');
       expect(result.userMessage).toContain('took too long to complete');
       expect(result.message).toBe('Operation timed out');
@@ -43,7 +43,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles invalid address errors', () => {
       const error = new Error('invalid address');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('VALIDATION_ERROR');
       expect(result.userMessage).toContain('address format is invalid');
       expect(result.message).toBe('Invalid address format');
@@ -52,7 +52,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles nonce errors', () => {
       const error = new Error('nonce too low');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('NETWORK_ERROR');
       expect(result.userMessage).toContain('issue with the transaction sequence');
       expect(result.message).toBe('Transaction nonce error');
@@ -61,7 +61,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles rate limiting errors', () => {
       const error = new Error('rate limit exceeded');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('RATE_LIMITED');
       expect(result.userMessage).toContain('Too many requests');
       expect(result.message).toBe('Rate limited by provider');
@@ -70,7 +70,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('handles unknown errors gracefully', () => {
       const error = new Error('some random ethers error');
       const result = TandaPayErrorHandler.parseEthersError(error);
-      
+
       expect(result.type).toBe('UNKNOWN_ERROR');
       expect(result.userMessage).toContain('unexpected error occurred');
       expect(result.message).toBe('some random ethers error');
@@ -78,7 +78,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
 
     test('handles non-Error objects', () => {
       const result = TandaPayErrorHandler.parseEthersError('simple string error');
-      
+
       expect(result.type).toBe('UNKNOWN_ERROR');
       expect(result.userMessage).toContain('unexpected error occurred');
       expect(result.message).toBe('simple string error');
@@ -86,7 +86,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
 
     test('handles null/undefined errors', () => {
       const result = TandaPayErrorHandler.parseEthersError(null);
-      
+
       expect(result.type).toBe('UNKNOWN_ERROR');
       expect(result.userMessage).toContain('unexpected error occurred');
       expect(result.message).toBe('Unknown error');
@@ -128,7 +128,7 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     test('returns success for successful operation', async () => {
       const operation = async () => 'success result';
       const result = await TandaPayErrorHandler.withEthersErrorHandling(operation);
-      
+
       expect(result.success).toBe(true);
       // eslint-disable-next-line jest/no-conditional-expect
       expect(result.success && result.data).toBe('success result');
@@ -138,9 +138,9 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
       const operation = async () => {
         throw new Error('insufficient funds for gas * price + value');
       };
-      
+
       const result = await TandaPayErrorHandler.withEthersErrorHandling(operation);
-      
+
       expect(result.success).toBe(false);
       // eslint-disable-next-line jest/no-conditional-expect
       expect(!result.success && result.error.type).toBe('INSUFFICIENT_FUNDS');
@@ -152,13 +152,13 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
       const operation = async () => {
         throw new Error('insufficient funds for gas * price + value');
       };
-      
+
       const customMessage = 'Custom insufficient funds message';
       const result = await TandaPayErrorHandler.withEthersErrorHandling(
         operation,
         customMessage
       );
-      
+
       expect(result.success).toBe(false);
       // eslint-disable-next-line jest/no-conditional-expect
       expect(!result.success && result.error.userMessage).toBe(customMessage);
@@ -170,13 +170,13 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
       const operation = async () => {
         throw new Error('network error');
       };
-      
+
       const result = await TandaPayErrorHandler.withEthersErrorHandling(
         operation,
         undefined,
         'NETWORK_001'
       );
-      
+
       expect(result.success).toBe(false);
       // eslint-disable-next-line jest/no-conditional-expect
       expect(!result.success && result.error.code).toBe('NETWORK_001');
