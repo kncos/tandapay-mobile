@@ -10,7 +10,8 @@ import ZulipButton from '../../common/ZulipButton';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from '../components/Card';
-import type { EtherscanTransaction, TransactionDetails } from './TransactionService';
+import type { EtherscanTransaction } from './EtherscanService';
+import type { TransactionDetails } from './TransactionService';
 import { getTransactionDetails } from './TransactionService';
 
 type Props = {|

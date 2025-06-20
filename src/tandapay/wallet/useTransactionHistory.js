@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchTransactionHistory } from './TransactionService';
-import type { EtherscanTransaction } from './TransactionService';
+import type { EtherscanTransaction } from './EtherscanService';
 import type { TandaPayError } from '../errors/types';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 

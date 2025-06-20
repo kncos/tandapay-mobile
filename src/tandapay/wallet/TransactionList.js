@@ -12,7 +12,7 @@ import { formatTransactionDisplay } from './TransactionService';
 import TransactionDetailsModal from './TransactionDetailsModal';
 import type { TransactionState, LoadMoreState } from './useTransactionHistory';
 import type { TandaPayError } from '../errors/types';
-import type { EtherscanTransaction } from './TransactionService';
+import type { EtherscanTransaction } from './EtherscanService';
 import buttons from '../styles/buttons';
 
 type Props = {|
