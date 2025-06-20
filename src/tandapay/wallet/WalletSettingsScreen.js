@@ -1,6 +1,6 @@
 // @flow strict-local
 
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { Node } from 'react';
 import { View, ScrollView } from 'react-native';
 
@@ -9,10 +9,7 @@ import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import { IconPrivate } from '../../common/Icons';
-import { ThemeContext } from '../../styles';
-import { TandaPayTypography, TandaPayLayout } from '../styles';
-import { BRAND_COLOR, HIGHLIGHT_COLOR, HALF_COLOR } from '../../styles/constants';
+import { TandaPayLayout } from '../styles';
 import {
   hasEtherscanApiKey,
   storeEtherscanApiKey,
@@ -23,7 +20,6 @@ import {
   getAlchemyApiKey,
   deleteAlchemyApiKey,
 } from './WalletManager';
-import Card from '../components/Card';
 import ApiKeyCard from './components/ApiKeyCard';
 
 type Props = $ReadOnly<{|
@@ -31,19 +27,8 @@ type Props = $ReadOnly<{|
   route: RouteProp<'wallet-settings', void>,
 |}>;
 
-// Only minimal custom styles that truly can't be centralized
-const customStyles = {
-  statusIcon: {
-    marginRight: 12,
-  },
-  statusContent: {
-    flex: 1,
-  },
-};
-
 export default function WalletSettingsScreen(props: Props): Node {
   const { navigation } = props;
-  const themeData = useContext(ThemeContext);
   const [hasApiKey, setHasApiKey] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -92,28 +77,6 @@ export default function WalletSettingsScreen(props: Props): Node {
         <View style={TandaPayLayout.scrollPadded}>
           {/* Etherscan API Configuration Section */}
           <View style={TandaPayLayout.section}>
-            {/* Status Card */}
-            <Card
-              style={[
-                { flexDirection: 'row', alignItems: 'center' },
-                { borderWidth: 2, borderColor: hasApiKey ? BRAND_COLOR : HIGHLIGHT_COLOR },
-              ]}
-            >
-              <View style={customStyles.statusIcon}>
-                <IconPrivate size={24} color={hasApiKey ? BRAND_COLOR : HALF_COLOR} />
-              </View>
-              <View style={customStyles.statusContent}>
-                <ZulipText style={[TandaPayTypography.subsectionTitle, { color: themeData.color }]}>
-                  {hasApiKey ? 'API Key Configured' : 'No API Key Set'}
-                </ZulipText>
-                <ZulipText style={[TandaPayTypography.description, { color: themeData.color }]}>
-                  {hasApiKey
-                    ? 'Etherscan API key is set and active'
-                    : 'Add an Etherscan API key to enhance functionality'}
-                </ZulipText>
-              </View>
-            </Card>
-
             {/* API Key Management */}
             <ApiKeyCard
               title="Etherscan API Key"
