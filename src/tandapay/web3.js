@@ -6,7 +6,7 @@ import '@ethersproject/shims';
 import { ethers } from 'ethers';
 
 import type { Token } from './tokens/tokenTypes';
-import type { TandaPayResult } from './errors/types';
+import type { TandaPayResult, GasEstimateData, TokenInfo } from './errors/types';
 import TandaPayErrorHandler from './errors/ErrorHandler';
 import { createProvider } from './providers/ProviderManager';
 
@@ -173,6 +173,7 @@ export async function fetchBalance(
 
 /**
  * Transfer ETH or ERC20 tokens to another address
+ * @returns TandaPayResult<string> - Transaction hash on success
  */
 export async function transferToken(
   token: Token,
@@ -180,77 +181,252 @@ export async function transferToken(
   toAddress: string,
   amount: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<{| success: boolean, txHash?: string, error?: string |}> {
-  try {
-    const provider = getProvider(network);
-    const wallet = new ethers.Wallet(fromPrivateKey, provider);
+): Promise<TandaPayResult<string>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const provider = getProvider(network);
 
-    // Ensure proper address checksumming
-    const checksummedToAddress = ethers.utils.getAddress(toAddress);
+      // Validate input parameters
+      if (!token) {
+        throw TandaPayErrorHandler.createError(
+          'VALIDATION_ERROR',
+          'Token parameter is required',
+          { userMessage: 'Invalid token selection. Please select a valid token.' }
+        );
+      }
 
-    if (token.address == null) {
-      // ETH transfer
-      const tx = await wallet.sendTransaction({
-        to: checksummedToAddress,
-        value: ethers.utils.parseEther(amount),
+      if (!fromPrivateKey || fromPrivateKey.trim() === '') {
+        throw TandaPayErrorHandler.createError(
+          'WALLET_ERROR',
+          'Private key is required for transaction signing',
+          { userMessage: 'Unable to access wallet. Please check your wallet setup.' }
+        );
+      }
+
+      if (!toAddress || toAddress.trim() === '') {
+        throw TandaPayErrorHandler.createError(
+          'VALIDATION_ERROR',
+          'Recipient address is required',
+          { userMessage: 'Please enter a valid recipient address.' }
+        );
+      }
+
+      if (!amount || amount.trim() === '' || parseFloat(amount) <= 0) {
+        throw TandaPayErrorHandler.createError(
+          'VALIDATION_ERROR',
+          'Amount must be greater than zero',
+          { userMessage: 'Please enter a valid amount to transfer.' }
+        );
+      }
+
+      // Create wallet instance with timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(TandaPayErrorHandler.createError(
+            'TIMEOUT_ERROR',
+            'Transaction timed out',
+            {
+              userMessage: 'Transaction took too long to complete. Please try again.',
+              retryable: true
+            }
+          ));
+        }, 60000); // 60 second timeout for transactions
       });
 
-      return { success: true, txHash: tx.hash };
-    } else {
-      // ERC20 transfer
-      const checksummedTokenAddress = ethers.utils.getAddress(token.address);
-      const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, wallet);
-      const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
+      let wallet;
+      try {
+        wallet = new ethers.Wallet(fromPrivateKey, provider);
+      } catch (walletError) {
+        throw TandaPayErrorHandler.createError(
+          'WALLET_ERROR',
+          'Failed to create wallet instance',
+          {
+            userMessage: 'Unable to access wallet. Please check your wallet configuration.',
+            details: { walletError: walletError.message }
+          }
+        );
+      }
 
-      const tx = await contract.transfer(checksummedToAddress, amountInWei);
+      // Validate and checksum addresses
+      let checksummedToAddress;
+      try {
+        checksummedToAddress = ethers.utils.getAddress(toAddress.trim());
+      } catch (addressError) {
+        throw TandaPayErrorHandler.createError(
+          'VALIDATION_ERROR',
+          'Invalid recipient address format',
+          {
+            userMessage: 'The recipient address is not valid. Please check and try again.',
+            details: { toAddress, addressError: addressError.message }
+          }
+        );
+      }
 
-      return { success: true, txHash: tx.hash };
-    }
-  } catch (error) {
-    // Transfer error occurred
-    return {
-      success: false,
-      error: error.message || 'Transfer failed'
-    };
-  }
+      let transactionPromise: Promise<mixed>;
+
+      if (token.address == null) {
+        // ETH transfer
+        try {
+          const value = ethers.utils.parseEther(amount);
+          transactionPromise = wallet.sendTransaction({
+            to: checksummedToAddress,
+            value,
+          });
+        } catch (parseError) {
+          throw TandaPayErrorHandler.createError(
+            'VALIDATION_ERROR',
+            'Invalid ETH amount format',
+            {
+              userMessage: 'The amount entered is not valid. Please check and try again.',
+              details: { amount, parseError: parseError.message }
+            }
+          );
+        }
+      } else {
+        // ERC20 transfer
+        let checksummedTokenAddress;
+        try {
+          checksummedTokenAddress = ethers.utils.getAddress(token.address);
+        } catch (tokenAddressError) {
+          throw TandaPayErrorHandler.createError(
+            'VALIDATION_ERROR',
+            'Invalid token contract address',
+            {
+              userMessage: 'The selected token has an invalid contract address.',
+              details: { tokenAddress: token.address, tokenAddressError: tokenAddressError.message }
+            }
+          );
+        }
+
+        try {
+          const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, wallet);
+          const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
+          transactionPromise = contract.transfer(checksummedToAddress, amountInWei);
+        } catch (contractError) {
+          throw TandaPayErrorHandler.createContractError(
+            'Failed to create token transfer transaction',
+            {
+              tokenAddress: checksummedTokenAddress,
+              amount,
+              decimals: token.decimals,
+              contractError: contractError.message
+            }
+          );
+        }
+      }
+
+      // Race between transaction and timeout
+      const tx = await Promise.race([transactionPromise, timeoutPromise]);
+
+      // Validate transaction result
+      if (!tx || !tx.hash || typeof tx.hash !== 'string') {
+        throw TandaPayErrorHandler.createError(
+          'UNKNOWN_ERROR',
+          'Transaction completed but hash is invalid',
+          {
+            userMessage: 'Transaction may have failed. Please check your wallet and try again.',
+            details: { tx }
+          }
+        );
+      }
+
+      return tx.hash;
+    },
+    'NETWORK_ERROR',
+    'Transaction failed due to network issues. Please check your connection and try again.',
+    'TRANSFER_FAILED'
+  );
 }
 
 /**
  * Get token information from contract (useful for validating custom tokens)
+ * @returns TandaPayResult<TokenInfo> - Token information on success
  */
 export async function getTokenInfo(
   contractAddress: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<{|
-  success: boolean,
-  tokenInfo?: {| symbol: string, name: string, decimals: number |},
-  error?: string
-|}> {
-  try {
-    const provider = getProvider(network);
-    const contract = new ethers.Contract(contractAddress, ERC20_ABI, provider);
+): Promise<TandaPayResult<TokenInfo>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      // Input validation
+      if (!contractAddress || contractAddress.trim() === '') {
+        throw TandaPayErrorHandler.createValidationError(
+          'Contract address is required',
+          'Please provide a valid token contract address.'
+        );
+      }
 
-    const [symbol, name, decimals] = await Promise.all([
-      contract.symbol(),
-      contract.name(),
-      contract.decimals(),
-    ]);
+      let checksummedAddress;
+      try {
+        checksummedAddress = ethers.utils.getAddress(contractAddress.trim());
+      } catch (addressError) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Invalid contract address format',
+          'The contract address is not valid. Please check and try again.'
+        );
+      }
 
-    return {
-      success: true,
-      tokenInfo: { symbol, name, decimals },
-    };
-  } catch (error) {
-    // Error fetching token info
-    return {
-      success: false,
-      error: error.message || 'Failed to fetch token information',
-    };
-  }
+      const provider = getProvider(network);
+
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(TandaPayErrorHandler.createError(
+            'TIMEOUT_ERROR',
+            'Token info fetch timed out',
+            {
+              userMessage: 'Request took too long. Please try again.',
+              retryable: true
+            }
+          ));
+        }, 10000); // 10 second timeout
+      });
+
+      let tokenInfoPromise: Promise<mixed>;
+      try {
+        const contract = new ethers.Contract(checksummedAddress, ERC20_ABI, provider);
+        tokenInfoPromise = Promise.all([
+          contract.symbol(),
+          contract.name(),
+          contract.decimals(),
+        ]);
+      } catch (contractError) {
+        throw TandaPayErrorHandler.createContractError(
+          'Failed to create token contract instance',
+          { contractAddress: checksummedAddress, contractError: contractError.message }
+        );
+      }
+
+      // Race between token info fetch and timeout
+      const [symbol, name, decimals] = await Promise.race([tokenInfoPromise, timeoutPromise]);
+
+      // Validate results
+      if (!symbol || !name || decimals == null) {
+        throw TandaPayErrorHandler.createError(
+          'PARSING_ERROR',
+          'Token contract returned invalid information',
+          {
+            userMessage: 'Unable to read token information. This may not be a valid ERC20 token.',
+            details: { symbol, name, decimals }
+          }
+        );
+      }
+
+      return {
+        symbol: String(symbol),
+        name: String(name),
+        decimals: Number(decimals),
+      };
+    },
+    'NETWORK_ERROR',
+    'Unable to fetch token information. Please check your network connection and try again.',
+    'TOKEN_INFO_FAILED'
+  );
 }
 
 /**
  * Estimate gas cost for a token transfer
+ * @returns TandaPayResult<GasEstimateData> - Gas estimation data on success
  */
 export async function estimateTransferGas(
   token: Token,
@@ -258,51 +434,147 @@ export async function estimateTransferGas(
   toAddress: string,
   amount: string,
   network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
-): Promise<{| success: boolean, gasEstimate?: string, gasPrice?: string, error?: string |}> {
-  try {
-    const provider = getProvider(network);
+): Promise<TandaPayResult<GasEstimateData>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      // Input validation
+      if (!token) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Token parameter is required',
+          'Invalid token selection. Please select a valid token.'
+        );
+      }
 
-    // Ensure proper address checksumming
-    const checksummedFromAddress = ethers.utils.getAddress(fromAddress);
-    const checksummedToAddress = ethers.utils.getAddress(toAddress);
+      if (!fromAddress || fromAddress.trim() === '') {
+        throw TandaPayErrorHandler.createValidationError(
+          'From address is required',
+          'Please provide a valid sender address.'
+        );
+      }
 
-    if (token.address == null) {
-      // ETH transfer
-      const gasEstimate = await provider.estimateGas({
-        from: checksummedFromAddress,
-        to: checksummedToAddress,
-        value: ethers.utils.parseEther(amount),
+      if (!toAddress || toAddress.trim() === '') {
+        throw TandaPayErrorHandler.createValidationError(
+          'To address is required',
+          'Please enter a valid recipient address.'
+        );
+      }
+
+      if (!amount || amount.trim() === '' || parseFloat(amount) <= 0) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Amount must be greater than zero',
+          'Please enter a valid amount to transfer.'
+        );
+      }
+
+      const provider = getProvider(network);
+
+      // Add timeout protection for gas estimation
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(TandaPayErrorHandler.createError(
+            'TIMEOUT_ERROR',
+            'Gas estimation timed out',
+            {
+              userMessage: 'Gas estimation took too long. Please try again.',
+              retryable: true
+            }
+          ));
+        }, 15000); // 15 second timeout
       });
 
-      const gasPrice = await provider.getGasPrice();
+      // Validate and checksum addresses
+      let checksummedFromAddress;
+      let checksummedToAddress;
+      try {
+        checksummedFromAddress = ethers.utils.getAddress(fromAddress.trim());
+        checksummedToAddress = ethers.utils.getAddress(toAddress.trim());
+      } catch (addressError) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Invalid address format',
+          'One or more addresses are not valid. Please check and try again.'
+        );
+      }
+
+      let gasEstimationPromise: Promise<mixed>;
+
+      if (token.address == null) {
+        // ETH transfer
+        try {
+          const value = ethers.utils.parseEther(amount);
+          gasEstimationPromise = Promise.all([
+            provider.estimateGas({
+              from: checksummedFromAddress,
+              to: checksummedToAddress,
+              value,
+            }),
+            provider.getGasPrice(),
+          ]);
+        } catch (parseError) {
+          throw TandaPayErrorHandler.createValidationError(
+            'Invalid ETH amount format',
+            'The amount entered is not valid. Please check and try again.'
+          );
+        }
+      } else {
+        // ERC20 transfer
+        let checksummedTokenAddress;
+        try {
+          checksummedTokenAddress = ethers.utils.getAddress(token.address);
+        } catch (tokenAddressError) {
+          throw TandaPayErrorHandler.createValidationError(
+            'Invalid token contract address',
+            'The selected token has an invalid contract address.'
+          );
+        }
+
+        try {
+          const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, provider);
+          const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
+
+          gasEstimationPromise = Promise.all([
+            contract.estimateGas.transfer(checksummedToAddress, amountInWei, { from: checksummedFromAddress }),
+            provider.getGasPrice(),
+          ]);
+        } catch (contractError) {
+          throw TandaPayErrorHandler.createContractError(
+            'Failed to estimate gas for token transfer',
+            {
+              tokenAddress: checksummedTokenAddress,
+              amount,
+              decimals: token.decimals,
+              contractError: contractError.message
+            }
+          );
+        }
+      }
+
+      // Race between gas estimation and timeout
+      const [gasEstimate, gasPrice] = await Promise.race([gasEstimationPromise, timeoutPromise]);
+
+      // Validate results
+      if (!gasEstimate || !gasPrice) {
+        throw TandaPayErrorHandler.createError(
+          'UNKNOWN_ERROR',
+          'Gas estimation returned invalid results',
+          { userMessage: 'Unable to estimate transaction cost. Please try again.' }
+        );
+      }
+
+      // Calculate estimated cost
+      const gasLimitValue = gasEstimate.toString();
+      const gasPriceGwei = ethers.utils.formatUnits(gasPrice, 'gwei');
+      const estimatedCost = ((parseFloat(gasLimitValue) * parseFloat(gasPriceGwei)) / 1e9).toFixed(8);
 
       return {
-        success: true,
-        gasEstimate: gasEstimate.toString(),
-        gasPrice: ethers.utils.formatUnits(gasPrice, 'gwei'),
+        gasLimit: gasLimitValue,
+        gasPrice: gasPriceGwei,
+        estimatedCost,
       };
-    } else {
-      // ERC20 transfer
-      const checksummedTokenAddress = ethers.utils.getAddress(token.address);
-      const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, provider);
-      const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
-
-      const gasEstimate = await contract.estimateGas.transfer(checksummedToAddress, amountInWei, { from: checksummedFromAddress });
-      const gasPrice = await provider.getGasPrice();
-
-      return {
-        success: true,
-        gasEstimate: gasEstimate.toString(),
-        gasPrice: ethers.utils.formatUnits(gasPrice, 'gwei'),
-      };
-    }
-  } catch (error) {
-    // Gas estimation error
-    return {
-      success: false,
-      error: error.message || 'Failed to estimate gas',
-    };
-  }
+    },
+    'NETWORK_ERROR',
+    'Unable to estimate gas cost. Please check your network connection and try again.',
+    'GAS_ESTIMATION_FAILED'
+  );
 }
 
 /**
@@ -340,5 +612,98 @@ export async function fetchBalanceLegacy(
     // eslint-disable-next-line no-console
     console.warn('[TandaPay Migration] Balance fetch failed:', result.error.message);
     return '0';
+  }
+}
+
+/**
+ * LEGACY WRAPPER: Backward compatibility for transferToken during migration.
+ * @deprecated Use transferToken() which returns TandaPayResult<string> instead.
+ * This function maintains the old API ({success: boolean, txHash?: string, error?: string})
+ * but internally uses the new error handling system.
+ */
+export async function transferTokenLegacy(
+  token: Token,
+  fromPrivateKey: string,
+  toAddress: string,
+  amount: string,
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+): Promise<{| success: boolean, txHash?: string, error?: string |}> {
+  const result = await transferToken(token, fromPrivateKey, toAddress, amount, network);
+  if (result.success) {
+    return { success: true, txHash: result.data };
+  } else {
+    // Log the error for debugging but maintain legacy error format
+    // eslint-disable-next-line no-console
+    console.warn('[TandaPay Migration] Transfer failed:', result.error.message);
+    return {
+      success: false,
+      error: result.error.userMessage ?? result.error.message,
+    };
+  }
+}
+
+/**
+ * LEGACY WRAPPER: Backward compatibility for estimateTransferGas during migration.
+ * @deprecated Use estimateTransferGas() which returns TandaPayResult<GasEstimateData> instead.
+ * This function maintains the old API ({success: boolean, gasEstimate?: string, gasPrice?: string, error?: string})
+ * but internally uses the new error handling system.
+ */
+export async function estimateTransferGasLegacy(
+  token: Token,
+  fromAddress: string,
+  toAddress: string,
+  amount: string,
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+): Promise<{| success: boolean, gasEstimate?: string, gasPrice?: string, error?: string |}> {
+  const result = await estimateTransferGas(token, fromAddress, toAddress, amount, network);
+  if (result.success) {
+    return {
+      success: true,
+      gasEstimate: result.data.gasLimit,
+      gasPrice: result.data.gasPrice,
+    };
+  } else {
+    // Log the error for debugging but maintain legacy error format
+    // eslint-disable-next-line no-console
+    console.warn('[TandaPay Migration] Gas estimation failed:', result.error.message);
+    return {
+      success: false,
+      error: result.error.userMessage ?? result.error.message,
+    };
+  }
+}
+
+/**
+ * LEGACY WRAPPER: Backward compatibility for getTokenInfo during migration.
+ * @deprecated Use getTokenInfo() which returns TandaPayResult<TokenInfo> instead.
+ * This function maintains the old API ({success: boolean, tokenInfo?: TokenInfo, error?: string})
+ * but internally uses the new error handling system.
+ */
+export async function getTokenInfoLegacy(
+  contractAddress: string,
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+): Promise<{|
+  success: boolean,
+  tokenInfo?: {| symbol: string, name: string, decimals: number |},
+  error?: string
+|}> {
+  const result = await getTokenInfo(contractAddress, network);
+  if (result.success) {
+    return {
+      success: true,
+      tokenInfo: {
+        symbol: result.data.symbol,
+        name: result.data.name,
+        decimals: result.data.decimals,
+      },
+    };
+  } else {
+    // Log the error for debugging but maintain legacy error format
+    // eslint-disable-next-line no-console
+    console.warn('[TandaPay Migration] Token info fetch failed:', result.error.message);
+    return {
+      success: false,
+      error: result.error.userMessage ?? result.error.message,
+    };
   }
 }

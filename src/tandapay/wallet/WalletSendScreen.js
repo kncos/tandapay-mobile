@@ -16,7 +16,7 @@ import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getSelectedToken } from '../tokens/tokenSelectors';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
-import { transferToken, estimateTransferGas } from '../web3';
+import { transferTokenLegacy as transferToken, estimateTransferGasLegacy as estimateTransferGas } from '../web3';
 import { getWalletInstance } from './WalletManager';
 import {
   AddressInput,

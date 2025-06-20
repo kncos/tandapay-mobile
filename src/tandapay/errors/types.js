@@ -30,3 +30,16 @@ export type TandaPayResult<T> =
 
 // Helper type for operations that don't return data
 export type TandaPayOperation = TandaPayResult<void>;
+
+// Types for transaction operations
+export type GasEstimateData = $ReadOnly<{|
+  gasLimit: string,
+  gasPrice: string,
+  estimatedCost: string,
+|}>;
+
+export type TokenInfo = $ReadOnly<{|
+  symbol: string,
+  name: string,
+  decimals: number,
+|}>;
