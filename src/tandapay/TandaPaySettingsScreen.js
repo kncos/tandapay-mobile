@@ -1,18 +1,14 @@
 // @flow strict-local
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import type { Node } from 'react';
-import { Alert } from 'react-native';
 
 import type { AppNavigationProp } from '../nav/AppNavigator';
 import type { RouteProp } from '../react-navigation';
 import Screen from '../common/Screen';
 import NavRow from '../common/NavRow';
 import TextRow from '../common/TextRow';
-import ZulipButton from '../common/ZulipButton';
 import { IconWallet, IconSmartphone, IconLanguage, IconPlusCircle } from '../common/Icons';
-import { deleteWallet } from './wallet/WalletManager';
-import { TandaPayColors } from './styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-settings'>,
@@ -21,43 +17,6 @@ type Props = $ReadOnly<{|
 
 export default function TandaPaySettingsScreen(props: Props): Node {
   const { navigation } = props;
-
-  const handleDeleteWallet = useCallback(async () => {
-    Alert.alert(
-      'Delete Wallet',
-      'Are you sure you want to delete your wallet? This action cannot be undone. Make sure you have your recovery phrase saved.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deleteWallet();
-            if (result.success) {
-              Alert.alert(
-                'Wallet Deleted',
-                'Your wallet has been successfully deleted.',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => {
-                      // Navigate back to wallet screen to show "no wallet" state
-                      // navigation.push('wallet');
-                    },
-                  },
-                ]
-              );
-            } else {
-              Alert.alert('Error', result.error.userMessage != null ? result.error.userMessage : 'Failed to delete wallet. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  }, []);
 
   return (
     <Screen title="TandaPay Settings">
@@ -89,15 +48,6 @@ export default function TandaPaySettingsScreen(props: Props): Node {
         icon={{ Component: IconSmartphone }}
         title="TandaPay version"
         subtitle="v1.0.0 Beta"
-      />
-      <ZulipButton
-        text="Delete Wallet"
-        onPress={handleDeleteWallet}
-        style={{
-          marginTop: 32,
-          marginHorizontal: 16,
-          backgroundColor: TandaPayColors.error
-        }}
       />
     </Screen>
   );

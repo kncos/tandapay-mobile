@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, ScrollView } from 'react-native';
-
+import { View, ScrollView, Alert } from 'react-native';
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import { TandaPayLayout } from '../styles';
+import TandaPayStyles, { TandaPayColors, TandaPayLayout } from '../styles';
 import {
   hasEtherscanApiKey,
   storeEtherscanApiKey,
@@ -19,6 +18,7 @@ import {
   storeAlchemyApiKey,
   getAlchemyApiKey,
   deleteAlchemyApiKey,
+  deleteWallet,
 } from './WalletManager';
 import ApiKeyCard from './components/ApiKeyCard';
 
@@ -28,9 +28,45 @@ type Props = $ReadOnly<{|
 |}>;
 
 export default function WalletSettingsScreen(props: Props): Node {
-  const { navigation } = props;
   const [hasApiKey, setHasApiKey] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const handleDeleteWallet = useCallback(async () => {
+    Alert.alert(
+      'Delete Wallet',
+      'Are you sure you want to delete your wallet? This action cannot be undone. Make sure you have your recovery phrase saved.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteWallet();
+            if (result.success) {
+              Alert.alert(
+                'Wallet Deleted',
+                'Your wallet has been successfully deleted.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      // Navigate back to wallet screen to show "no wallet" state
+                      // navigation.push('wallet');
+                    },
+                  },
+                ]
+              );
+            } else {
+              Alert.alert('Error', result.error.userMessage != null ? result.error.userMessage : 'Failed to delete wallet. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }, []);
 
   // Check if API key exists on component mount
   useEffect(() => {
@@ -110,12 +146,16 @@ export default function WalletSettingsScreen(props: Props): Node {
           </View>
 
           {/* Back to Wallet Button */}
-          <ZulipButton
-            style={{ marginTop: 16 }}
-            text="Back to Wallet"
-            onPress={() => navigation.push('wallet')}
-            secondary
-          />
+          <View style={TandaPayLayout.buttonRow}>
+            <ZulipButton
+              text="Delete Wallet"
+              onPress={handleDeleteWallet}
+              style={{
+                ...TandaPayStyles.button,
+                backgroundColor: TandaPayColors.error
+              }}
+            />
+          </View>
         </View>
       </ScrollView>
     </Screen>
