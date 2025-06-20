@@ -188,7 +188,23 @@ export async function fetchTransactionHistory(
     }
 
     // Check if API key is configured
-    const apiKey = await getEtherscanApiKey();
+    const apiKeyResult = await getEtherscanApiKey();
+    if (!apiKeyResult.success) {
+      return {
+        success: false,
+        error: TandaPayErrorHandler.createError(
+          'STORAGE_ERROR',
+          'Failed to retrieve Etherscan API key',
+          {
+            userMessage: 'Unable to access API key. Please try restarting the app.',
+            code: 'API_KEY_ACCESS_ERROR',
+            retryable: false
+          }
+        )
+      };
+    }
+
+    const apiKey = apiKeyResult.data;
     if (apiKey == null || apiKey === '') {
       return {
         success: false,

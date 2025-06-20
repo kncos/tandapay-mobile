@@ -112,20 +112,41 @@ export default function WalletScreen(props: Props): Node {
   const checkWallet = useCallback(async () => {
     try {
       setLoading(true);
-      const exists = await hasWallet();
+
+      const walletExistsResult = await hasWallet();
+      if (!walletExistsResult.success) {
+        // Handle wallet check error - treat as no wallet for now
+        setWalletExists(false);
+        return;
+      }
+
+      const exists = walletExistsResult.data;
       setWalletExists(exists);
 
       if (exists) {
-        const address = await getWalletAddress();
+        const addressResult = await getWalletAddress();
+        if (!addressResult.success) {
+          // Handle address fetch error - treat as no address
+          setWalletAddress(null);
+          return;
+        }
+
+        const address = addressResult.data;
         setWalletAddress(address);
 
         // Check if API key is configured
-        const hasApiKey = await hasEtherscanApiKey();
-        setApiKeyConfigured(hasApiKey);
+        const apiKeyResult = await hasEtherscanApiKey();
+        if (apiKeyResult.success) {
+          const hasApiKey = apiKeyResult.data;
+          setApiKeyConfigured(hasApiKey);
 
-        // Refresh the transaction history when wallet changes
-        if (address != null && address !== '' && hasApiKey) {
-          refresh();
+          // Refresh the transaction history when wallet changes
+          if (address != null && address !== '' && hasApiKey) {
+            refresh();
+          }
+        } else {
+          // Handle API key check error - treat as no API key
+          setApiKeyConfigured(false);
         }
       } else {
         setWalletAddress(null);
@@ -133,7 +154,7 @@ export default function WalletScreen(props: Props): Node {
       }
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('Error checking wallet:', error);
+      console.error('Unexpected error checking wallet:', error);
     } finally {
       setLoading(false);
     }

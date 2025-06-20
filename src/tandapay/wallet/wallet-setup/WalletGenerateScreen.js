@@ -75,9 +75,13 @@ export default function WalletGenerateScreen(props: Props): Node {
     // Use setTimeout to ensure state update happens before async operation
     setTimeout(async () => {
       try {
-        const newWallet = await generateWallet();
-        setWalletInfo(newWallet);
-        setHasGenerated(true);
+        const result = await generateWallet();
+        if (result.success) {
+          setWalletInfo(result.data);
+          setHasGenerated(true);
+        } else {
+          Alert.alert('Error', result.error.userMessage);
+        }
       } catch (error) {
         Alert.alert('Error', 'Failed to generate wallet. Please try again.');
       } finally {

@@ -89,8 +89,12 @@ export default function WalletReceiveScreen(props: Props): Node {
   useEffect(() => {
     const loadWalletAddress = async () => {
       try {
-        const address = await getWalletAddress();
-        setWalletAddress(address);
+        const addressResult = await getWalletAddress();
+        if (addressResult.success) {
+          setWalletAddress(addressResult.data);
+        } else {
+          Alert.alert('Error', addressResult.error.userMessage);
+        }
       } catch (error) {
         Alert.alert('Error', 'Failed to load wallet address');
       } finally {

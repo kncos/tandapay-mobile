@@ -50,14 +50,14 @@ export default function WalletSettingsScreen(props: Props): Node {
   // Check if API key exists on component mount
   useEffect(() => {
     const checkApiKey = async () => {
-      try {
-        const exists = await hasEtherscanApiKey();
-        setHasApiKey(exists);
-      } catch (error) {
-        // Error checking API key
-      } finally {
-        setLoading(false);
+      const result = await hasEtherscanApiKey();
+      if (result.success) {
+        setHasApiKey(result.data);
+      } else {
+        // Error checking API key - default to false
+        setHasApiKey(false);
       }
+      setLoading(false);
     };
 
     checkApiKey();
@@ -73,30 +73,30 @@ export default function WalletSettingsScreen(props: Props): Node {
 
     // Use setTimeout to ensure state update happens before async operation
     setTimeout(async () => {
-      try {
-        await storeEtherscanApiKey(apiKeyInput.trim());
+      const result = await storeEtherscanApiKey(apiKeyInput.trim());
+      if (result.success) {
         setHasApiKey(true);
         setApiKeyInput('');
         setRevealedApiKey(null);
         Alert.alert('Success', 'Etherscan API key has been saved successfully.');
-      } catch (error) {
-        Alert.alert('Error', 'Failed to save API key. Please try again.');
-      } finally {
-        setSaving(false);
+      } else {
+        Alert.alert('Error', result.error.userMessage != null ? result.error.userMessage : 'Failed to save API key. Please try again.');
       }
+      setSaving(false);
     }, 0);
   }, [apiKeyInput]);
 
   const handleRevealApiKey = useCallback(async () => {
-    try {
-      const apiKey = await getEtherscanApiKey();
+    const result = await getEtherscanApiKey();
+    if (result.success) {
+      const apiKey = result.data;
       if (apiKey != null && apiKey !== '') {
         setRevealedApiKey(apiKey);
       } else {
         Alert.alert('Error', 'No API key found.');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to retrieve API key.');
+    } else {
+      Alert.alert('Error', result.error.userMessage != null ? result.error.userMessage : 'Failed to retrieve API key.');
     }
   }, []);
 
@@ -113,13 +113,13 @@ export default function WalletSettingsScreen(props: Props): Node {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await deleteEtherscanApiKey();
+            const result = await deleteEtherscanApiKey();
+            if (result.success) {
               setHasApiKey(false);
               setRevealedApiKey(null);
               Alert.alert('Success', 'Etherscan API key has been deleted.');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete API key. Please try again.');
+            } else {
+              Alert.alert('Error', result.error.userMessage != null ? result.error.userMessage : 'Failed to delete API key. Please try again.');
             }
           },
         },

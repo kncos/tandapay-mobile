@@ -97,7 +97,13 @@ export default function WalletImportScreen(props: Props): Node {
     }
 
     const timeoutId = setTimeout(() => {
-      setIsValid(validateMnemonic(mnemonic));
+      const validationResult = validateMnemonic(mnemonic);
+      if (validationResult.success) {
+        setIsValid(validationResult.data);
+      } else {
+        // If validation fails, treat as invalid
+        setIsValid(false);
+      }
     }, 500); // 500ms debounce delay
 
     return () => clearTimeout(timeoutId);
@@ -114,21 +120,26 @@ export default function WalletImportScreen(props: Props): Node {
     // Use setTimeout to ensure state update happens before async operation
     setTimeout(async () => {
       try {
-        const walletInfo = await importWallet(mnemonic);
-        Alert.alert(
-          'Wallet Imported',
-          `Successfully imported wallet: ${walletInfo.address.substring(0, 6)}...${walletInfo.address.substring(38)}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Pop the setup screens to return to the previous navigation state
-                // This preserves the existing chat app navigation history
-                navigation.pop(setupScreenCount);
+        const result = await importWallet(mnemonic);
+        if (result.success) {
+          const walletInfo = result.data;
+          Alert.alert(
+            'Wallet Imported',
+            `Successfully imported wallet: ${walletInfo.address.substring(0, 6)}...${walletInfo.address.substring(38)}`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  // Pop the setup screens to return to the previous navigation state
+                  // This preserves the existing chat app navigation history
+                  navigation.pop(setupScreenCount);
+                },
               },
-            },
-          ]
-        );
+            ]
+          );
+        } else {
+          Alert.alert('Import Failed', result.error.userMessage);
+        }
       } catch (error) {
         Alert.alert('Import Failed', error.message || 'Failed to import wallet. Please check your recovery phrase.');
       } finally {

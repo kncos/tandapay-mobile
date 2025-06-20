@@ -69,12 +69,12 @@ export default function WalletSendScreen(props: Props): Node {
       return walletInstance;
     }
 
-    try {
-      const wallet = await getWalletInstance();
-      setWalletInstance(wallet);
-      return wallet;
-    } catch (error) {
-      throw new Error('Failed to load wallet. Please try again.');
+    const walletResult = await getWalletInstance();
+    if (walletResult.success) {
+      setWalletInstance(walletResult.data);
+      return walletResult.data;
+    } else {
+      throw new Error(walletResult.error.userMessage);
     }
   }, [walletInstance]);
 
