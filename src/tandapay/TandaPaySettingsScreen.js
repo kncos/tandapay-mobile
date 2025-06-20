@@ -35,8 +35,8 @@ export default function TandaPaySettingsScreen(props: Props): Node {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await deleteWallet();
+            const result = await deleteWallet();
+            if (result.success) {
               Alert.alert(
                 'Wallet Deleted',
                 'Your wallet has been successfully deleted.',
@@ -50,8 +50,8 @@ export default function TandaPaySettingsScreen(props: Props): Node {
                   },
                 ]
               );
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete wallet. Please try again.');
+            } else {
+              Alert.alert('Error', result.error.userMessage != null ? result.error.userMessage : 'Failed to delete wallet. Please try again.');
             }
           },
         },
