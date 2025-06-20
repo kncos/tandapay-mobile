@@ -47,7 +47,7 @@ export default function TandaPayInfoScreen(props: Props): Node {
         if (!providerResult.success) {
           throw providerResult.error;
         }
-        
+
         const provider = providerResult.data;
         const [balance, blockNumber] = await Promise.all([
           // $FlowFixMe[unclear-type] - ethers provider methods
