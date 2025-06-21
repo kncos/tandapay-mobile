@@ -5,13 +5,76 @@ import '@ethersproject/shims';
 import { ethers } from 'ethers';
 
 import type { EtherscanTransaction } from './EtherscanService';
+import { fetchTransactionHistory as fetchEtherscanHistory } from './EtherscanService';
+import { fetchTransactionHistoryAlchemy, convertAlchemyTransferToTransaction } from './AlchemyService';
+import { hasAlchemyApiKey, hasEtherscanApiKey } from './WalletManager';
+import type { TandaPayResult } from '../errors/types';
+import TandaPayErrorHandler from '../errors/ErrorHandler';
 import TandaPayColors from '../styles/colors';
 
 // Re-export types for convenience
 export type { EtherscanTransaction } from './EtherscanService';
 
-// Export the fetchTransactionHistory function for convenience
-export { fetchTransactionHistory } from './EtherscanService';
+/**
+ * Enhanced transaction fetch with Alchemy primary, Etherscan fallback
+ */
+export async function fetchTransactionHistory(
+  walletAddress: string,
+  pageKey?: ?string,
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' = 'sepolia',
+  offset: number = 10
+): Promise<TandaPayResult<{| transactions: EtherscanTransaction[], pageKey: ?string, hasMore: boolean |}>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      // Check for Alchemy API key first (preferred)
+      const alchemyKeyResult = await hasAlchemyApiKey();
+      if (alchemyKeyResult.success && alchemyKeyResult.data) {
+        const alchemyResult = await fetchTransactionHistoryAlchemy(walletAddress, pageKey, network);
+        if (alchemyResult.success) {
+          // Convert Alchemy transfers to our transaction format
+          const transactions = alchemyResult.data.transfers.map(transfer =>
+            convertAlchemyTransferToTransaction(transfer, walletAddress)
+          );
+          // Take only the requested number of transactions
+          const limitedTransactions = transactions.slice(0, offset);
+          return {
+            transactions: limitedTransactions,
+            pageKey: alchemyResult.data.pageKey,
+            hasMore: limitedTransactions.length === offset && alchemyResult.data.pageKey != null
+          };
+        }
+        // If Alchemy fails, continue to Etherscan fallback
+      }
+
+      // Fallback to Etherscan
+      const etherscanKeyResult = await hasEtherscanApiKey();
+      if (etherscanKeyResult.success && etherscanKeyResult.data) {
+        // For Etherscan, convert pageKey logic to page numbers
+        const page = pageKey != null ? parseInt(pageKey, 10) : 1;
+        const etherscanResult = await fetchEtherscanHistory(walletAddress, page, offset);
+        if (etherscanResult.success) {
+          return {
+            transactions: [...etherscanResult.data],
+            pageKey: (page + 1).toString(),
+            hasMore: etherscanResult.data.length === offset
+          };
+        }
+      }
+
+      // No API keys available
+      throw TandaPayErrorHandler.createError(
+        'VALIDATION_ERROR',
+        'No API keys configured',
+        {
+          userMessage: 'Please configure an Alchemy or Etherscan API key in wallet settings to view transaction history.'
+        }
+      );
+    },
+    'NETWORK_ERROR',
+    'Failed to fetch transaction history. Please check your internet connection and API key configuration.',
+    'TRANSACTION_HISTORY_FETCH'
+  );
+}
 
 /**
  * Format transaction value from wei to ETH using ethers.js

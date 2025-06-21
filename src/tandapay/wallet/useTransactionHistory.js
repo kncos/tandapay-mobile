@@ -20,6 +20,7 @@ export type LoadMoreState =
 type UseTransactionHistoryProps = {|
   walletAddress: ?string,
   apiKeyConfigured: boolean,
+  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon',
 |};
 
 type UseTransactionHistoryReturn = {|
@@ -32,17 +33,18 @@ type UseTransactionHistoryReturn = {|
 export default function useTransactionHistory({
   walletAddress,
   apiKeyConfigured,
+  network = 'sepolia',
 }: UseTransactionHistoryProps): UseTransactionHistoryReturn {
   const [transactionState, setTransactionState] = useState<TransactionState>({ status: 'idle' });
   const [loadMoreState, setLoadMoreState] = useState<LoadMoreState>({ status: 'idle' });
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageKey, setPageKey] = useState<?string>(null);
 
   // Reset when wallet or API key changes
   useEffect(() => {
     setTransactionState({ status: 'idle' });
     setLoadMoreState({ status: 'idle' });
-    setCurrentPage(1);
-  }, [walletAddress, apiKeyConfigured]);  const fetchInitialTransactions = useCallback(async () => {
+    setPageKey(null);
+  }, [walletAddress, apiKeyConfigured, network]);  const fetchInitialTransactions = useCallback(async () => {
     if (walletAddress == null || walletAddress === '') {
       return;
     }
@@ -50,17 +52,15 @@ export default function useTransactionHistory({
     setTransactionState({ status: 'loading' });
 
     try {
-      const result = await fetchTransactionHistory(walletAddress, 1, 10);
+      const result = await fetchTransactionHistory(walletAddress, null, network, 10);
 
       if (result.success) {
-        const hasMore = result.data.length === 10;
-
         setTransactionState({
           status: 'success',
-          transactions: result.data,
-          hasMore,
+          transactions: result.data.transactions,
+          hasMore: result.data.hasMore,
         });
-        setCurrentPage(1);
+        setPageKey(result.data.pageKey);
       } else {
         setTransactionState({ status: 'error', error: result.error });
       }
@@ -79,7 +79,7 @@ export default function useTransactionHistory({
         error: tandaPayError,
       });
     }
-  }, [walletAddress]);
+  }, [walletAddress, network]);
 
   // Initial fetch
   useEffect(() => {
@@ -99,6 +99,7 @@ export default function useTransactionHistory({
       || !transactionState.hasMore
       || loadMoreState.status === 'loading'
       || loadMoreState.status === 'complete'
+      || pageKey == null
     ) {
       return;
     }
@@ -106,21 +107,17 @@ export default function useTransactionHistory({
     setLoadMoreState({ status: 'loading' });
 
     try {
-      const nextPage = currentPage + 1;
-
-      const result = await fetchTransactionHistory(walletAddress, nextPage, 10);
+      const result = await fetchTransactionHistory(walletAddress, pageKey, network, 10);
 
       if (result.success) {
-        const hasMore = result.data.length === 10;
-
         setTransactionState({
           status: 'success',
-          transactions: [...transactionState.transactions, ...result.data],
-          hasMore,
+          transactions: [...transactionState.transactions, ...result.data.transactions],
+          hasMore: result.data.hasMore,
         });
 
-        setCurrentPage(nextPage);
-        setLoadMoreState(hasMore ? { status: 'idle' } : { status: 'complete' });
+        setPageKey(result.data.pageKey);
+        setLoadMoreState(result.data.hasMore ? { status: 'idle' } : { status: 'complete' });
       } else {
         // Treat "no more transactions" as completion, not error
         setLoadMoreState({ status: 'complete' });
@@ -129,12 +126,12 @@ export default function useTransactionHistory({
       // For load more errors, just mark as complete
       setLoadMoreState({ status: 'complete' });
     }
-  }, [walletAddress, transactionState, loadMoreState.status, currentPage]);
+  }, [walletAddress, transactionState, loadMoreState.status, pageKey, network]);
 
   const refresh = useCallback(() => {
     setTransactionState({ status: 'idle' });
     setLoadMoreState({ status: 'idle' });
-    setCurrentPage(1);
+    setPageKey(null);
   }, []);
 
   return {
