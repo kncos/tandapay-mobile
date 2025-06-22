@@ -15,7 +15,7 @@ import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import AddressInput from './AddressInput';
 import Card from './Card';
-import { TandaPayColors, TandaPayTypography } from '../styles';
+import TandaPayStyles, { TandaPayColors, TandaPayTypography } from '../styles';
 
 type Props = $ReadOnly<{|
   disabled?: boolean,
@@ -37,16 +37,6 @@ const customStyles = {
   networkLabel: {
     ...TandaPayTypography.label,
     marginBottom: 8,
-  },
-  addressInputContainer: {
-    marginBottom: 16,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  button: {
-    flex: 1,
   },
 };
 
@@ -120,27 +110,25 @@ export default function ContractAddressConfiguration(props: Props): Node {
         {selectedNetwork.charAt(0).toUpperCase() + selectedNetwork.slice(1)}
       </ZulipText>
 
-      <View style={customStyles.addressInputContainer}>
-        <AddressInput
-          value={addressInput}
-          onChangeText={setAddressInput}
-          placeholder="0x..."
-          label="Contract Address"
-          disabled={disabled || saving}
-          showQRButton
-        />
-      </View>
+      <AddressInput
+        value={addressInput}
+        onChangeText={setAddressInput}
+        placeholder="0x..."
+        label="Contract Address"
+        disabled={disabled || saving}
+        showQRButton
+      />
 
-      <View style={customStyles.buttonContainer}>
+      <View style={TandaPayStyles.buttonRow}>
         <ZulipButton
-          style={customStyles.button}
+          style={TandaPayStyles.button}
           text="Clear"
           onPress={handleClear}
           disabled={disabled || saving || addressInput.trim() === ''}
         />
 
         <ZulipButton
-          style={customStyles.button}
+          style={TandaPayStyles.button}
           text={saving ? 'Saving...' : 'Save'}
           onPress={handleSave}
           disabled={disabled || saving || !hasChanges || !isValidAddress}
