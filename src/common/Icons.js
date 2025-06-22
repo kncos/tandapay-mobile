@@ -140,3 +140,4 @@ export const IconLogOut: SpecificIconType = makeIcon(Feather, 'log-out');
 export const IconUserPlus: SpecificIconType = makeIcon(Feather, 'user-plus');
 export const IconCalendar: SpecificIconType = makeIcon(Feather, 'calendar');
 export const IconTrendingUp: SpecificIconType = makeIcon(Feather, 'trending-up');
+export const IconCopy: SpecificIconType = makeIcon(Feather, 'copy');

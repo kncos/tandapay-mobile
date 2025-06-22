@@ -10,6 +10,7 @@ import ZulipButton from '../../common/ZulipButton';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from '../components/Card';
+import ScrollableTextBox from '../components/ScrollableTextBox';
 import { formatTimestamp } from './TransactionUtils';
 
 type Props = {|
@@ -108,20 +109,6 @@ const styles = {
     flex: 1,
     marginHorizontal: 6,
   },
-  copyableRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  copyButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  copyButtonText: {
-    fontSize: 12,
-  },
 };
 
 function showToast(message: string) {
@@ -173,7 +160,7 @@ export default function TransactionDetailsModal({
       <View style={styles.modalOverlay}>
         <Card style={styles.modalCard}>
           <View style={[styles.header, { borderBottomColor: themeData.dividerColor }]}>
-            <ZulipText style={[TandaPayTypography.sectionTitle, { color: themeData.color }]}>
+            <ZulipText style={TandaPayTypography.sectionTitle}>
               Transaction Details
             </ZulipText>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -184,136 +171,100 @@ export default function TransactionDetailsModal({
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* Transaction Summary */}
             <View style={styles.section}>
-              <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>Summary</ZulipText>
+              <ZulipText style={styles.sectionTitle}>Summary</ZulipText>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Type:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>
+                <ZulipText style={styles.label}>Type:</ZulipText>
+                <ZulipText style={styles.value}>
                   {isTokenTransfer ? 'Token Transfer' : 'ETH Transfer'}
                 </ZulipText>
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Direction:</ZulipText>
-                <ZulipText
-                  style={[
-                    styles.value,
-                    {
-                      color: direction === 'received'
-                        ? TandaPayColors.success
-                        : TandaPayColors.primary
-                    }
-                  ]}
-                >
+                <ZulipText style={styles.label}>Direction:</ZulipText>
+                <ZulipText style={styles.value}>
                   {direction === 'sent' ? 'Sent' : 'Received'}
                 </ZulipText>
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Status:</ZulipText>
-                <ZulipText style={styles.statusSuccess}>
-                  ✅ Success
-                </ZulipText>
-              </View>
-
-              <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Amount:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>
+                <ZulipText style={styles.label}>Amount:</ZulipText>
+                <ZulipText style={styles.value}>
                   {etherscanTransaction.formattedValue}
                 </ZulipText>
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Date:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>{fullDate}</ZulipText>
+                <ZulipText style={styles.label}>Date:</ZulipText>
+                <ZulipText style={styles.value}>{fullDate}</ZulipText>
               </View>
             </View>
 
             <View style={styles.section}>
-              <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>Addresses</ZulipText>
+              <ZulipText style={styles.sectionTitle}>Addresses</ZulipText>
 
-              <View style={styles.copyableRow}>
-                <View style={{ flex: 1 }}>
-                  <ZulipText style={[styles.label, { color: themeData.color }]}>From:</ZulipText>
-                  <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
-                    {etherscanTransaction.from}
-                  </ZulipText>
-                </View>
-                <TouchableOpacity
-                  style={styles.copyButton}
-                  onPress={() => copyToClipboard(etherscanTransaction.from, 'From address')}
-                >
-                  <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
-                </TouchableOpacity>
+              <View>
+                <ZulipText style={styles.label}>From:</ZulipText>
+                <ScrollableTextBox
+                  text={etherscanTransaction.from}
+                  label="From address"
+                  size="small"
+                  onCopy={copyToClipboard}
+                />
               </View>
 
-              <View style={styles.copyableRow}>
-                <View style={{ flex: 1 }}>
-                  <ZulipText style={[styles.label, { color: themeData.color }]}>To:</ZulipText>
-                  <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
-                    {etherscanTransaction.to}
-                  </ZulipText>
-                </View>
-                <TouchableOpacity
-                  style={styles.copyButton}
-                  onPress={() => copyToClipboard(etherscanTransaction.to, 'To address')}
-                >
-                  <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
-                </TouchableOpacity>
+              <View>
+                <ZulipText style={styles.label}>To:</ZulipText>
+                <ScrollableTextBox
+                  text={etherscanTransaction.to}
+                  label="To address"
+                  size="small"
+                  onCopy={copyToClipboard}
+                />
               </View>
 
               {isTokenTransfer && etherscanTransaction.contractAddress != null && etherscanTransaction.contractAddress !== '' && (
-                <View style={styles.copyableRow}>
-                  <View style={{ flex: 1 }}>
-                    <ZulipText style={[styles.label, { color: themeData.color }]}>Token Contract:</ZulipText>
-                    <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
-                      {etherscanTransaction.contractAddress}
-                    </ZulipText>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.copyButton}
-                    onPress={() => copyToClipboard(etherscanTransaction.contractAddress || '', 'Token contract')}
-                  >
-                    <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
-                  </TouchableOpacity>
+                <View>
+                  <ZulipText style={styles.label}>Token Contract:</ZulipText>
+                  <ScrollableTextBox
+                    text={etherscanTransaction.contractAddress}
+                    label="Token contract"
+                    size="small"
+                    onCopy={copyToClipboard}
+                  />
                 </View>
               )}
             </View>
 
             <View style={styles.section}>
-              <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>Transaction Info</ZulipText>
+              <ZulipText style={styles.sectionTitle}>Transaction Info</ZulipText>
 
-              <View style={styles.copyableRow}>
-                <View style={{ flex: 1 }}>
-                  <ZulipText style={[styles.label, { color: themeData.color }]}>Hash:</ZulipText>
-                  <ZulipText style={[styles.hashValue, { color: TandaPayColors.primary }]}>
-                    {etherscanTransaction.hash}
-                  </ZulipText>
-                </View>
-                <TouchableOpacity
-                  style={styles.copyButton}
-                  onPress={() => copyToClipboard(etherscanTransaction.hash, 'Transaction hash')}
-                >
-                  <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
-                </TouchableOpacity>
+              <View>
+                <ZulipText style={styles.label}>Hash:</ZulipText>
+                <ScrollableTextBox
+                  text={etherscanTransaction.hash}
+                  label="Transaction hash"
+                  size="normal"
+                  onCopy={copyToClipboard}
+                />
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Block:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>{blockNumber}</ZulipText>
+                <ZulipText style={styles.label}>Block:</ZulipText>
+                <ZulipText style={styles.value}>{blockNumber}</ZulipText>
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Asset:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>
+                <ZulipText style={styles.label}>Asset:</ZulipText>
+                <ZulipText style={styles.value}>
                   {etherscanTransaction.asset}
                 </ZulipText>
               </View>
             </View>
 
             <View style={styles.section}>
-              <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>Note</ZulipText>
-              <ZulipText style={[styles.value, { color: themeData.color, fontStyle: 'italic' }]}>
+              <ZulipText style={styles.sectionTitle}>Note</ZulipText>
+              <ZulipText style={[styles.value, { fontStyle: 'italic' }]}>
                 Gas and fee information not available for this transfer format.
                 Use a blockchain explorer for detailed gas information.
               </ZulipText>

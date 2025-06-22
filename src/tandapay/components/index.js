@@ -23,6 +23,9 @@ export { default as Card } from './Card';
 export { default as TandaRibbon } from './TandaRibbon';
 export { default as TandaPayBanner } from './TandaPayBanner';
 
+// Reusable UI components
+export { default as ScrollableTextBox } from './ScrollableTextBox';
+
 // Validation utilities
 export { validateEthereumAddress } from './AddressInput';
 export { validateTokenAmount } from './AmountInput';
