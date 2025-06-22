@@ -18,6 +18,23 @@ import {
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 
 /**
+ * Parameter metadata for dynamic form generation
+ */
+export type WriteTransactionParameter = {|
+  name: string,
+  type: 'address' | 'uint256' | 'bool' | 'address[]',
+  label: string,
+  description: string,
+  placeholder?: string,
+  isCurrency?: boolean,
+  validation: {|
+    required?: boolean,
+    min?: number,
+    max?: number,
+  |},
+|};
+
+/**
  * Standardized write transaction object
  */
 export type WriteTransaction = {|
@@ -27,20 +44,27 @@ export type WriteTransaction = {|
   role: 'public' | 'member' | 'secretary',
   requiresParams: boolean,
   icon: React$ComponentType<any>,
+  parameters?: WriteTransactionParameter[],
   writeFunction: (contract: any, ...args: any[]) => Promise<any>,
-  simulateFunction: (contract: any, ...args: any[]) => Promise<{|
+  simulateFunction: (
+    contract: any,
+    ...args: any[]
+  ) => Promise<{|
     success: boolean,
     result: any,
     gasEstimate: ?string,
     error: ?string,
   |}>,
+  estimateGasFunction?: (contract: any, ...args: any[]) => Promise<any>,
 |};
 
 // =============================================================================
 // SIMULATION HELPER FUNCTIONS
 // =============================================================================
 
-const createSimulation = (contractMethod: string, paramTransform?: (...args: any[]) => any[]) => async (contract: any, ...args: any[]) => {
+const createSimulation =
+  (contractMethod: string, paramTransform?: (...args: any[]) => any[]) =>
+  async (contract: any, ...args: any[]) => {
     const executionResult = await TandaPayErrorHandler.withErrorHandling(async () => {
       const transformedArgs = paramTransform ? paramTransform(...args) : args;
       const callResult = await contract.callStatic[contractMethod](...transformedArgs);
@@ -82,7 +106,7 @@ const transactions: WriteTransaction[] = [
     role: 'public',
     requiresParams: false,
     icon: IconDollarSign,
-    writeFunction: (contract) => contract.issueRefund(true),
+    writeFunction: contract => contract.issueRefund(true),
     simulateFunction: createSimulation('issueRefund', () => [true]),
   },
 
@@ -94,7 +118,7 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: false,
     icon: IconUserPlus,
-    writeFunction: (contract) => contract.joinCommunity(),
+    writeFunction: contract => contract.joinCommunity(),
     simulateFunction: createSimulation('joinCommunity'),
   },
 
@@ -105,8 +129,19 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: true,
     icon: IconUserCheck,
+    parameters: [
+      {
+        name: 'approve',
+        type: 'bool',
+        label: 'Approve Assignment',
+        description: 'Choose whether to approve or reject your subgroup assignment',
+        validation: { required: true },
+      },
+    ],
     writeFunction: (contract, approve = true) => contract.approveSubgroupAssignment(approve),
     simulateFunction: createSimulation('approveSubgroupAssignment'),
+    estimateGasFunction: (contract, approve = true) =>
+      contract.estimateGas.approveSubgroupAssignment(approve),
   },
 
   {
@@ -116,17 +151,49 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: true,
     icon: IconUsers,
+    parameters: [
+      {
+        name: 'subgroupId',
+        type: 'uint256',
+        label: 'Subgroup ID',
+        description: 'ID of the subgroup the member wants to join',
+        validation: { required: true, min: 0 },
+      },
+      {
+        name: 'newMemberId',
+        type: 'uint256',
+        label: 'New Member ID',
+        description: 'ID of the member requesting to join',
+        validation: { required: true, min: 0 },
+      },
+      {
+        name: 'approve',
+        type: 'bool',
+        label: 'Approve Member',
+        description: 'Choose whether to approve or reject the new member',
+        validation: { required: true },
+      },
+    ],
     writeFunction: (contract, subgroupId, newMemberId, approve = true) =>
       contract.approveNewSubgroupMember(
         ethers.BigNumber.from(subgroupId),
         ethers.BigNumber.from(newMemberId),
-        approve
+        approve,
       ),
-    simulateFunction: createSimulation('approveNewSubgroupMember', (subgroupId, newMemberId, approve = true) => [
-      ethers.BigNumber.from(subgroupId),
-      ethers.BigNumber.from(newMemberId),
-      approve,
-    ]),
+    simulateFunction: createSimulation(
+      'approveNewSubgroupMember',
+      (subgroupId, newMemberId, approve = true) => [
+        ethers.BigNumber.from(subgroupId),
+        ethers.BigNumber.from(newMemberId),
+        approve,
+      ],
+    ),
+    estimateGasFunction: (contract, subgroupId, newMemberId, approve = true) =>
+      contract.estimateGas.approveNewSubgroupMember(
+        ethers.BigNumber.from(subgroupId),
+        ethers.BigNumber.from(newMemberId),
+        approve,
+      ),
   },
 
   {
@@ -136,7 +203,7 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: false,
     icon: IconLogOut,
-    writeFunction: (contract) => contract.leaveSubgroup(),
+    writeFunction: contract => contract.leaveSubgroup(),
     simulateFunction: createSimulation('leaveSubgroup'),
   },
 
@@ -147,7 +214,7 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: false,
     icon: IconLogOut,
-    writeFunction: (contract) => contract.defectFromCommunity(),
+    writeFunction: contract => contract.defectFromCommunity(),
     simulateFunction: createSimulation('defectFromCommunity'),
   },
 
@@ -158,8 +225,20 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: true,
     icon: IconDollarSign,
-    writeFunction: (contract, useAvailableBalance = false) => contract.payPremium(useAvailableBalance),
+    parameters: [
+      {
+        name: 'useAvailableBalance',
+        type: 'bool',
+        label: 'Use Available Balance',
+        description: 'Use your available balance to pay the premium',
+        validation: { required: true },
+      },
+    ],
+    writeFunction: (contract, useAvailableBalance = false) =>
+      contract.payPremium(useAvailableBalance),
     simulateFunction: createSimulation('payPremium'),
+    estimateGasFunction: (contract, useAvailableBalance = false) =>
+      contract.estimateGas.payPremium(useAvailableBalance),
   },
 
   {
@@ -169,7 +248,7 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: false,
     icon: IconUserCheck,
-    writeFunction: (contract) => contract.acceptSecretaryRole(),
+    writeFunction: contract => contract.acceptSecretaryRole(),
     simulateFunction: createSimulation('acceptSecretaryRole'),
   },
 
@@ -180,9 +259,21 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: true,
     icon: IconRefreshCw,
+    parameters: [
+      {
+        name: 'newSecretaryWalletAddress',
+        type: 'address',
+        label: 'New Secretary Address',
+        description: 'Ethereum address of the new secretary',
+        placeholder: '0x...',
+        validation: { required: true },
+      },
+    ],
     writeFunction: (contract, newSecretaryWalletAddress) =>
       contract.emergencySecretaryHandoff(newSecretaryWalletAddress),
     simulateFunction: createSimulation('emergencySecretaryHandoff'),
+    estimateGasFunction: (contract, newSecretaryWalletAddress) =>
+      contract.estimateGas.emergencySecretaryHandoff(newSecretaryWalletAddress),
   },
 
   {
@@ -192,7 +283,7 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: false,
     icon: IconDollarSign,
-    writeFunction: (contract) => contract.withdrawRefund(),
+    writeFunction: contract => contract.withdrawRefund(),
     simulateFunction: createSimulation('withdrawRefund'),
   },
 
@@ -203,7 +294,7 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: false,
     icon: IconPlusCircle,
-    writeFunction: (contract) => contract.submitClaim(),
+    writeFunction: contract => contract.submitClaim(),
     simulateFunction: createSimulation('submitClaim'),
   },
 
@@ -214,8 +305,19 @@ const transactions: WriteTransaction[] = [
     role: 'member',
     requiresParams: true,
     icon: IconDollarSign,
+    parameters: [
+      {
+        name: 'forfeit',
+        type: 'bool',
+        label: 'Forfeit Claim',
+        description: 'Choose whether to forfeit the claim',
+        validation: { required: true },
+      },
+    ],
     writeFunction: (contract, forfeit = false) => contract.withdrawClaimFund(forfeit),
     simulateFunction: createSimulation('withdrawClaimFund'),
+    estimateGasFunction: (contract, forfeit = false) =>
+      contract.estimateGas.withdrawClaimFund(forfeit),
   },
 
   // SECRETARY TRANSACTIONS
@@ -226,8 +328,21 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: true,
     icon: IconUserPlus,
-    writeFunction: (contract, memberWalletAddress) => contract.addMemberToCommunity(memberWalletAddress),
+    parameters: [
+      {
+        name: 'memberWalletAddress',
+        type: 'address',
+        label: 'Member Wallet Address',
+        description: 'Ethereum address of the new member to add',
+        placeholder: '0x...',
+        validation: { required: true },
+      },
+    ],
+    writeFunction: (contract, memberWalletAddress) =>
+      contract.addMemberToCommunity(memberWalletAddress),
     simulateFunction: createSimulation('addMemberToCommunity'),
+    estimateGasFunction: (contract, memberWalletAddress) =>
+      contract.estimateGas.addMemberToCommunity(memberWalletAddress),
   },
 
   {
@@ -237,7 +352,7 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: false,
     icon: IconUsers,
-    writeFunction: (contract) => contract.createSubgroup(),
+    writeFunction: contract => contract.createSubgroup(),
     simulateFunction: createSimulation('createSubgroup'),
   },
 
@@ -248,17 +363,50 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: true,
     icon: IconUsers,
+    parameters: [
+      {
+        name: 'memberWalletAddress',
+        type: 'address',
+        label: 'Member Wallet Address',
+        description: 'Ethereum address of the member to assign',
+        placeholder: '0x...',
+        validation: { required: true },
+      },
+      {
+        name: 'subgroupId',
+        type: 'uint256',
+        label: 'Subgroup ID',
+        description: 'ID of the target subgroup',
+        validation: { required: true, min: 0 },
+      },
+      {
+        name: 'isReorging',
+        type: 'bool',
+        label: 'Is Reorganizing',
+        description: 'Whether this assignment is part of a reorganization',
+        validation: { required: true },
+      },
+    ],
     writeFunction: (contract, memberWalletAddress, subgroupId, isReorging = false) =>
       contract.assignMemberToSubgroup(
         memberWalletAddress,
         ethers.BigNumber.from(subgroupId),
-        isReorging
+        isReorging,
       ),
-    simulateFunction: createSimulation('assignMemberToSubgroup', (memberWalletAddress, subgroupId, isReorging = false) => [
-      memberWalletAddress,
-      ethers.BigNumber.from(subgroupId),
-      isReorging,
-    ]),
+    simulateFunction: createSimulation(
+      'assignMemberToSubgroup',
+      (memberWalletAddress, subgroupId, isReorging = false) => [
+        memberWalletAddress,
+        ethers.BigNumber.from(subgroupId),
+        isReorging,
+      ],
+    ),
+    estimateGasFunction: (contract, memberWalletAddress, subgroupId, isReorging = false) =>
+      contract.estimateGas.assignMemberToSubgroup(
+        memberWalletAddress,
+        ethers.BigNumber.from(subgroupId),
+        isReorging,
+      ),
   },
 
   {
@@ -268,8 +416,20 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: true,
     icon: IconShield,
+    parameters: [
+      {
+        name: 'totalCoverage',
+        type: 'uint256',
+        label: 'Total Coverage Amount',
+        description: 'Total coverage amount to set (in Wei)',
+        isCurrency: true,
+        validation: { required: true, min: 0 },
+      },
+    ],
     writeFunction: (contract, totalCoverage) => contract.initiateDefaultState(totalCoverage),
     simulateFunction: createSimulation('initiateDefaultState'),
+    estimateGasFunction: (contract, totalCoverage) =>
+      contract.estimateGas.initiateDefaultState(totalCoverage),
   },
 
   {
@@ -279,8 +439,21 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: true,
     icon: IconUserCheck,
+    parameters: [
+      {
+        name: 'claimId',
+        type: 'uint256',
+        label: 'Claim ID',
+        description: 'ID of the claim to whitelist',
+        validation: { required: true, min: 0 },
+      },
+    ],
     writeFunction: (contract, claimId) => contract.whitelistClaim(ethers.BigNumber.from(claimId)),
-    simulateFunction: createSimulation('whitelistClaim', (claimId) => [ethers.BigNumber.from(claimId)]),
+    simulateFunction: createSimulation('whitelistClaim', claimId => [
+      ethers.BigNumber.from(claimId),
+    ]),
+    estimateGasFunction: (contract, claimId) =>
+      contract.estimateGas.whitelistClaim(ethers.BigNumber.from(claimId)),
   },
 
   {
@@ -290,8 +463,20 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: true,
     icon: IconShield,
+    parameters: [
+      {
+        name: 'totalCoverage',
+        type: 'uint256',
+        label: 'Total Coverage Amount',
+        description: 'Total coverage amount to update (in Wei)',
+        isCurrency: true,
+        validation: { required: true, min: 0 },
+      },
+    ],
     writeFunction: (contract, totalCoverage) => contract.updateCoverageAmount(totalCoverage),
     simulateFunction: createSimulation('updateCoverageAmount'),
+    estimateGasFunction: (contract, totalCoverage) =>
+      contract.estimateGas.updateCoverageAmount(totalCoverage),
   },
 
   {
@@ -301,9 +486,20 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: true,
     icon: IconSettings,
+    parameters: [
+      {
+        name: 'successorListWalletAddresses',
+        type: 'address[]',
+        label: 'Successor Wallet Addresses',
+        description: 'Array of Ethereum addresses for secretary successors',
+        validation: { required: true },
+      },
+    ],
     writeFunction: (contract, successorListWalletAddresses) =>
       contract.defineSecretarySuccessorList(successorListWalletAddresses),
     simulateFunction: createSimulation('defineSecretarySuccessorList'),
+    estimateGasFunction: (contract, successorListWalletAddresses) =>
+      contract.estimateGas.defineSecretarySuccessorList(successorListWalletAddresses),
   },
 
   {
@@ -313,9 +509,21 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: true,
     icon: IconRefreshCw,
+    parameters: [
+      {
+        name: 'successorWalletAddress',
+        type: 'address',
+        label: 'Successor Wallet Address',
+        description: 'Ethereum address of the successor to handover secretary role to',
+        placeholder: '0x...',
+        validation: { required: true },
+      },
+    ],
     writeFunction: (contract, successorWalletAddress) =>
       contract.handoverSecretaryRoleToSuccessor(successorWalletAddress),
     simulateFunction: createSimulation('handoverSecretaryRoleToSuccessor'),
+    estimateGasFunction: (contract, successorWalletAddress) =>
+      contract.estimateGas.handoverSecretaryRoleToSuccessor(successorWalletAddress),
   },
 
   {
@@ -325,7 +533,7 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: false,
     icon: IconDollarSign,
-    writeFunction: (contract) => contract.injectFunds(),
+    writeFunction: contract => contract.injectFunds(),
     simulateFunction: createSimulation('injectFunds'),
   },
 
@@ -336,7 +544,7 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: false,
     icon: IconTrendingUp,
-    writeFunction: (contract) => contract.divideShortfall(),
+    writeFunction: contract => contract.divideShortfall(),
     simulateFunction: createSimulation('divideShortfall'),
   },
 
@@ -347,7 +555,7 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: false,
     icon: IconCalendar,
-    writeFunction: (contract) => contract.extendPeriodByOneDay(),
+    writeFunction: contract => contract.extendPeriodByOneDay(),
     simulateFunction: createSimulation('extendPeriodByOneDay'),
   },
 
@@ -358,7 +566,7 @@ const transactions: WriteTransaction[] = [
     role: 'secretary',
     requiresParams: false,
     icon: IconCalendar,
-    writeFunction: (contract) => contract.advancePeriod(),
+    writeFunction: contract => contract.advancePeriod(),
     simulateFunction: createSimulation('advancePeriod'),
   },
 ];
@@ -377,20 +585,22 @@ export function getAllWriteTransactions(): WriteTransaction[] {
 /**
  * Get write transactions filtered by role
  */
-export function getWriteTransactionsByRole(role: 'public' | 'member' | 'secretary'): WriteTransaction[] {
-  return transactions.filter((transaction) => transaction.role === role);
+export function getWriteTransactionsByRole(
+  role: 'public' | 'member' | 'secretary',
+): WriteTransaction[] {
+  return transactions.filter(transaction => transaction.role === role);
 }
 
 /**
  * Get write transactions that don't require parameters
  */
 export function getParameterlessWriteTransactions(): WriteTransaction[] {
-  return transactions.filter((transaction) => !transaction.requiresParams);
+  return transactions.filter(transaction => !transaction.requiresParams);
 }
 
 /**
  * Get a specific write transaction by function name
  */
 export function getWriteTransactionByName(functionName: string): ?WriteTransaction {
-  return transactions.find((transaction) => transaction.functionName === functionName);
+  return transactions.find(transaction => transaction.functionName === functionName);
 }
