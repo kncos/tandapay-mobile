@@ -10,12 +10,11 @@ import ZulipButton from '../../common/ZulipButton';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from '../components/Card';
-import { formatTransferForDisplay } from './TransactionFormatter';
-import { formatTimestamp, formatAddress } from './TransactionUtils';
+import { formatTimestamp } from './TransactionUtils';
 
 type Props = {|
   visible: boolean,
-  transaction: ?mixed, // New transfer format from Alchemy
+  transaction: ?mixed, // EtherscanTransaction format from convertTransferToEtherscanFormat
   walletAddress: string,
   onClose: () => void,
   onViewInExplorer: (txHash: string) => void,
@@ -148,18 +147,21 @@ export default function TransactionDetailsModal({
     return null;
   }
 
-  // Format the transfer using our new formatter
-  const formattedTransfer = formatTransferForDisplay(transaction, walletAddress);
+  // The transaction is already in EtherscanTransaction format from TransactionList
+  // $FlowFixMe[unclear-type] - Transaction object structure is from converted format
+  const etherscanTransaction = (transaction: any);
 
   // Format display values
-  const blockNumber = formattedTransfer.blockNumber != null ? formattedTransfer.blockNumber : 'Unknown';
-  const fullDate = formattedTransfer.timestamp != null
-    ? formatTimestamp(formattedTransfer.timestamp)
+  const blockNumber = etherscanTransaction.blockNumber && etherscanTransaction.blockNumber !== '0'
+    ? etherscanTransaction.blockNumber
+    : 'Unknown';
+  const fullDate = etherscanTransaction.timeStamp && etherscanTransaction.timeStamp !== '0'
+    ? formatTimestamp(etherscanTransaction.timeStamp)
     : 'Unknown';
 
   // Determine transaction type and direction
-  const isTokenTransfer = formattedTransfer.category === 'erc20';
-  const direction = formattedTransfer.direction === 'IN' ? 'received' : 'sent';
+  const isTokenTransfer = etherscanTransaction.asset !== 'ETH';
+  const direction = etherscanTransaction.direction === 'IN' ? 'received' : 'sent';
 
   return (
     <Modal
@@ -217,7 +219,7 @@ export default function TransactionDetailsModal({
               <View style={styles.row}>
                 <ZulipText style={[styles.label, { color: themeData.color }]}>Amount:</ZulipText>
                 <ZulipText style={[styles.value, { color: themeData.color }]}>
-                  {formattedTransfer.formattedValue}
+                  {etherscanTransaction.formattedValue}
                 </ZulipText>
               </View>
 
@@ -234,12 +236,12 @@ export default function TransactionDetailsModal({
                 <View style={{ flex: 1 }}>
                   <ZulipText style={[styles.label, { color: themeData.color }]}>From:</ZulipText>
                   <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
-                    {formatAddress(formattedTransfer.from)}
+                    {etherscanTransaction.from}
                   </ZulipText>
                 </View>
                 <TouchableOpacity
                   style={styles.copyButton}
-                  onPress={() => copyToClipboard(formattedTransfer.from, 'From address')}
+                  onPress={() => copyToClipboard(etherscanTransaction.from, 'From address')}
                 >
                   <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                 </TouchableOpacity>
@@ -249,28 +251,28 @@ export default function TransactionDetailsModal({
                 <View style={{ flex: 1 }}>
                   <ZulipText style={[styles.label, { color: themeData.color }]}>To:</ZulipText>
                   <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
-                    {formatAddress(formattedTransfer.to)}
+                    {etherscanTransaction.to}
                   </ZulipText>
                 </View>
                 <TouchableOpacity
                   style={styles.copyButton}
-                  onPress={() => copyToClipboard(formattedTransfer.to, 'To address')}
+                  onPress={() => copyToClipboard(etherscanTransaction.to, 'To address')}
                 >
                   <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                 </TouchableOpacity>
               </View>
 
-              {isTokenTransfer && formattedTransfer.contractAddress != null && (
+              {isTokenTransfer && etherscanTransaction.contractAddress != null && etherscanTransaction.contractAddress !== '' && (
                 <View style={styles.copyableRow}>
                   <View style={{ flex: 1 }}>
                     <ZulipText style={[styles.label, { color: themeData.color }]}>Token Contract:</ZulipText>
                     <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
-                      {formatAddress(formattedTransfer.contractAddress)}
+                      {etherscanTransaction.contractAddress}
                     </ZulipText>
                   </View>
                   <TouchableOpacity
                     style={styles.copyButton}
-                    onPress={() => copyToClipboard(formattedTransfer.contractAddress || '', 'Token contract')}
+                    onPress={() => copyToClipboard(etherscanTransaction.contractAddress || '', 'Token contract')}
                   >
                     <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                   </TouchableOpacity>
@@ -285,12 +287,12 @@ export default function TransactionDetailsModal({
                 <View style={{ flex: 1 }}>
                   <ZulipText style={[styles.label, { color: themeData.color }]}>Hash:</ZulipText>
                   <ZulipText style={[styles.hashValue, { color: TandaPayColors.primary }]}>
-                    {formatAddress(formattedTransfer.hash)}
+                    {etherscanTransaction.hash}
                   </ZulipText>
                 </View>
                 <TouchableOpacity
                   style={styles.copyButton}
-                  onPress={() => copyToClipboard(formattedTransfer.hash, 'Transaction hash')}
+                  onPress={() => copyToClipboard(etherscanTransaction.hash, 'Transaction hash')}
                 >
                   <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                 </TouchableOpacity>
@@ -302,16 +304,9 @@ export default function TransactionDetailsModal({
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Category:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>
-                  {formattedTransfer.category}
-                </ZulipText>
-              </View>
-
-              <View style={styles.row}>
                 <ZulipText style={[styles.label, { color: themeData.color }]}>Asset:</ZulipText>
                 <ZulipText style={[styles.value, { color: themeData.color }]}>
-                  {formattedTransfer.asset}
+                  {etherscanTransaction.asset}
                 </ZulipText>
               </View>
             </View>
@@ -330,7 +325,7 @@ export default function TransactionDetailsModal({
             <ZulipButton
               style={styles.button}
               text="View in Explorer"
-              onPress={() => onViewInExplorer(formattedTransfer.hash)}
+              onPress={() => onViewInExplorer(etherscanTransaction.hash)}
               secondary
             />
             <ZulipButton
