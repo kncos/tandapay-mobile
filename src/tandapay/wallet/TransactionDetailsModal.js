@@ -1,8 +1,8 @@
 /* @flow strict-local */
 
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, Modal, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Modal, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipText from '../../common/ZulipText';
@@ -12,11 +12,15 @@ import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from '../components/Card';
 import ScrollableTextBox from '../components/ScrollableTextBox';
 import { formatTimestamp } from './TransactionUtils';
+import { fetchTransactionDetails, formatGasInfoForDisplay } from './TransactionDetailsFetcher';
+import type { TransactionDetails } from './TransactionDetailsFetcher';
+import { getAlchemyApiKey } from './WalletManager';
 
 type Props = {|
   visible: boolean,
   transaction: ?mixed, // EtherscanTransaction format from convertTransferToEtherscanFormat
   walletAddress: string,
+  network?: string,
   onClose: () => void,
   onViewInExplorer: (txHash: string) => void,
 |};
@@ -125,10 +129,47 @@ export default function TransactionDetailsModal({
   visible,
   transaction,
   walletAddress,
+  network = 'sepolia',
   onClose,
   onViewInExplorer,
 }: Props): Node {
   const themeData = useContext(ThemeContext);
+  const [gasDetails, setGasDetails] = useState<?TransactionDetails>(null);
+  const [isLoadingGas, setIsLoadingGas] = useState<boolean>(false);
+
+  // Load gas details when modal opens and transaction changes
+  useEffect(() => {
+    if (visible && transaction != null) {
+      // $FlowFixMe[unclear-type] - Transaction object structure is from converted format
+      const etherscanTransaction = (transaction: any);
+      if (etherscanTransaction.hash) {
+        setIsLoadingGas(true);
+        setGasDetails(null);
+
+        // Get API key and fetch transaction details
+        getAlchemyApiKey()
+          .then((apiKeyResult) => {
+            if (!apiKeyResult.success || apiKeyResult.data == null || apiKeyResult.data === '') {
+              throw new Error('No API key available');
+            }
+            const apiKey = apiKeyResult.data;
+            return fetchTransactionDetails(etherscanTransaction.hash, apiKey, network);
+          })
+          .then((details) => {
+            setGasDetails(details);
+          })
+          .catch((error) => {
+            // eslint-disable-next-line no-console
+            console.warn('Error fetching gas details:', error);
+            // Silently fail - we'll show "Unknown" for gas info
+            setGasDetails(null);
+          })
+          .finally(() => {
+            setIsLoadingGas(false);
+          });
+      }
+    }
+  }, [visible, transaction, network]);
 
   if (!visible || transaction == null) {
     return null;
@@ -263,11 +304,54 @@ export default function TransactionDetailsModal({
             </View>
 
             <View style={styles.section}>
-              <ZulipText style={styles.sectionTitle}>Note</ZulipText>
-              <ZulipText style={[styles.value, { fontStyle: 'italic' }]}>
-                Gas and fee information not available for this transfer format.
-                Use a blockchain explorer for detailed gas information.
-              </ZulipText>
+              <ZulipText style={styles.sectionTitle}>Gas & Fees</ZulipText>
+
+              {isLoadingGas ? (
+                <View style={[styles.row, { justifyContent: 'center' }]}>
+                  <ActivityIndicator size="small" color={TandaPayColors.primary} />
+                  <ZulipText style={[styles.value, { marginLeft: 8 }]}>Loading gas information...</ZulipText>
+                </View>
+              ) : gasDetails != null ? (
+                (() => {
+                  const gasInfo = formatGasInfoForDisplay(gasDetails);
+                  return (
+                    <>
+                      {gasInfo.transactionFee != null && (
+                        <View style={styles.row}>
+                          <ZulipText style={styles.label}>Transaction Fee:</ZulipText>
+                          <ZulipText style={[styles.value, { fontWeight: 'bold' }]}>{gasInfo.transactionFee}</ZulipText>
+                        </View>
+                      )}
+
+                      {gasInfo.gasUsed != null && (
+                        <View style={styles.row}>
+                          <ZulipText style={styles.label}>Gas Used:</ZulipText>
+                          <ZulipText style={styles.value}>{gasInfo.gasUsed}</ZulipText>
+                        </View>
+                      )}
+
+                      {gasInfo.effectiveGasPrice != null && (
+                        <View style={styles.row}>
+                          <ZulipText style={styles.label}>Effective Gas Price:</ZulipText>
+                          <ZulipText style={styles.value}>{gasInfo.effectiveGasPrice}</ZulipText>
+                        </View>
+                      )}
+
+                      {gasDetails.confirmations != null && (
+                        <View style={styles.row}>
+                          <ZulipText style={styles.label}>Confirmations:</ZulipText>
+                          <ZulipText style={styles.value}>{gasDetails.confirmations.toLocaleString()}</ZulipText>
+                        </View>
+                      )}
+                    </>
+                  );
+                })()
+              ) : (
+                <ZulipText style={[styles.value, { fontStyle: 'italic' }]}>
+                  Gas and fee information could not be loaded.
+                  Use a blockchain explorer for detailed gas information.
+                </ZulipText>
+              )}
             </View>
           </ScrollView>
 

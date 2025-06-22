@@ -210,6 +210,7 @@ export default function WalletScreen(props: Props): Node {
        <TransactionList
          walletAddress={walletAddress || ''}
          apiKeyConfigured={apiKeyConfigured}
+         network={supportedNetwork}
          transactionState={transactionState}
          loadMoreState={loadMoreState}
          onLoadMore={() => {

@@ -26,13 +26,7 @@ const styles = {
     borderWidth: 1,
     borderRadius: 6,
     paddingRight: 36, // Make room for copy icon
-    height: 44, // Fixed height for bounded scrolling
-  },
-  scrollContainerSmall: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingRight: 36, // Make room for copy icon
-    height: 36, // Fixed height for bounded scrolling
+    height: 40, // Fixed height for bounded scrolling
   },
   scrollableText: {
     fontFamily: 'monospace', // Explicit monospace font
@@ -40,12 +34,7 @@ const styles = {
     padding: 10,
     lineHeight: 16,
     minWidth: '100%', // Ensure text doesn't wrap
-  },
-  scrollableTextSmall: {
-    fontFamily: 'monospace', // Explicit monospace font
-    fontSize: 11,
-    padding: 8,
-    minWidth: '100%', // Ensure text doesn't wrap
+    opacity: 0.9,
   },
   overlayButton: {
     position: 'absolute',
@@ -57,7 +46,7 @@ const styles = {
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    opacity: 0.8,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
 };
 
@@ -69,14 +58,12 @@ function defaultOnCopy(text: string, label: string) {
 export default function ScrollableTextBox({
   text,
   label,
-  size = 'normal',
   onCopy = defaultOnCopy,
 }: Props): Node {
   const themeData = useContext(ThemeContext);
 
-  const isSmall = size === 'small';
-  const containerStyle = isSmall ? styles.scrollContainerSmall : styles.scrollContainer;
-  const textStyle = isSmall ? styles.scrollableTextSmall : styles.scrollableText;
+  const containerStyle = styles.scrollContainer;
+  const textStyle = styles.scrollableText;
 
   return (
     <View style={styles.inputContainer}>
@@ -100,10 +87,10 @@ export default function ScrollableTextBox({
         </ZulipText>
       </ScrollView>
       <TouchableOpacity
-        style={[styles.overlayButton, { backgroundColor: themeData.dividerColor }]}
+        style={styles.overlayButton}
         onPress={() => onCopy(text, label)}
       >
-        <IconCopy size={14} color={TandaPayColors.primary} />
+        <IconCopy size={14} color={TandaPayColors.white} />
       </TouchableOpacity>
     </View>
   );

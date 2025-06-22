@@ -35,6 +35,7 @@ export type TransactionState =
 type Props = {|
   walletAddress: string,
   apiKeyConfigured: boolean,
+  network?: string,
   transactionState: TransactionState,
   loadMoreState: LoadMoreState,
   onLoadMore: () => void,
@@ -47,6 +48,7 @@ type Props = {|
 export default function TransactionList({
   walletAddress,
   apiKeyConfigured,
+  network = 'sepolia',
   transactionState,
   loadMoreState,
   onLoadMore,
@@ -219,6 +221,7 @@ export default function TransactionList({
             // $FlowFixMe[incompatible-type] - selectedTransaction is guaranteed to be valid
             transaction={selectedTransaction}
             walletAddress={walletAddress}
+            network={network}
             onViewInExplorer={onViewTransactionInExplorer}
           />
         )}
