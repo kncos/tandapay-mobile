@@ -124,26 +124,12 @@ export async function fetchTransactionDetails(txHash: string, apiKey: string, ne
       return null;
     }
 
-    // eslint-disable-next-line no-console
-    console.log('Transaction receipt response:', receipt);
-
     // Extract gas information from receipt
     const gasUsed = bigNumberToString(receipt.gasUsed);
     const effectiveGasPrice = bigNumberToString(receipt.effectiveGasPrice);
-    const cumulativeGasUsed = bigNumberToString(receipt.cumulativeGasUsed);
 
     // Calculate transaction fee using actual gas used and effective gas price
     const transactionFee = calculateTransactionFee(gasUsed, effectiveGasPrice, null);
-
-    // eslint-disable-next-line no-console
-    console.log('Extracted gas values from receipt:', {
-      gasUsed,
-      effectiveGasPrice,
-      cumulativeGasUsed,
-      transactionFee,
-      status: receipt.status,
-      confirmations: receipt.confirmations
-    });
 
     return {
       gasPrice: effectiveGasPrice, // Use effective gas price as the main gas price
