@@ -12,6 +12,7 @@ export { default as CustomRpcForm } from './CustomRpcForm';
 export { default as NetworkInfo } from './NetworkInfo';
 export { default as WalletNetworkInfo } from './WalletNetworkInfo';
 export { default as NetworkPerformanceSettings } from './NetworkPerformanceSettings';
+export { default as ContractAddressConfiguration } from './ContractAddressConfiguration';
 
 // Transaction Components
 export { default as TransactionEstimateAndSend } from './TransactionEstimateAndSend';

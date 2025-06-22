@@ -16,6 +16,14 @@ export type TandaPaySettingsState = $ReadOnly<{|
     chainId: number,
     blockExplorerUrl?: string,
   |},
+  // Per-network contract addresses configured by users
+  contractAddresses: {|
+    mainnet: ?string,
+    sepolia: ?string,
+    arbitrum: ?string,
+    polygon: ?string,
+    custom: ?string,
+  |},
   // Network performance settings (extracted from CommunityInfoConfig)
   networkPerformance: {|
     cacheExpirationMs: number,
@@ -27,6 +35,13 @@ export type TandaPaySettingsState = $ReadOnly<{|
 const initialState: TandaPaySettingsState = {
   selectedNetwork: 'sepolia',
   customRpcConfig: null,
+  contractAddresses: {
+    mainnet: null,
+    sepolia: null,
+    arbitrum: null,
+    polygon: null,
+    custom: null,
+  },
   networkPerformance: {
     cacheExpirationMs: 30000, // 30 seconds default
     rateLimitDelayMs: 100, // 100ms between calls
@@ -45,6 +60,13 @@ export default (state: TandaPaySettingsState = initialState, action: Action): Ta
       const settingsToValidate = {
         selectedNetwork: action.settings.selectedNetwork != null ? action.settings.selectedNetwork : state.selectedNetwork,
         customRpcConfig: action.settings.customRpcConfig !== undefined ? action.settings.customRpcConfig : state.customRpcConfig,
+        contractAddresses: action.settings.contractAddresses != null ? {
+          mainnet: action.settings.contractAddresses.mainnet !== undefined ? action.settings.contractAddresses.mainnet : state.contractAddresses.mainnet,
+          sepolia: action.settings.contractAddresses.sepolia !== undefined ? action.settings.contractAddresses.sepolia : state.contractAddresses.sepolia,
+          arbitrum: action.settings.contractAddresses.arbitrum !== undefined ? action.settings.contractAddresses.arbitrum : state.contractAddresses.arbitrum,
+          polygon: action.settings.contractAddresses.polygon !== undefined ? action.settings.contractAddresses.polygon : state.contractAddresses.polygon,
+          custom: action.settings.contractAddresses.custom !== undefined ? action.settings.contractAddresses.custom : state.contractAddresses.custom,
+        } : state.contractAddresses,
         networkPerformance: action.settings.networkPerformance != null ? {
           cacheExpirationMs: action.settings.networkPerformance.cacheExpirationMs != null ? action.settings.networkPerformance.cacheExpirationMs : state.networkPerformance.cacheExpirationMs,
           rateLimitDelayMs: action.settings.networkPerformance.rateLimitDelayMs != null ? action.settings.networkPerformance.rateLimitDelayMs : state.networkPerformance.rateLimitDelayMs,

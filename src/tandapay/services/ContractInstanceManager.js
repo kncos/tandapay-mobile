@@ -13,10 +13,12 @@ import { ethers } from 'ethers';
 // $FlowFixMe[untyped-import] - TandaPayInfo module doesn't have Flow types
 import { TandaPayInfo } from '../contract/TandaPay';
 import { getTandaPayContractAddress, isContractDeployed } from '../config/TandaPayConfig';
+import { getTandaPayContractAddressForNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { getWalletInstance } from '../wallet/WalletManager';
 import { createProvider } from '../providers/ProviderManager';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
+import type { PerAccountState } from '../../reduxTypes';
 
 /**
  * Contract instance cache to avoid creating multiple instances
@@ -156,4 +158,152 @@ export function getContractAddress(network: 'mainnet' | 'sepolia' | 'arbitrum' |
  */
 export function isTandaPayAvailable(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): boolean {
   return isContractDeployed(network);
+}
+
+// =============================================================================
+// STATE-AWARE CONTRACT FUNCTIONS
+// =============================================================================
+
+/**
+ * Create a TandaPay contract instance with signer using user-configured addresses
+ * @param network The network to connect to
+ * @param state The Redux state containing user-configured contract addresses
+ * @returns A TandaPayResult containing the contract instance
+ */
+// $FlowFixMe[unclear-type] - ethers contract types are complex
+export async function createTandaPayContractWithSignerFromState(
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  state: PerAccountState
+  // $FlowFixMe[unclear-type] - ethers contract types are complex
+): Promise<TandaPayResult<any>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      // Get user-configured contract address
+      const contractAddress = getTandaPayContractAddressForNetwork(state, network);
+
+      if (contractAddress == null || contractAddress.trim() === '') {
+        throw TandaPayErrorHandler.createError(
+          'CONTRACT_ERROR',
+          `TandaPay contract address not configured for ${network}`,
+          { userMessage: `Please configure a TandaPay contract address for ${network} in the network settings.` }
+        );
+      }
+
+      const cacheKey = `${network}_${contractAddress}_signer_user`;
+
+      // Check cache first
+      if (contractInstanceCache.has(cacheKey)) {
+        return contractInstanceCache.get(cacheKey);
+      }
+
+      // Create provider (handle custom networks)
+      let providerResult;
+      if (network === 'custom') {
+        const customConfig = getTandaPayCustomRpcConfig(state);
+        if (!customConfig) {
+          throw TandaPayErrorHandler.createError(
+            'CONTRACT_ERROR',
+            'Custom RPC configuration not found',
+            { userMessage: 'Please configure custom RPC settings in network settings.' }
+          );
+        }
+        providerResult = await createProvider(network, customConfig);
+      } else {
+        providerResult = await createProvider(network);
+      }
+
+      if (!providerResult.success) {
+        throw providerResult.error;
+      }
+
+      const provider = providerResult.data;
+
+      // Get wallet instance
+      const walletResult = await getWalletInstance(provider);
+      if (!walletResult.success) {
+        throw walletResult.error;
+      }
+
+      const signer = walletResult.data;
+
+      // Create contract instance
+      const contract = new ethers.Contract(contractAddress, TandaPayInfo.abi, signer);
+
+      // Cache the instance
+      contractInstanceCache.set(cacheKey, contract);
+
+      return contract;
+    },
+    'CONTRACT_ERROR',
+    'Unable to create TandaPay contract instance. Please check your network connection and contract address configuration.',
+    'CONTRACT_INSTANCE_CREATION'
+  );
+}
+
+/**
+ * Create a TandaPay contract instance with provider using user-configured addresses
+ * @param network The network to connect to
+ * @param state The Redux state containing user-configured contract addresses
+ * @returns A TandaPayResult containing the contract instance
+ */
+// $FlowFixMe[unclear-type] - ethers contract types are complex
+export async function createTandaPayContractWithProviderFromState(
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  state: PerAccountState
+  // $FlowFixMe[unclear-type] - ethers contract types are complex
+): Promise<TandaPayResult<any>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      // Get user-configured contract address
+      const contractAddress = getTandaPayContractAddressForNetwork(state, network);
+
+      if (contractAddress == null || contractAddress.trim() === '') {
+        throw TandaPayErrorHandler.createError(
+          'CONTRACT_ERROR',
+          `TandaPay contract address not configured for ${network}`,
+          { userMessage: `Please configure a TandaPay contract address for ${network} in the network settings.` }
+        );
+      }
+
+      const cacheKey = `${network}_${contractAddress}_provider_user`;
+
+      // Check cache first
+      if (contractInstanceCache.has(cacheKey)) {
+        return contractInstanceCache.get(cacheKey);
+      }
+
+      // Create provider (handle custom networks)
+      let providerResult;
+      if (network === 'custom') {
+        const customConfig = getTandaPayCustomRpcConfig(state);
+        if (!customConfig) {
+          throw TandaPayErrorHandler.createError(
+            'CONTRACT_ERROR',
+            'Custom RPC configuration not found',
+            { userMessage: 'Please configure custom RPC settings in network settings.' }
+          );
+        }
+        providerResult = await createProvider(network, customConfig);
+      } else {
+        providerResult = await createProvider(network);
+      }
+
+      if (!providerResult.success) {
+        throw providerResult.error;
+      }
+
+      const provider = providerResult.data;
+
+      // Create contract instance
+      const contract = new ethers.Contract(contractAddress, TandaPayInfo.abi, provider);
+
+      // Cache the instance
+      contractInstanceCache.set(cacheKey, contract);
+
+      return contract;
+    },
+    'CONTRACT_ERROR',
+    'Unable to create TandaPay contract instance. Please check your network connection and contract address configuration.',
+    'CONTRACT_INSTANCE_CREATION'
+  );
 }

@@ -13,6 +13,13 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
       settings: {
         selectedNetwork: 'sepolia',
         customRpcConfig: null,
+        contractAddresses: {
+          mainnet: null,
+          sepolia: null,
+          arbitrum: null,
+          polygon: null,
+          custom: null,
+        },
         networkPerformance: {
           cacheExpirationMs: 30000,
           rateLimitDelayMs: 100,
@@ -39,6 +46,13 @@ export const getTandaPaySettings = (state: PerAccountState): TandaPaySettingsSta
     return {
       selectedNetwork: 'sepolia',
       customRpcConfig: null,
+      contractAddresses: {
+        mainnet: null,
+        sepolia: null,
+        arbitrum: null,
+        polygon: null,
+        custom: null,
+      },
       networkPerformance: {
         cacheExpirationMs: 30000,
         rateLimitDelayMs: 100,
@@ -66,6 +80,55 @@ export const getTandaPayCustomRpcConfig = (state: PerAccountState): ?{|
 |} => {
   try {
     return getTandaPaySettings(state).customRpcConfig;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Contract address selectors
+export const getTandaPayContractAddresses = (state: PerAccountState): {|
+  mainnet: ?string,
+  sepolia: ?string,
+  arbitrum: ?string,
+  polygon: ?string,
+  custom: ?string,
+|} => {
+  try {
+    const settings = getTandaPaySettings(state);
+    return settings.contractAddresses || {
+      mainnet: null,
+      sepolia: null,
+      arbitrum: null,
+      polygon: null,
+      custom: null,
+    };
+  } catch (error) {
+    return {
+      mainnet: null,
+      sepolia: null,
+      arbitrum: null,
+      polygon: null,
+      custom: null,
+    };
+  }
+};
+
+export const getTandaPayContractAddressForNetwork = (
+  state: PerAccountState,
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+): ?string => {
+  try {
+    const contractAddresses = getTandaPayContractAddresses(state);
+    return contractAddresses[network];
+  } catch (error) {
+    return null;
+  }
+};
+
+export const getCurrentTandaPayContractAddress = (state: PerAccountState): ?string => {
+  try {
+    const selectedNetwork = getTandaPaySelectedNetwork(state);
+    return getTandaPayContractAddressForNetwork(state, selectedNetwork);
   } catch (error) {
     return null;
   }

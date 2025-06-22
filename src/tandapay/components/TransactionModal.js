@@ -8,7 +8,7 @@ import type { WriteTransaction } from '../contract/writeTransactionObjects';
 import TransactionParameterForm from './TransactionParameterForm';
 import TransactionEstimateAndSend from './TransactionEstimateAndSend';
 import { useTransactionForm } from '../hooks/useTransactionForm';
-import { createTandaPayContractWithSigner } from '../services/ContractInstanceManager';
+import { createTandaPayContractWithSignerFromState } from '../services/ContractInstanceManager';
 import { isContractDeployed } from '../config/TandaPayConfig';
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
@@ -33,6 +33,7 @@ export default function TransactionModal(props: Props): Node {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const themeData = useContext(ThemeContext);
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
+  const reduxState = useSelector(state => state);
 
   // Create a default transaction to avoid conditional hook usage
   const defaultTransaction = {
@@ -100,7 +101,7 @@ export default function TransactionModal(props: Props): Node {
       }
 
       // Create contract instance with signer
-      const contractResult = await createTandaPayContractWithSigner(selectedNetwork);
+      const contractResult = await createTandaPayContractWithSignerFromState(selectedNetwork, reduxState);
       if (!contractResult.success) {
         return {
           success: false,
@@ -132,7 +133,7 @@ export default function TransactionModal(props: Props): Node {
         error: error.message || 'Failed to estimate gas',
       };
     }
-  }, [transaction, getParameterValues, selectedNetwork]);
+  }, [transaction, getParameterValues, selectedNetwork, reduxState]);
 
   // Transaction simulation and execution callback
   const handleSendTransaction: SendTransactionCallback = useCallback(async (params: TransactionParams, gasEstimate: GasEstimate) => {
@@ -162,7 +163,7 @@ export default function TransactionModal(props: Props): Node {
       }
 
       // Create contract instance with signer
-      const contractResult = await createTandaPayContractWithSigner(selectedNetwork);
+      const contractResult = await createTandaPayContractWithSignerFromState(selectedNetwork, reduxState);
       if (!contractResult.success) {
         return {
           success: false,
@@ -197,7 +198,7 @@ export default function TransactionModal(props: Props): Node {
     } finally {
       setIsSubmitting(false);
     }
-  }, [transaction, getParameterValues, selectedNetwork]);
+  }, [transaction, getParameterValues, selectedNetwork, reduxState]);
 
   // Transaction success callback
   const handleTransactionSuccess = useCallback((txHash: string) => {
