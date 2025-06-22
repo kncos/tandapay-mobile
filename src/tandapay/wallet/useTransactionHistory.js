@@ -1,15 +1,27 @@
-/* @flow strict-local */
+// @flow strict-local
 
-import { useState, useEffect, useCallback } from 'react';
-import { fetchTransactionHistory } from './TransactionService';
-import type { EtherscanTransaction } from './EtherscanService';
+/**
+ * Transaction history hook using ChronologicalTransferManager
+ *
+ * This replaces the old transaction fetching logic with the new robust system
+ * that properly handles deduplication and chronological ordering.
+ */
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+// $FlowFixMe[untyped-import] - alchemy-sdk is untyped
+import { Alchemy, Network } from 'alchemy-sdk';
+import { AlchemyTransferFetcher } from './AlchemyTransferFetcher';
+import { ChronologicalTransferManager } from './ChronologicalTransferManager';
+import { getAlchemyApiKey } from './WalletManager';
 import type { TandaPayError } from '../errors/types';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
+
+type Transfer = mixed;
 
 export type TransactionState =
   | {| status: 'idle' |}
   | {| status: 'loading' |}
-  | {| status: 'success', transactions: $ReadOnlyArray<EtherscanTransaction>, hasMore: boolean |}
+  | {| status: 'success', transfers: $ReadOnlyArray<Transfer>, hasMore: boolean |}
   | {| status: 'error', error: TandaPayError |};
 
 export type LoadMoreState =
@@ -28,6 +40,16 @@ type UseTransactionHistoryReturn = {|
   loadMoreState: LoadMoreState,
   loadMore: () => Promise<void>,
   refresh: () => void,
+  getStats: () => ?{|
+    outgoingTransfers: number,
+    incomingTransfers: number,
+    combinedFeed: number,
+    feedPosition: number,
+    currentPage: number,
+    hasMoreIncoming: boolean,
+    hasMoreOutgoing: boolean,
+    isInitialized: boolean,
+  |},
 |};
 
 export default function useTransactionHistory({
@@ -37,14 +59,79 @@ export default function useTransactionHistory({
 }: UseTransactionHistoryProps): UseTransactionHistoryReturn {
   const [transactionState, setTransactionState] = useState<TransactionState>({ status: 'idle' });
   const [loadMoreState, setLoadMoreState] = useState<LoadMoreState>({ status: 'idle' });
-  const [pageKey, setPageKey] = useState<?string>(null);
 
-  // Reset when wallet or API key changes
+  // Use refs to maintain instances across re-renders
+  const alchemyFetcherRef = useRef<?AlchemyTransferFetcher>(null);
+  const managerRef = useRef<?ChronologicalTransferManager>(null);
+
+  // Initialize Alchemy and managers when needed
+  const initializeManagers = useCallback(async () => {
+    if (walletAddress == null || walletAddress === '' || !apiKeyConfigured) {
+      return null;
+    }
+
+    try {
+      const apiKeyResult = await getAlchemyApiKey();
+      if (!apiKeyResult.success || apiKeyResult.data == null || apiKeyResult.data === '') {
+        return null;
+      }
+
+      const apiKey = apiKeyResult.data;
+
+      // Map network to Alchemy Network enum
+      let alchemyNetwork;
+      switch (network) {
+        case 'mainnet':
+          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+          alchemyNetwork = Network.ETH_MAINNET;
+          break;
+        case 'sepolia':
+          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+          alchemyNetwork = Network.ETH_SEPOLIA;
+          break;
+        case 'arbitrum':
+          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+          alchemyNetwork = Network.ARB_MAINNET;
+          break;
+        case 'polygon':
+          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+          alchemyNetwork = Network.MATIC_MAINNET;
+          break;
+        default:
+          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+          alchemyNetwork = Network.ETH_SEPOLIA; // Default to Sepolia
+      }
+
+      // $FlowFixMe[untyped-import] - alchemy-sdk Alchemy is untyped
+      const alchemy = new Alchemy({
+        apiKey,
+        network: alchemyNetwork,
+      });
+
+      const alchemyFetcher = new AlchemyTransferFetcher(alchemy);
+      const manager = new ChronologicalTransferManager(alchemyFetcher, walletAddress, 10, 5);
+
+      alchemyFetcherRef.current = alchemyFetcher;
+      managerRef.current = manager;
+
+      return manager;
+    } catch (error) {
+      return null;
+    }
+  }, [walletAddress, apiKeyConfigured, network]);
+
+  // Reset when wallet, API key, or network changes
   useEffect(() => {
     setTransactionState({ status: 'idle' });
     setLoadMoreState({ status: 'idle' });
-    setPageKey(null);
-  }, [walletAddress, apiKeyConfigured, network]);  const fetchInitialTransactions = useCallback(async () => {
+
+    // Clean up previous instances
+    alchemyFetcherRef.current = null;
+    managerRef.current = null;
+  }, [walletAddress, apiKeyConfigured, network]);
+
+  // Fetch initial transactions
+  const fetchInitialTransactions = useCallback(async () => {
     if (walletAddress == null || walletAddress === '') {
       return;
     }
@@ -52,20 +139,25 @@ export default function useTransactionHistory({
     setTransactionState({ status: 'loading' });
 
     try {
-      const result = await fetchTransactionHistory(walletAddress, null, network, 10);
-
-      if (result.success) {
-        setTransactionState({
-          status: 'success',
-          transactions: result.data.transactions,
-          hasMore: result.data.hasMore,
-        });
-        setPageKey(result.data.pageKey);
-      } else {
-        setTransactionState({ status: 'error', error: result.error });
+      const manager = await initializeManagers();
+      if (!manager) {
+        throw TandaPayErrorHandler.createError(
+          'API_ERROR',
+          'Unable to initialize Alchemy API',
+          {
+            userMessage: 'Please configure an Alchemy API key in wallet settings to view transaction history.'
+          }
+        );
       }
+
+      const result = await manager.getMoreTransactions();
+
+      setTransactionState({
+        status: 'success',
+        transfers: result.transfers,
+        hasMore: result.metadata.hasMore,
+      });
     } catch (error) {
-      // Create a TandaPayError for unexpected errors
       const tandaPayError = TandaPayErrorHandler.createError(
         'API_ERROR',
         error.message || 'Failed to fetch transactions',
@@ -79,9 +171,9 @@ export default function useTransactionHistory({
         error: tandaPayError,
       });
     }
-  }, [walletAddress, network]);
+  }, [walletAddress, initializeManagers]);
 
-  // Initial fetch
+  // Initial fetch effect
   useEffect(() => {
     if (
       walletAddress != null
@@ -91,7 +183,10 @@ export default function useTransactionHistory({
     ) {
       fetchInitialTransactions();
     }
-  }, [walletAddress, apiKeyConfigured, transactionState.status, fetchInitialTransactions]);  const loadMore = useCallback(async () => {
+  }, [walletAddress, apiKeyConfigured, transactionState.status, fetchInitialTransactions]);
+
+  // Load more transactions
+  const loadMore = useCallback(async () => {
     if (
       walletAddress == null
       || walletAddress === ''
@@ -99,7 +194,7 @@ export default function useTransactionHistory({
       || !transactionState.hasMore
       || loadMoreState.status === 'loading'
       || loadMoreState.status === 'complete'
-      || pageKey == null
+      || !managerRef.current
     ) {
       return;
     }
@@ -107,31 +202,46 @@ export default function useTransactionHistory({
     setLoadMoreState({ status: 'loading' });
 
     try {
-      const result = await fetchTransactionHistory(walletAddress, pageKey, network, 10);
-
-      if (result.success) {
-        setTransactionState({
-          status: 'success',
-          transactions: [...transactionState.transactions, ...result.data.transactions],
-          hasMore: result.data.hasMore,
-        });
-
-        setPageKey(result.data.pageKey);
-        setLoadMoreState(result.data.hasMore ? { status: 'idle' } : { status: 'complete' });
-      } else {
-        // Treat "no more transactions" as completion, not error
-        setLoadMoreState({ status: 'complete' });
+      if (managerRef.current == null) {
+        return;
       }
+
+      const result = await managerRef.current.getMoreTransactions();
+
+      setTransactionState({
+        status: 'success',
+        transfers: [...transactionState.transfers, ...result.transfers],
+        hasMore: result.metadata.hasMore,
+      });
+
+      setLoadMoreState(result.metadata.hasMore ? { status: 'idle' } : { status: 'complete' });
     } catch (error) {
       // For load more errors, just mark as complete
       setLoadMoreState({ status: 'complete' });
     }
-  }, [walletAddress, transactionState, loadMoreState.status, pageKey, network]);
+  }, [walletAddress, transactionState, loadMoreState.status]);
 
+  // Refresh functionality
   const refresh = useCallback(() => {
     setTransactionState({ status: 'idle' });
     setLoadMoreState({ status: 'idle' });
-    setPageKey(null);
+
+    // Reset the manager
+    if (managerRef.current) {
+      managerRef.current.reset();
+    }
+  }, []);
+
+  // Get statistics
+  const getStats = useCallback(() =>
+    managerRef.current ? managerRef.current.getStats() : null,
+  []);
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    // Clear refs on unmount
+    alchemyFetcherRef.current = null;
+    managerRef.current = null;
   }, []);
 
   return {
@@ -139,5 +249,6 @@ export default function useTransactionHistory({
     loadMoreState,
     loadMore,
     refresh,
+    getStats,
   };
 }

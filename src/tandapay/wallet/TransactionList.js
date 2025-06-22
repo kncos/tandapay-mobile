@@ -1,19 +1,33 @@
-/* @flow strict-local */
+// @flow strict-local
 
-import React, { useState } from 'react';
+/**
+ * TransactionList component that works with the new transfer system
+ *
+ * This component handles the new transfer format while maintaining compatibility
+ * with the existing UI components.
+ */
+
+import React, { useState, useContext } from 'react';
 import type { Node } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import { TandaPayBanner } from '../components';
-import { QUARTER_COLOR } from '../../styles';
-import { formatTransactionDisplay } from './TransactionService';
+import Touchable from '../../common/Touchable';
+import { QUARTER_COLOR, ThemeContext } from '../../styles';
+import { convertTransferToEtherscanFormat } from './TransactionFormatter';
 import TransactionDetailsModal from './TransactionDetailsModal';
-import type { TransactionState, LoadMoreState } from './useTransactionHistory';
+import type { LoadMoreState } from './useTransactionHistory';
 import type { TandaPayError } from '../errors/types';
-import type { EtherscanTransaction } from './EtherscanService';
-import buttons from '../styles/buttons';
+
+// $FlowFixMe[unclear-type] - Transfer objects have complex structure from Alchemy
+type Transfer = mixed;
+
+export type TransactionState =
+  | {| status: 'idle' |}
+  | {| status: 'loading' |}
+  | {| status: 'success', transfers: $ReadOnlyArray<Transfer>, hasMore: boolean |}
+  | {| status: 'error', error: TandaPayError |};
 
 type Props = {|
   walletAddress: string,
@@ -38,11 +52,15 @@ export default function TransactionList({
   onViewExplorer,
   onViewTransactionInExplorer,
 }: Props): Node {
-  const [selectedTransaction, setSelectedTransaction] = useState<?EtherscanTransaction>(null);
+  // $FlowFixMe[unclear-type] - Complex transaction object structure
+  const [selectedTransaction, setSelectedTransaction] = useState<?mixed>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const themeData = useContext(ThemeContext);
 
-  const showTransactionDetails = (transaction: EtherscanTransaction) => {
-    setSelectedTransaction(transaction);
+  const showTransactionDetails = (transfer: Transfer) => {
+    // Convert transfer to etherscan format for the modal
+    const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress);
+    setSelectedTransaction(etherscanTransaction);
     setModalVisible(true);
   };
 
@@ -50,180 +68,168 @@ export default function TransactionList({
     setModalVisible(false);
     setSelectedTransaction(null);
   };
-  // No API key configured
+
+  // Handle API key not configured state
   if (!apiKeyConfigured) {
     return (
-      <TandaPayBanner
-        visible
-        text="Configure Etherscan API key to view transaction history"
-        backgroundColor={QUARTER_COLOR}
-        buttons={[
-          {
-            id: 'wallet-settings',
-            label: 'Go to Settings',
-            onPress: onGoToSettings,
-          },
-          {
-            id: 'view-explorer',
-            label: 'View on Explorer',
-            onPress: onViewExplorer,
-          },
-        ]}
-      />
-    );
-  }
-
-  // Loading initial transactions
-  if (transactionState.status === 'loading') {
-    return (
-      <View style={{ padding: 16, alignItems: 'center' }}>
-        <ActivityIndicator size="small" />
-        <ZulipText text="Loading transactions..." style={{ marginTop: 8, textAlign: 'center' }} />
+      <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+        <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: themeData.color }}>
+          🔑 API Key Required
+        </ZulipText>
+        <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
+          Configure an Alchemy API key in wallet settings to view transaction history.
+        </ZulipText>
+        <ZulipButton
+          text="Configure API Key"
+          onPress={onGoToSettings}
+        />
       </View>
     );
   }
 
-  // Error loading transactions
-  if (transactionState.status === 'error') {
-    const error: TandaPayError = transactionState.error;
-    const errorMessage = error.userMessage != null && error.userMessage !== ''
-      ? error.userMessage
-      : error.message != null && error.message !== ''
-        ? error.message
-        : 'Failed to load transactions';
-
-    // Build buttons array based on error type and retryability
-    const errorButtons = [];
-
-    // Always add retry button for retryable errors
-    if (error.retryable === true) {
-      errorButtons.push({
-        id: 'retry-transactions',
-        label: 'Retry',
-        onPress: onRefresh,
-      });
-    }
-
-    // Add settings button for API key related errors
-    if (error.code === 'NO_API_KEY' || error.code === 'INVALID_API_KEY') {
-      errorButtons.push({
-        id: 'wallet-settings',
-        label: 'Go to Settings',
-        onPress: onGoToSettings,
-      });
-    }
-
-    // Add specific actions for rate limiting
-    if (error.code === 'ETHERSCAN_RATE_LIMIT') {
-      // For rate limiting, only show retry (which is already added above if retryable)
-      // and suggest viewing on explorer as alternative
-      errorButtons.push({
-        id: 'view-explorer',
-        label: 'View on Explorer',
-        onPress: onViewExplorer,
-      });
-    } else if (error.code === 'UNSUPPORTED_CHAIN_ID' || error.code === 'UNSUPPORTED_NETWORK') {
-      // For unsupported networks, suggest viewing on explorer and settings
-      errorButtons.push({
-        id: 'view-explorer',
-        label: 'View on Explorer',
-        onPress: onViewExplorer,
-      });
-      errorButtons.push({
-        id: 'wallet-settings',
-        label: 'Network Settings',
-        onPress: onGoToSettings,
-      });
-    } else {
-      // Add explorer button as fallback for other errors
-      errorButtons.push({
-        id: 'view-explorer',
-        label: 'View on Explorer',
-        onPress: onViewExplorer,
-      });
-    }
-
+  // Handle wallet address not set
+  if (!walletAddress || walletAddress.length === 0) {
     return (
-      <TandaPayBanner
-        visible
-        text={errorMessage}
-        backgroundColor={QUARTER_COLOR}
-        buttons={errorButtons}
-      />
+      <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+        <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: themeData.color }}>
+          💰 No Wallet Connected
+        </ZulipText>
+        <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
+          Please connect a wallet to view transaction history.
+        </ZulipText>
+        <ZulipButton
+          text="Connect Wallet"
+          onPress={onGoToSettings}
+        />
+      </View>
     );
   }
 
-  // Successful load with transactions
-  if (transactionState.status === 'success' && transactionState.transactions.length > 0) {
+  // Handle error state
+  if (transactionState.status === 'error') {
+    const error = transactionState.error;
     return (
-      <>
-        {transactionState.transactions.map((transaction) => {
-          const displayInfo = formatTransactionDisplay(transaction, walletAddress);
+      <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+        <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: themeData.color }}>
+          ❌ Failed to Load Transactions
+        </ZulipText>
+        <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
+          {error.userMessage != null && error.userMessage !== '' ? error.userMessage : 'Unable to fetch transaction history.'}
+        </ZulipText>
+        <ZulipButton
+          text="Try Again"
+          onPress={onRefresh}
+        />
+      </View>
+    );
+  }
+
+  // Handle loading state
+  if (transactionState.status === 'loading') {
+    return (
+      <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+        <ActivityIndicator size="large" color={QUARTER_COLOR} />
+        <ZulipText style={{ marginTop: 10, textAlign: 'center', color: themeData.color }}>
+          Loading transactions...
+        </ZulipText>
+      </View>
+    );
+  }
+
+  // Handle success state with no transactions
+  if (transactionState.status === 'success' && transactionState.transfers.length === 0) {
+    return (
+      <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+        <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: themeData.color }}>
+          📭 No Transactions Found
+        </ZulipText>
+        <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
+          This wallet has no transaction history yet.
+        </ZulipText>
+        <ZulipButton
+          text="View in Explorer"
+          onPress={onViewExplorer}
+        />
+      </View>
+    );
+  }
+
+  // Handle success state with transactions
+  if (transactionState.status === 'success') {
+    const { transfers, hasMore } = transactionState;
+
+    return (
+      <View style={{ backgroundColor: themeData.backgroundColor }}>
+        {/* Transaction List */}
+        {transfers.map((transfer, index) => {
+          // Convert transfer for display
+          const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress);
 
           return (
-            <TandaPayBanner
-              key={transaction.hash}
-              visible
-              text={displayInfo.text}
-              backgroundColor={QUARTER_COLOR}
-              buttons={[
-                {
-                  id: 'more-details',
-                  label: 'More',
-                  onPress: () => showTransactionDetails(transaction),
-                },
-              ]}
-            />
+            <Touchable
+              key={etherscanTransaction.hash || `transfer-${index}`}
+              style={{ padding: 12, marginVertical: 2, backgroundColor: themeData.cardColor, borderRadius: 8 }}
+              onPress={() => showTransactionDetails(transfer)}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <ZulipText style={{ fontSize: 16, fontWeight: 'bold', color: themeData.color }}>
+                    {etherscanTransaction.direction === 'IN' ? '📥 Received' : '📤 Sent'}
+                  </ZulipText>
+                  <ZulipText style={{ fontSize: 14, color: themeData.dividerColor }}>
+                    {etherscanTransaction.formattedValue}
+                  </ZulipText>
+                  <ZulipText style={{ fontSize: 12, color: themeData.dividerColor }}>
+                    Block
+                    {' '}
+                    {etherscanTransaction.blockNumber}
+                  </ZulipText>
+                </View>
+                <ZulipButton
+                  text="View"
+                  style={{ padding: 8 }}
+                  secondary
+                  onPress={() => onViewTransactionInExplorer(etherscanTransaction.hash)}
+                />
+              </View>
+            </Touchable>
           );
         })}
 
-        {/* Transaction Details Modal */}
-        <TransactionDetailsModal
-          visible={modalVisible}
-          transaction={selectedTransaction}
-          walletAddress={walletAddress}
-          onClose={hideTransactionDetails}
-          onViewInExplorer={onViewTransactionInExplorer}
-        />
-
-        {/* Load More Button - only show if there might be more transactions */}
-        {transactionState.hasMore || loadMoreState.status === 'loading' || loadMoreState.status === 'complete' ? (
-          <View style={buttons.buttonRow}>
-            <ZulipButton
-              style={buttons.button}
-              text={
-                loadMoreState.status === 'complete'
-                  ? 'All caught up!'
-                  : loadMoreState.status === 'loading'
-                    ? 'Loading...'
-                    : 'Load More Transactions'
-              }
-              onPress={() => {
-                onLoadMore();
-              }}
-              progress={loadMoreState.status === 'loading'}
-              disabled={loadMoreState.status === 'loading' || loadMoreState.status === 'complete' || !transactionState.hasMore}
-              secondary
-            />
+        {/* Load More Button */}
+        {hasMore && (
+          <View style={{ padding: 16, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+            {loadMoreState.status === 'loading' ? (
+              <ActivityIndicator size="small" color={QUARTER_COLOR} />
+            ) : (
+              <ZulipButton
+                text="Load More"
+                onPress={onLoadMore}
+                disabled={loadMoreState.status === 'complete'}
+              />
+            )}
           </View>
-        ) : null}
-      </>
+        )}
+
+        {/* Transaction Details Modal */}
+        {selectedTransaction != null && (
+          <TransactionDetailsModal
+            visible={modalVisible}
+            onClose={hideTransactionDetails}
+            // $FlowFixMe[incompatible-type] - selectedTransaction is guaranteed to be valid
+            transaction={selectedTransaction}
+            walletAddress={walletAddress}
+            onViewInExplorer={onViewTransactionInExplorer}
+          />
+        )}
+      </View>
     );
   }
 
-  // No transactions found
+  // Default loading state
   return (
-    <TandaPayBanner
-      visible
-      text="No transactions found"
-      backgroundColor={QUARTER_COLOR}
-      buttons={[
-        {
-          id: 'view-explorer',
-          label: 'View on Explorer',
-          onPress: onViewExplorer,
-        },
-      ]}
-    />
+    <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+      <ActivityIndicator size="large" color={QUARTER_COLOR} />
+    </View>
   );
 }

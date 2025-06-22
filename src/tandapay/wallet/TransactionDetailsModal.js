@@ -10,13 +10,11 @@ import ZulipButton from '../../common/ZulipButton';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from '../components/Card';
-import type { EtherscanTransaction } from './EtherscanService';
-import type { TransactionDetails } from './TransactionService';
-import { getTransactionDetails } from './TransactionService';
+import { formatTransferForDisplay } from './TransactionFormatter';
 
 type Props = {|
   visible: boolean,
-  transaction: ?EtherscanTransaction,
+  transaction: ?mixed, // New transfer format from Alchemy
   walletAddress: string,
   onClose: () => void,
   onViewInExplorer: (txHash: string) => void,
@@ -149,27 +147,22 @@ export default function TransactionDetailsModal({
 }: Props): Node {
   const themeData = useContext(ThemeContext);
 
-  if (!visible || !transaction) {
+  if (!visible || transaction == null) {
     return null;
   }
 
-  const details: TransactionDetails = getTransactionDetails(transaction, walletAddress);
+  // Format the transfer using our new formatter
+  const formattedTransfer = formatTransferForDisplay(transaction, walletAddress);
 
-  // Format gas information
-  const gasUsed = transaction.gasUsed ? parseInt(transaction.gasUsed, 10).toLocaleString() : 'Unknown';
-  const gasPrice = transaction.gasPrice ? `${(parseInt(transaction.gasPrice, 10) / 1e9).toFixed(2)} gwei` : 'Unknown';
-  const txFee = transaction.gasUsed && transaction.gasPrice
-    ? `${((parseInt(transaction.gasUsed, 10) * parseInt(transaction.gasPrice, 10)) / 1e18).toFixed(6)} ETH`
+  // Format display values
+  const blockNumber = formattedTransfer.blockNumber != null ? formattedTransfer.blockNumber : 'Unknown';
+  const fullDate = formattedTransfer.timestamp != null
+    ? new Date(formattedTransfer.timestamp).toLocaleString()
     : 'Unknown';
 
-  // Format block information
-  const blockNumber = transaction.blockNumber ? parseInt(transaction.blockNumber, 10).toLocaleString() : 'Unknown';
-  const confirmations = transaction.confirmations ? parseInt(transaction.confirmations, 10).toLocaleString() : 'Unknown';
-
-  // Format date and time
-  const fullDate = transaction.timeStamp
-    ? new Date(parseInt(transaction.timeStamp, 10) * 1000).toLocaleString()
-    : 'Unknown';
+  // Determine transaction type and direction
+  const isTokenTransfer = formattedTransfer.category === 'erc20';
+  const direction = formattedTransfer.direction === 'IN' ? 'received' : 'sent';
 
   return (
     <Modal
@@ -197,7 +190,7 @@ export default function TransactionDetailsModal({
               <View style={styles.row}>
                 <ZulipText style={[styles.label, { color: themeData.color }]}>Type:</ZulipText>
                 <ZulipText style={[styles.value, { color: themeData.color }]}>
-                  {details.isERC20Transfer ? 'Token Transfer' : 'ETH Transfer'}
+                  {isTokenTransfer ? 'Token Transfer' : 'ETH Transfer'}
                 </ZulipText>
               </View>
 
@@ -207,38 +200,29 @@ export default function TransactionDetailsModal({
                   style={[
                     styles.value,
                     {
-                      color: details.direction === 'received'
+                      color: direction === 'received'
                         ? TandaPayColors.success
                         : TandaPayColors.primary
                     }
                   ]}
                 >
-                  {details.direction === 'sent' ? 'Sent' : 'Received'}
+                  {direction === 'sent' ? 'Sent' : 'Received'}
                 </ZulipText>
               </View>
 
               <View style={styles.row}>
                 <ZulipText style={[styles.label, { color: themeData.color }]}>Status:</ZulipText>
-                <ZulipText
-                  style={details.status === 'success' ? styles.statusSuccess : styles.statusFailed}
-                >
-                  {details.status === 'success' ? '✅ Success' : '❌ Failed'}
+                <ZulipText style={styles.statusSuccess}>
+                  ✅ Success
                 </ZulipText>
               </View>
 
-              {details.isERC20Transfer && details.tokenInfo && (
-                <View style={styles.row}>
-                  <ZulipText style={[styles.label, { color: themeData.color }]}>Amount:</ZulipText>
-                  <ZulipText style={[styles.value, { color: themeData.color }]}>{details.tokenInfo.amount}</ZulipText>
-                </View>
-              )}
-
-              {!details.isERC20Transfer && (
-                <View style={styles.row}>
-                  <ZulipText style={[styles.label, { color: themeData.color }]}>Amount:</ZulipText>
-                  <ZulipText style={[styles.value, { color: themeData.color }]}>{details.ethValue}</ZulipText>
-                </View>
-              )}
+              <View style={styles.row}>
+                <ZulipText style={[styles.label, { color: themeData.color }]}>Amount:</ZulipText>
+                <ZulipText style={[styles.value, { color: themeData.color }]}>
+                  {formattedTransfer.formattedValue}
+                </ZulipText>
+              </View>
 
               <View style={styles.row}>
                 <ZulipText style={[styles.label, { color: themeData.color }]}>Date:</ZulipText>
@@ -252,11 +236,13 @@ export default function TransactionDetailsModal({
               <View style={styles.copyableRow}>
                 <View style={{ flex: 1 }}>
                   <ZulipText style={[styles.label, { color: themeData.color }]}>From:</ZulipText>
-                  <ZulipText style={[styles.addressValue, { color: themeData.color }]}>{formatAddress(transaction.from)}</ZulipText>
+                  <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
+                    {formatAddress(formattedTransfer.from)}
+                  </ZulipText>
                 </View>
                 <TouchableOpacity
                   style={styles.copyButton}
-                  onPress={() => copyToClipboard(transaction.from, 'From address')}
+                  onPress={() => copyToClipboard(formattedTransfer.from, 'From address')}
                 >
                   <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                 </TouchableOpacity>
@@ -265,25 +251,29 @@ export default function TransactionDetailsModal({
               <View style={styles.copyableRow}>
                 <View style={{ flex: 1 }}>
                   <ZulipText style={[styles.label, { color: themeData.color }]}>To:</ZulipText>
-                  <ZulipText style={[styles.addressValue, { color: themeData.color }]}>{formatAddress(transaction.to)}</ZulipText>
+                  <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
+                    {formatAddress(formattedTransfer.to)}
+                  </ZulipText>
                 </View>
                 <TouchableOpacity
                   style={styles.copyButton}
-                  onPress={() => copyToClipboard(transaction.to, 'To address')}
+                  onPress={() => copyToClipboard(formattedTransfer.to, 'To address')}
                 >
                   <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                 </TouchableOpacity>
               </View>
 
-              {details.isERC20Transfer && details.tokenInfo && (
+              {isTokenTransfer && formattedTransfer.contractAddress != null && (
                 <View style={styles.copyableRow}>
                   <View style={{ flex: 1 }}>
                     <ZulipText style={[styles.label, { color: themeData.color }]}>Token Contract:</ZulipText>
-                    <ZulipText style={[styles.addressValue, { color: themeData.color }]}>{formatAddress(details.tokenInfo.contractAddress)}</ZulipText>
+                    <ZulipText style={[styles.addressValue, { color: themeData.color }]}>
+                      {formatAddress(formattedTransfer.contractAddress)}
+                    </ZulipText>
                   </View>
                   <TouchableOpacity
                     style={styles.copyButton}
-                    onPress={() => copyToClipboard(details.tokenInfo?.contractAddress || '', 'Token contract')}
+                    onPress={() => copyToClipboard(formattedTransfer.contractAddress || '', 'Token contract')}
                   >
                     <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                   </TouchableOpacity>
@@ -297,11 +287,13 @@ export default function TransactionDetailsModal({
               <View style={styles.copyableRow}>
                 <View style={{ flex: 1 }}>
                   <ZulipText style={[styles.label, { color: themeData.color }]}>Hash:</ZulipText>
-                  <ZulipText style={[styles.hashValue, { color: TandaPayColors.primary }]}>{formatAddress(transaction.hash)}</ZulipText>
+                  <ZulipText style={[styles.hashValue, { color: TandaPayColors.primary }]}>
+                    {formatAddress(formattedTransfer.hash)}
+                  </ZulipText>
                 </View>
                 <TouchableOpacity
                   style={styles.copyButton}
-                  onPress={() => copyToClipboard(transaction.hash, 'Transaction hash')}
+                  onPress={() => copyToClipboard(formattedTransfer.hash, 'Transaction hash')}
                 >
                   <ZulipText style={[styles.copyButtonText, { color: TandaPayColors.primary }]}>Copy</ZulipText>
                 </TouchableOpacity>
@@ -313,33 +305,26 @@ export default function TransactionDetailsModal({
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Confirmations:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>{confirmations}</ZulipText>
+                <ZulipText style={[styles.label, { color: themeData.color }]}>Category:</ZulipText>
+                <ZulipText style={[styles.value, { color: themeData.color }]}>
+                  {formattedTransfer.category}
+                </ZulipText>
               </View>
 
               <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Nonce:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>{transaction.nonce}</ZulipText>
+                <ZulipText style={[styles.label, { color: themeData.color }]}>Asset:</ZulipText>
+                <ZulipText style={[styles.value, { color: themeData.color }]}>
+                  {formattedTransfer.asset}
+                </ZulipText>
               </View>
             </View>
 
             <View style={styles.section}>
-              <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>Gas & Fees</ZulipText>
-
-              <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Gas Used:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>{gasUsed}</ZulipText>
-              </View>
-
-              <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Gas Price:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>{gasPrice}</ZulipText>
-              </View>
-
-              <View style={styles.row}>
-                <ZulipText style={[styles.label, { color: themeData.color }]}>Transaction Fee:</ZulipText>
-                <ZulipText style={[styles.value, { color: themeData.color }]}>{txFee}</ZulipText>
-              </View>
+              <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>Note</ZulipText>
+              <ZulipText style={[styles.value, { color: themeData.color, fontStyle: 'italic' }]}>
+                Gas and fee information not available for this transfer format.
+                Use a blockchain explorer for detailed gas information.
+              </ZulipText>
             </View>
           </ScrollView>
 
@@ -348,7 +333,7 @@ export default function TransactionDetailsModal({
             <ZulipButton
               style={styles.button}
               text="View in Explorer"
-              onPress={() => onViewInExplorer(transaction.hash)}
+              onPress={() => onViewInExplorer(formattedTransfer.hash)}
               secondary
             />
             <ZulipButton

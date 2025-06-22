@@ -109,7 +109,7 @@ export default function WalletScreen(props: Props): Node {
   // Filter out custom networks since Alchemy/Etherscan only support specific networks
   const supportedNetwork = selectedNetwork === 'custom' ? 'sepolia' : selectedNetwork;
 
-  // Use the custom hook for transaction management
+  // Use the transaction management hook
   const { transactionState, loadMoreState, loadMore, refresh } = useTransactionHistory({
     walletAddress,
     apiKeyConfigured,
