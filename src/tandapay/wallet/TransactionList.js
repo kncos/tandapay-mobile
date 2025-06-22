@@ -19,6 +19,8 @@ import { convertTransferToEtherscanFormat } from './TransactionFormatter';
 import TransactionDetailsModal from './TransactionDetailsModal';
 import type { LoadMoreState } from './useTransactionHistory';
 import type { TandaPayError } from '../errors/types';
+import TandaPayStyles, { TandaPayColors } from '../styles';
+import ZulipTextButton from '../../common/ZulipTextButton';
 
 // $FlowFixMe[unclear-type] - Transfer objects have complex structure from Alchemy
 type Transfer = mixed;
@@ -173,22 +175,20 @@ export default function TransactionList({
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
-                  <ZulipText style={{ fontSize: 16, fontWeight: 'bold', color: themeData.color }}>
-                    {etherscanTransaction.direction === 'IN' ? '📥 Received' : '📤 Sent'}
+                  <ZulipText style={{ fontSize: 16, color: etherscanTransaction.direction === 'IN' ? TandaPayColors.success : TandaPayColors.error }}>
+                    {etherscanTransaction.direction === 'IN' ? 'Received' : 'Sent'}
                   </ZulipText>
-                  <ZulipText style={{ fontSize: 14, color: themeData.dividerColor }}>
+                  <ZulipText style={TandaPayStyles.descriptionCompact}>
                     {etherscanTransaction.formattedValue}
                   </ZulipText>
-                  <ZulipText style={{ fontSize: 12, color: themeData.dividerColor }}>
+                  <ZulipText style={TandaPayStyles.descriptionCompact}>
                     Block
                     {' '}
                     {etherscanTransaction.blockNumber}
                   </ZulipText>
                 </View>
-                <ZulipButton
-                  text="View"
-                  style={{ padding: 8 }}
-                  secondary
+                <ZulipTextButton
+                  label="View"
                   onPress={() => onViewTransactionInExplorer(etherscanTransaction.hash)}
                 />
               </View>

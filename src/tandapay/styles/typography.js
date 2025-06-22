@@ -55,6 +55,11 @@ const typography = Object.freeze({
     opacity: 0.7,
   },
 
+  descriptionCompact: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+
   // Error text
   error: {
     fontSize: 14,
