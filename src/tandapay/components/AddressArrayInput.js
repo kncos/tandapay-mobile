@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import type { Node } from 'react';
 import { View, TouchableOpacity, Alert } from 'react-native';
 
@@ -11,6 +11,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import { TandaPayColors, TandaPayTypography } from '../styles';
+import { ThemeContext } from '../../styles';
 import AddressInput from './AddressInput';
 import Card from './Card';
 
@@ -65,13 +66,11 @@ const customStyles = {
     alignItems: 'center',
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: TandaPayColors.gray300,
     borderRadius: 8,
     marginBottom: 8,
   },
   emptyText: {
     ...TandaPayTypography.description,
-    color: TandaPayColors.gray500,
     textAlign: 'center',
   },
   addButton: {
@@ -94,6 +93,21 @@ export default function AddressArrayInput(props: Props): Node {
   } = props;
 
   const [newAddress, setNewAddress] = useState('');
+  const themeData = useContext(ThemeContext);
+
+  // Create dynamic styles that use theme context
+  const dynamicStyles = {
+    ...customStyles,
+    emptyState: {
+      ...customStyles.emptyState,
+      borderColor: themeData.dividerColor,
+    },
+    emptyText: {
+      ...customStyles.emptyText,
+      color: themeData.color,
+      opacity: 0.6,
+    },
+  };
 
   // Validate Ethereum address
   const validateAddress = useCallback((address: string): boolean => {
@@ -169,8 +183,8 @@ export default function AddressArrayInput(props: Props): Node {
       <Card style={disabled ? customStyles.disabledContainer : null}>
         {/* Address List */}
         {addresses.length === 0 ? (
-          <View style={customStyles.emptyState}>
-            <ZulipText style={customStyles.emptyText}>
+          <View style={dynamicStyles.emptyState}>
+            <ZulipText style={dynamicStyles.emptyText}>
               No addresses added yet
             </ZulipText>
           </View>

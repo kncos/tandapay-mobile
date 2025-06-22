@@ -62,25 +62,25 @@ export type WriteTransaction = {|
 // SIMULATION HELPER FUNCTIONS
 // =============================================================================
 
+/**
+ * Creates a simulation function that only does callStatic (no gas estimation)
+ * This is cleaner and more focused than the previous implementation
+ */
 const createSimulation =
   (contractMethod: string, paramTransform?: (...args: any[]) => any[]) =>
   async (contract: any, ...args: any[]) => {
     const executionResult = await TandaPayErrorHandler.withErrorHandling(async () => {
       const transformedArgs = paramTransform ? paramTransform(...args) : args;
       const callResult = await contract.callStatic[contractMethod](...transformedArgs);
-      const gasEstimate = await contract.estimateGas[contractMethod](...transformedArgs);
 
-      return {
-        result: callResult,
-        gasEstimate: gasEstimate.toString(),
-      };
+      return callResult;
     }, 'CONTRACT_ERROR');
 
     if (executionResult.success) {
       return {
         success: true,
-        result: executionResult.data.result,
-        gasEstimate: executionResult.data.gasEstimate,
+        result: executionResult.data,
+        gasEstimate: null, // Simulation doesn't provide gas estimates
         error: null,
       };
     } else {
@@ -107,7 +107,30 @@ const transactions: WriteTransaction[] = [
     requiresParams: false,
     icon: IconDollarSign,
     writeFunction: contract => contract.issueRefund(true),
-    simulateFunction: createSimulation('issueRefund', () => [true]),
+    // Simplified approach: just call the contract method directly
+    simulateFunction: async (contract) => {
+      const executionResult = await TandaPayErrorHandler.withErrorHandling(
+        () => contract.callStatic.issueRefund(true),
+        'CONTRACT_ERROR'
+      );
+
+      if (executionResult.success) {
+        return {
+          success: true,
+          result: executionResult.data,
+          gasEstimate: null,
+          error: null,
+        };
+      } else {
+        return {
+          success: false,
+          result: null,
+          gasEstimate: null,
+          error: executionResult.error.userMessage,
+        };
+      }
+    },
+    estimateGasFunction: contract => contract.estimateGas.issueRefund(true),
   },
 
   // MEMBER TRANSACTIONS
@@ -119,7 +142,21 @@ const transactions: WriteTransaction[] = [
     requiresParams: false,
     icon: IconUserPlus,
     writeFunction: contract => contract.joinCommunity(),
-    simulateFunction: createSimulation('joinCommunity'),
+    // Direct approach for no-parameter methods
+    simulateFunction: async (contract) => {
+      const executionResult = await TandaPayErrorHandler.withErrorHandling(
+        () => contract.callStatic.joinCommunity(),
+        'CONTRACT_ERROR'
+      );
+
+      return {
+        success: executionResult.success,
+        result: executionResult.success ? executionResult.data : null,
+        gasEstimate: null,
+        error: executionResult.success ? null : executionResult.error.userMessage,
+      };
+    },
+    estimateGasFunction: contract => contract.estimateGas.joinCommunity(),
   },
 
   {
@@ -205,6 +242,7 @@ const transactions: WriteTransaction[] = [
     icon: IconLogOut,
     writeFunction: contract => contract.leaveSubgroup(),
     simulateFunction: createSimulation('leaveSubgroup'),
+    estimateGasFunction: contract => contract.estimateGas.leaveSubgroup(),
   },
 
   {
@@ -216,6 +254,7 @@ const transactions: WriteTransaction[] = [
     icon: IconLogOut,
     writeFunction: contract => contract.defectFromCommunity(),
     simulateFunction: createSimulation('defectFromCommunity'),
+    estimateGasFunction: contract => contract.estimateGas.defectFromCommunity(),
   },
 
   {
@@ -250,6 +289,7 @@ const transactions: WriteTransaction[] = [
     icon: IconUserCheck,
     writeFunction: contract => contract.acceptSecretaryRole(),
     simulateFunction: createSimulation('acceptSecretaryRole'),
+    estimateGasFunction: contract => contract.estimateGas.acceptSecretaryRole(),
   },
 
   {
@@ -285,6 +325,7 @@ const transactions: WriteTransaction[] = [
     icon: IconDollarSign,
     writeFunction: contract => contract.withdrawRefund(),
     simulateFunction: createSimulation('withdrawRefund'),
+    estimateGasFunction: contract => contract.estimateGas.withdrawRefund(),
   },
 
   {
@@ -296,6 +337,7 @@ const transactions: WriteTransaction[] = [
     icon: IconPlusCircle,
     writeFunction: contract => contract.submitClaim(),
     simulateFunction: createSimulation('submitClaim'),
+    estimateGasFunction: contract => contract.estimateGas.submitClaim(),
   },
 
   {
@@ -535,6 +577,7 @@ const transactions: WriteTransaction[] = [
     icon: IconDollarSign,
     writeFunction: contract => contract.injectFunds(),
     simulateFunction: createSimulation('injectFunds'),
+    estimateGasFunction: contract => contract.estimateGas.injectFunds(),
   },
 
   {
@@ -546,6 +589,7 @@ const transactions: WriteTransaction[] = [
     icon: IconTrendingUp,
     writeFunction: contract => contract.divideShortfall(),
     simulateFunction: createSimulation('divideShortfall'),
+    estimateGasFunction: contract => contract.estimateGas.divideShortfall(),
   },
 
   {
@@ -557,6 +601,7 @@ const transactions: WriteTransaction[] = [
     icon: IconCalendar,
     writeFunction: contract => contract.extendPeriodByOneDay(),
     simulateFunction: createSimulation('extendPeriodByOneDay'),
+    estimateGasFunction: contract => contract.estimateGas.extendPeriodByOneDay(),
   },
 
   {
@@ -568,6 +613,7 @@ const transactions: WriteTransaction[] = [
     icon: IconCalendar,
     writeFunction: contract => contract.advancePeriod(),
     simulateFunction: createSimulation('advancePeriod'),
+    estimateGasFunction: contract => contract.estimateGas.advancePeriod(),
   },
 ];
 

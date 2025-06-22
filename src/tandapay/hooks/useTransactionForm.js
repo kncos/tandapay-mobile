@@ -97,12 +97,45 @@ function getDefaultValue(parameter: WriteTransactionParameter): any {
     case 'uint256':
       return '';
     case 'bool':
+      // For bool parameters, use false as default unless it's not required
       return false;
     case 'address[]':
       return [];
     default:
       return '';
   }
+}
+
+/**
+ * Check if a transaction form should be considered valid for gas estimation
+ * This is more permissive than full validation - it allows optional parameters to be empty
+ */
+export function isFormValidForGasEstimation(
+  transaction: WriteTransaction,
+  formState: TransactionFormState
+): boolean {
+  // If no parameters, always valid
+  if (!transaction.parameters || transaction.parameters.length === 0) {
+    return true;
+  }
+
+  // Check if all required parameters are valid
+  for (const param of transaction.parameters) {
+    const value = formState.parameters[param.name];
+    const error = formState.errors[param.name];
+
+    // If there's an error and the parameter is required, form is invalid
+    if (error && param.validation.required) {
+      return false;
+    }
+
+    // If there's an error with the parameter value format (regardless of required status), form is invalid
+    if (error && value !== null && value !== undefined && value !== '') {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -116,23 +149,38 @@ export function useTransactionForm(
   validateForm: () => boolean,
   resetForm: () => void,
   getParameterValues: () => any[],
+  isValidForGasEstimation: boolean,
 |} {
   // Initialize form state with default values
   const initialState = useMemo(() => {
     const parameters = {};
     const errors = {};
+    let isValid = true;
 
     if (transaction.parameters) {
       transaction.parameters.forEach((param) => {
-        parameters[param.name] = getDefaultValue(param);
-        errors[param.name] = null;
+        const defaultValue = getDefaultValue(param);
+        parameters[param.name] = defaultValue;
+
+        // Validate the default value to determine initial form validity
+        const error = validateParameter(defaultValue, param);
+        errors[param.name] = error;
+
+        if (error) {
+          isValid = false;
+        }
       });
+    }
+
+    // If transaction has no parameters, it's always valid
+    if (!transaction.parameters || transaction.parameters.length === 0) {
+      isValid = true;
     }
 
     return {
       parameters,
       errors,
-      isValid: false,
+      isValid,
     };
   }, [transaction]);
 
@@ -227,5 +275,6 @@ export function useTransactionForm(
     validateForm,
     resetForm,
     getParameterValues,
+    isValidForGasEstimation: isFormValidForGasEstimation(transaction, formState),
   };
 }

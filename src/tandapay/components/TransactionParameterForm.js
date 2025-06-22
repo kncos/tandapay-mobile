@@ -1,6 +1,6 @@
 // @flow
 
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Text } from 'react-native';
 
 import type { WriteTransaction, WriteTransactionParameter } from '../contract/writeTransactionObjects';
@@ -13,17 +13,11 @@ import BooleanToggle from './BooleanToggle';
 import AddressArrayInput from './AddressArrayInput';
 
 import { TandaPayColors } from '../styles';
+import { ThemeContext } from '../../styles';
 
 const styles = {
   container: {
     marginVertical: 16,
-  },
-
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: TandaPayColors.gray900,
-    marginBottom: 16,
   },
 
   parametersContainer: {
@@ -47,12 +41,6 @@ const styles = {
     borderWidth: 1,
     borderColor: TandaPayColors.warning,
   },
-
-  unknownTypeText: {
-    color: TandaPayColors.gray900,
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
 };
 
 type Props = {|
@@ -68,7 +56,8 @@ function renderParameterInput(
   parameter: WriteTransactionParameter,
   value: any,
   error: ?string,
-  onParameterChange: (name: string, value: any) => void
+  onParameterChange: (name: string, value: any) => void,
+  themeData: any
 ): React$Node {
   const { name, type, label, placeholder, isCurrency } = parameter;
 
@@ -144,7 +133,7 @@ function renderParameterInput(
       // Fallback for unknown types
       return (
         <View key={name} style={styles.unknownTypeContainer}>
-          <Text style={styles.unknownTypeText}>
+          <Text style={{ color: themeData.color, fontSize: 14, fontStyle: 'italic' }}>
             Unsupported parameter type:
             {type}
           </Text>
@@ -161,16 +150,34 @@ export default function TransactionParameterForm({
   formState,
   onParameterChange,
 }: Props): React$Node {
+  const themeData = useContext(ThemeContext);
+
+  // Dynamic styles that use theme context
+  const dynamicStyles = {
+    ...styles,
+    title: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: themeData.color,
+      marginBottom: 16,
+    },
+    unknownTypeText: {
+      color: themeData.color,
+      fontSize: 14,
+      fontStyle: 'italic',
+    },
+  };
+
   // If the transaction doesn't require parameters, render nothing
   if (!transaction.requiresParams || !transaction.parameters || transaction.parameters.length === 0) {
     return null;
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Transaction Parameters</Text>
+    <View style={dynamicStyles.container}>
+      <Text style={dynamicStyles.title}>Transaction Parameters</Text>
 
-      <View style={styles.parametersContainer}>
+      <View style={dynamicStyles.parametersContainer}>
         {transaction.parameters.map((parameter) => {
           const value = formState.parameters[parameter.name];
           const error = formState.errors[parameter.name];
@@ -179,7 +186,8 @@ export default function TransactionParameterForm({
             parameter,
             value,
             error,
-            onParameterChange
+            onParameterChange,
+            themeData
           );
         })}
       </View>

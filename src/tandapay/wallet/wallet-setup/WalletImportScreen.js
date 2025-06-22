@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useContext } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, TextInput, Alert } from 'react-native';
 
@@ -11,6 +11,7 @@ import ZulipButton from '../../../common/ZulipButton';
 import ZulipText from '../../../common/ZulipText';
 import { importWallet, validateMnemonic } from '../WalletManager';
 import { TandaPayColors } from '../../styles';
+import { ThemeContext } from '../../../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-import'>,
@@ -44,7 +45,6 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1,
-    borderColor: TandaPayColors.gray300,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,
@@ -81,6 +81,18 @@ export default function WalletImportScreen(props: Props): Node {
   const [mnemonic, setMnemonic] = useState('');
   const [isValid, setIsValid] = useState<?boolean>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const themeData = useContext(ThemeContext);
+
+  // Create dynamic styles using theme context
+  const dynamicStyles = {
+    ...styles,
+    textInput: {
+      ...styles.textInput,
+      borderColor: themeData.dividerColor,
+      backgroundColor: themeData.backgroundColor,
+      color: themeData.color,
+    },
+  };
 
   const handleMnemonicChange = useCallback((text: string) => {
     setMnemonic(text);
@@ -149,7 +161,7 @@ export default function WalletImportScreen(props: Props): Node {
   }, [isValid, mnemonic, navigation, setupScreenCount]);
 
   const getInputStyle = () => {
-    const baseStyle = [styles.textInput];
+    const baseStyle = [dynamicStyles.textInput];
     if (isValid === true) {
       baseStyle.push(styles.validInput);
     } else if (isValid === false) {

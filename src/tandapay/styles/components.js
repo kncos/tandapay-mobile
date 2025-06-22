@@ -143,7 +143,7 @@ const indicators = Object.freeze({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: TandaPayColors.gray400,
+    borderColor: TandaPayColors.disabled,
     backgroundColor: TandaPayColors.transparent,
   },
 });

@@ -23,9 +23,8 @@ export default function TandaPayActionsScreen(props: Props): Node {
   const [modalVisible, setModalVisible] = useState(false);
 
   // Get all write transactions with metadata
-  // For production use with actual signer and contract:
-  // import { getAllWriteMethodsWithMetadata } from './contract/write';
-  // const writeTransactions = getAllWriteMethodsWithMetadata(signer, contractAddress);
+  // Note: The TransactionModal now integrates with real contract instances
+  // via ContractInstanceManager when transactions are executed
   const writeTransactions = getAllWriteTransactions();
 
   // Helper function to handle transaction button press

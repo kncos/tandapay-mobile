@@ -1,11 +1,12 @@
 /* @flow strict-local */
 
-import React from 'react';
+import React, { useContext } from 'react';
 import type { Node } from 'react';
 import { View, TouchableOpacity, Switch } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { TandaPayColors, TandaPayTypography } from '../styles';
+import { ThemeContext } from '../../styles';
 import Card from './Card';
 
 type Props = $ReadOnly<{|
@@ -58,6 +59,8 @@ export default function BooleanToggle(props: Props): Node {
     style,
   } = props;
 
+  const themeData = useContext(ThemeContext);
+
   const handlePress = () => {
     if (!disabled) {
       onValueChange(!value);
@@ -90,11 +93,11 @@ export default function BooleanToggle(props: Props): Node {
             disabled={disabled}
             style={customStyles.switch}
             trackColor={{
-              false: TandaPayColors.gray300,
+              false: themeData.dividerColor,
               true: TandaPayColors.primary,
             }}
-            thumbColor={value ? TandaPayColors.white : TandaPayColors.gray500}
-            ios_backgroundColor={TandaPayColors.gray300}
+            thumbColor={value ? TandaPayColors.white : TandaPayColors.disabled}
+            ios_backgroundColor={themeData.dividerColor}
           />
         </TouchableOpacity>
       </Card>

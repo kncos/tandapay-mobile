@@ -31,26 +31,12 @@ import type {
   SendTransactionCallback,
   GasEstimate,
 } from '../components';
-import { TandaPayColors, TandaPayLayout } from '../styles';
+import { TandaPayLayout } from '../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-send'>,
   route: RouteProp<'wallet-send', void>,
 |}>;
-
-const customStyles = {
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  tokenInfo: {
-    backgroundColor: TandaPayColors.gray100,
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-};
 
 export default function WalletSendScreen(props: Props): Node {
   const { navigation } = props;
@@ -58,6 +44,21 @@ export default function WalletSendScreen(props: Props): Node {
   const selectedToken = useSelector(getSelectedToken);
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const customRpcConfig = useSelector(getTandaPayCustomRpcConfig);
+
+  // Create styles using theme context
+  const customStyles = {
+    container: {
+      flex: 1,
+      padding: 16,
+    },
+    tokenInfo: {
+      backgroundColor: themeData.cardColor,
+      padding: 16,
+      borderRadius: 8,
+      marginBottom: 24,
+      alignItems: 'center',
+    },
+  };
 
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
