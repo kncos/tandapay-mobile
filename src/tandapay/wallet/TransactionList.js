@@ -182,9 +182,7 @@ export default function TransactionList({
                     {etherscanTransaction.formattedValue}
                   </ZulipText>
                   <ZulipText style={TandaPayStyles.descriptionCompact}>
-                    Block
-                    {' '}
-                    {etherscanTransaction.blockNumber}
+                    {etherscanTransaction.timeStamp}
                   </ZulipText>
                 </View>
                 <ZulipTextButton
@@ -198,11 +196,12 @@ export default function TransactionList({
 
         {/* Load More Button */}
         {hasMore && (
-          <View style={{ padding: 16, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
+          <View style={TandaPayStyles.buttonRow}>
             {loadMoreState.status === 'loading' ? (
               <ActivityIndicator size="small" color={QUARTER_COLOR} />
             ) : (
               <ZulipButton
+                style={TandaPayStyles.button}
                 text="Load More"
                 onPress={onLoadMore}
                 disabled={loadMoreState.status === 'complete'}
