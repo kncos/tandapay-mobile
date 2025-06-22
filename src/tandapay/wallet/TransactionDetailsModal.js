@@ -11,6 +11,7 @@ import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from '../components/Card';
 import { formatTransferForDisplay } from './TransactionFormatter';
+import { formatTimestamp, formatAddress } from './TransactionUtils';
 
 type Props = {|
   visible: boolean,
@@ -134,10 +135,6 @@ function copyToClipboard(text: string, label: string) {
   showToast(`${label} copied to clipboard`);
 }
 
-function formatAddress(address: string): string {
-  return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-}
-
 export default function TransactionDetailsModal({
   visible,
   transaction,
@@ -157,7 +154,7 @@ export default function TransactionDetailsModal({
   // Format display values
   const blockNumber = formattedTransfer.blockNumber != null ? formattedTransfer.blockNumber : 'Unknown';
   const fullDate = formattedTransfer.timestamp != null
-    ? new Date(formattedTransfer.timestamp).toLocaleString()
+    ? formatTimestamp(formattedTransfer.timestamp)
     : 'Unknown';
 
   // Determine transaction type and direction

@@ -16,6 +16,7 @@ import ZulipText from '../../common/ZulipText';
 import Touchable from '../../common/Touchable';
 import { QUARTER_COLOR, ThemeContext } from '../../styles';
 import { convertTransferToEtherscanFormat } from './TransactionFormatter';
+import { formatTimestamp } from './TransactionUtils';
 import TransactionDetailsModal from './TransactionDetailsModal';
 import type { LoadMoreState } from './useTransactionHistory';
 import type { TandaPayError } from '../errors/types';
@@ -182,7 +183,7 @@ export default function TransactionList({
                     {etherscanTransaction.formattedValue}
                   </ZulipText>
                   <ZulipText style={TandaPayStyles.descriptionCompact}>
-                    {etherscanTransaction.timeStamp}
+                    {formatTimestamp(etherscanTransaction.timeStamp)}
                   </ZulipText>
                 </View>
                 <ZulipTextButton
