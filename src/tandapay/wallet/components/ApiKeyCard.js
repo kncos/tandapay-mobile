@@ -3,15 +3,14 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import type { Node } from 'react';
 import { View, Alert, TextInput } from 'react-native';
-// $FlowFixMe[untyped-import]
-import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipButton from '../../../common/ZulipButton';
 import ZulipText from '../../../common/ZulipText';
 import { ThemeContext } from '../../../styles';
 import TandaPayStyles, { TandaPayTypography, TandaPayLayout } from '../../styles';
-import { HIGHLIGHT_COLOR, HALF_COLOR } from '../../../styles/constants';
+import { HALF_COLOR } from '../../../styles/constants';
 import Card from '../../components/Card';
+import { ScrollableTextBox } from '../../components';
 import type { TandaPayResult } from '../../errors/types';
 
 type ApiKeyMethods = {|
@@ -144,13 +143,6 @@ export default function ApiKeyCard(props: Props): Node {
     setRevealedApiKey(null);
   }, []);
 
-  const handleCopyApiKey = useCallback(() => {
-    if (revealedApiKey != null && revealedApiKey !== '') {
-      Clipboard.setString(revealedApiKey);
-      Alert.alert('Copied', 'API key copied to clipboard');
-    }
-  }, [revealedApiKey]);
-
   if (loading) {
     return (
       <Card>
@@ -226,19 +218,11 @@ export default function ApiKeyCard(props: Props): Node {
 
       {/* Revealed API Key */}
       {(revealedApiKey != null && revealedApiKey !== '') && (
-        <View style={{ borderWidth: 1, borderColor: HIGHLIGHT_COLOR, borderRadius: 8, padding: 12 }}>
-          <ZulipText style={[TandaPayTypography.inputLabel, { color: themeData.color, marginBottom: 8 }]}>
-            Your API Key:
-          </ZulipText>
-          <ZulipText style={[TandaPayTypography.monospace, { color: themeData.color, marginBottom: 16 }]}>
-            {revealedApiKey}
-          </ZulipText>
-          <ZulipButton
-            text="Copy to Clipboard"
-            onPress={handleCopyApiKey}
-            secondary
-          />
-        </View>
+        <ScrollableTextBox
+          text={revealedApiKey}
+          label="API Key"
+          onCopy={(text, label) => Alert.alert('Copied', `${label} copied to clipboard`)}
+        />
       )}
     </Card>
   );
