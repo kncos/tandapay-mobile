@@ -238,6 +238,14 @@ if (loading) {
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <WalletBalanceCard walletAddress={walletAddress} />
         <SendReceiveButtonRow />
+        <View style={TandaPayStyles.buttonRow}>
+          <ZulipButton
+            style={TandaPayStyles.button}
+            secondary
+            text="Open Block Explorer"
+            onPress={handleViewExplorer}
+          />
+        </View>
         <TandaRibbon label="Transactions" backgroundColor={BRAND_COLOR}>
           {renderTransactionContent()}
         </TandaRibbon>
