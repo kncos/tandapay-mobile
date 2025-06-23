@@ -337,8 +337,10 @@ export class ChronologicalTransferManager {
     // Sort by block number descending (most recent first)
     deduplicated.sort((a, b) => {
       // $FlowFixMe[prop-missing] - Transfer object structure is dynamic
+      // $FlowIgnore
       const blockA = parseInt((a: any).blockNum, 16) || 0;
       // $FlowFixMe[prop-missing] - Transfer object structure is dynamic
+      // $FlowIgnore
       const blockB = parseInt((b: any).blockNum, 16) || 0;
       return blockB - blockA;
     });
@@ -359,6 +361,7 @@ export function mergeTransfersChronologically(
   incomingTransfers: Array<mixed>,
   getTimestamp: (t: mixed) => number = (t) =>
     // $FlowFixMe[prop-missing] - Transfer object structure is dynamic
+    // $FlowIgnore
     (t: any).timestamp || (t: any).blockNumber || 0
 ): Array<mixed> {
   const allTransfers = [
