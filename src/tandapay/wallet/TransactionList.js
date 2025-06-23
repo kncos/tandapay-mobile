@@ -13,7 +13,6 @@ import { View, ActivityIndicator } from 'react-native';
 
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import Touchable from '../../common/Touchable';
 import { QUARTER_COLOR, ThemeContext } from '../../styles';
 import { convertTransferToEtherscanFormat } from './TransactionFormatter';
 import { formatTimestamp } from './TransactionUtils';
@@ -171,10 +170,9 @@ export default function TransactionList({
           const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress);
 
           return (
-            <Touchable
+            <View
               key={etherscanTransaction.hash || `transfer-${index}`}
               style={{ padding: 12, marginVertical: 2, backgroundColor: themeData.cardColor, borderRadius: 8 }}
-              onPress={() => showTransactionDetails(transfer)}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
@@ -190,10 +188,10 @@ export default function TransactionList({
                 </View>
                 <ZulipTextButton
                   label="View"
-                  onPress={() => onViewTransactionInExplorer(etherscanTransaction.hash)}
+                  onPress={() => showTransactionDetails(transfer)}
                 />
               </View>
-            </Touchable>
+            </View>
           );
         })}
 
