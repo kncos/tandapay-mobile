@@ -14,8 +14,10 @@ import { createProvider } from '../providers/ProviderManager';
 import { getWalletInstance } from '../wallet/WalletManager';
 // $FlowFixMe[untyped-import] - TandaPay contract import
 import { TandaPayInfo } from '../contract/TandaPay';
+import TandaPayErrorHandler from '../errors/ErrorHandler';
 import AddressInput from './AddressInput';
 import TokenPicker from './TokenPicker';
+import NumberInput from './NumberInput';
 import ModalContainer from './ModalContainer';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -84,6 +86,12 @@ const customStyles = {
     ...TandaPayTypography.body,
     marginTop: 8,
   },
+  gasLimitHelper: {
+    ...TandaPayTypography.caption,
+    color: TandaPayColors.disabled,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
 };
 
 export default function ContractDeploymentModal(props: Props): Node {
@@ -96,6 +104,7 @@ export default function ContractDeploymentModal(props: Props): Node {
 
   const [selectedToken, setSelectedToken] = useState<?Token>(null);
   const [secretaryAddress, setSecretaryAddress] = useState('');
+  const [customGasLimit, setCustomGasLimit] = useState('15000000'); // 15M default
   const [isEstimating, setIsEstimating] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [gasEstimate, setGasEstimate] = useState<?string>(null);
@@ -103,15 +112,23 @@ export default function ContractDeploymentModal(props: Props): Node {
 
   // Validation
   const isValidSecretaryAddress = secretaryAddress.trim() === '' || /^0x[a-fA-F0-9]{40}$/.test(secretaryAddress.trim());
+  const isValidGasLimit = customGasLimit.trim() !== '' && parseInt(customGasLimit, 10) >= 1000000; // At least 1M gas
   const canEstimate = selectedToken != null
     && secretaryAddress.trim() !== ''
     && isValidSecretaryAddress
+    && isValidGasLimit
     && selectedNetwork !== 'custom';
   const canDeploy = canEstimate && gasEstimate != null;
 
   const handleTokenSelect = useCallback((token: Token) => {
     setSelectedToken(token);
     setGasEstimate(null);
+    setErrorMessage(null);
+  }, []);
+
+  const handleGasLimitChange = useCallback((gasLimit: string) => {
+    setCustomGasLimit(gasLimit);
+    setGasEstimate(null); // Reset estimate when gas limit changes
     setErrorMessage(null);
   }, []);
 
@@ -123,53 +140,74 @@ export default function ContractDeploymentModal(props: Props): Node {
     setIsEstimating(true);
     setErrorMessage(null);
 
-    try {
-      // Create provider
-      const providerResult = await createProvider(selectedNetwork);
-      if (!providerResult.success) {
-        setErrorMessage(providerResult.error.userMessage ?? 'Failed to connect to network');
-        return;
-      }
+    // Wrap the entire estimation process with error handling
+    const estimationResult = await TandaPayErrorHandler.withErrorHandling(
+      async () => {
+        // Create provider
+        const providerResult = await createProvider(selectedNetwork);
+        if (!providerResult.success) {
+          throw new Error(providerResult.error.userMessage ?? 'Failed to connect to network');
+        }
 
-      const provider = providerResult.data;
+        const provider = providerResult.data;
 
-      // Get wallet instance
-      const walletResult = await getWalletInstance(provider);
-      if (!walletResult.success) {
-        setErrorMessage(walletResult.error.userMessage ?? 'Failed to connect wallet');
-        return;
-      }
+        // Get wallet instance
+        const walletResult = await getWalletInstance(provider);
+        if (!walletResult.success) {
+          throw new Error(walletResult.error.userMessage ?? 'Failed to connect wallet');
+        }
 
-      const signer = walletResult.data;
+        const signer = walletResult.data;
 
-      // Create contract factory
-      const factory = new ethers.ContractFactory(
-        TandaPayInfo.abi,
-        TandaPayInfo.bytecode.object,
-        signer
-      );
+        // Create contract factory with error handling
+        const factory = new ethers.ContractFactory(
+          TandaPayInfo.abi,
+          TandaPayInfo.bytecode.object,
+          signer
+        );
 
-      // Get token address (use zero address for native token)
-      const tokenAddress = (selectedToken.address != null && selectedToken.address !== '')
-        ? selectedToken.address
-        : ethers.constants.AddressZero;
+        // Get token address (use zero address for native token)
+        const tokenAddress = (selectedToken.address != null && selectedToken.address !== '')
+          ? selectedToken.address
+          : ethers.constants.AddressZero;        // Create deployment transaction data
+        const deployTransaction = factory.getDeployTransaction(tokenAddress, secretaryAddress.trim());
+        
+        // Use custom gas limit for estimation
+        const userGasLimit = ethers.BigNumber.from(customGasLimit);
+        
+        // Validate that the custom gas limit is sufficient by estimating
+        await signer.estimateGas({
+          ...deployTransaction,
+          gasLimit: userGasLimit,
+        });
 
-      // Estimate gas for deployment
-      const deployTransaction = factory.getDeployTransaction(tokenAddress, secretaryAddress.trim());
-      const gasEstimateValue = await signer.estimateGas(deployTransaction);
+        // Get gas price
+        // $FlowFixMe[incompatible-use] - provider.getGasPrice exists on ethers provider
+        const gasPrice = await provider.getGasPrice();
+        const totalCost = userGasLimit.mul(gasPrice);
 
-      // Get gas price
-      // $FlowFixMe[incompatible-use] - provider.getGasPrice exists on ethers provider
-      const gasPrice = await provider.getGasPrice();
-      const totalCost = gasEstimateValue.mul(gasPrice);
+        return {
+          gasLimit: userGasLimit.toString(),
+          gasPrice: gasPrice.toString(),
+          totalCost: ethers.utils.formatEther(totalCost),
+        };
+      },
+      'CONTRACT_ERROR',
+      'Failed to estimate contract deployment cost. This may be due to high gas prices or network congestion.',
+      'GAS_ESTIMATION_FAILED'
+    );
 
-      setGasEstimate(ethers.utils.formatEther(totalCost));
-    } catch (error) {
-      setErrorMessage(error.message || 'Failed to estimate deployment cost');
-    } finally {
-      setIsEstimating(false);
+    setIsEstimating(false);
+
+    if (estimationResult.success) {
+      const { totalCost, gasLimit } = estimationResult.data;
+      setGasEstimate(`${totalCost} ETH (Gas: ${gasLimit})`);
+    } else {
+      // Show user-friendly error alert
+      TandaPayErrorHandler.handleError(estimationResult.error, true);
+      setErrorMessage(estimationResult.error.userMessage ?? 'Gas estimation failed');
     }
-  }, [selectedToken, secretaryAddress, selectedNetwork]);
+  }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit]);
 
   const handleDeploy = useCallback(async () => {
     if (!selectedToken || !secretaryAddress.trim() || selectedNetwork === 'custom') {
@@ -179,53 +217,71 @@ export default function ContractDeploymentModal(props: Props): Node {
     setIsDeploying(true);
     setErrorMessage(null);
 
-    try {
-      // Create provider
-      const providerResult = await createProvider(selectedNetwork);
-      if (!providerResult.success) {
-        setErrorMessage(providerResult.error.userMessage ?? 'Failed to connect to network');
-        return;
-      }
+    // Wrap the entire deployment process with error handling
+    const deploymentResult = await TandaPayErrorHandler.withErrorHandling(
+      async () => {
+        // Create provider
+        const providerResult = await createProvider(selectedNetwork);
+        if (!providerResult.success) {
+          throw new Error(providerResult.error.userMessage ?? 'Failed to connect to network');
+        }
 
-      const provider = providerResult.data;
+        const provider = providerResult.data;
 
-      // Get wallet instance
-      const walletResult = await getWalletInstance(provider);
-      if (!walletResult.success) {
-        setErrorMessage(walletResult.error.userMessage ?? 'Failed to connect wallet');
-        return;
-      }
+        // Get wallet instance
+        const walletResult = await getWalletInstance(provider);
+        if (!walletResult.success) {
+          throw new Error(walletResult.error.userMessage ?? 'Failed to connect wallet');
+        }
 
-      const signer = walletResult.data;
+        const signer = walletResult.data;
 
-      // Create contract factory
-      const factory = new ethers.ContractFactory(
-        TandaPayInfo.abi,
-        TandaPayInfo.bytecode.object,
-        signer
-      );
+        // Create contract factory
+        const factory = new ethers.ContractFactory(
+          TandaPayInfo.abi,
+          TandaPayInfo.bytecode.object,
+          signer
+        );        // Get token address (use zero address for native token)
+        const tokenAddress = (selectedToken.address != null && selectedToken.address !== '')
+          ? selectedToken.address
+          : ethers.constants.AddressZero;
 
-      // Get token address (use zero address for native token)
-      const tokenAddress = (selectedToken.address != null && selectedToken.address !== '')
-        ? selectedToken.address
-        : ethers.constants.AddressZero;
+        // Use the custom gas limit set by user
+        const userGasLimit = ethers.BigNumber.from(customGasLimit);
 
-      // Deploy contract
-      const contract = await factory.deploy(tokenAddress, secretaryAddress.trim());
+        // Deploy contract with explicit gas limit
+        const contract = await factory.deploy(tokenAddress, secretaryAddress.trim(), {
+          gasLimit: userGasLimit,
+        });
 
-      // Wait for deployment
-      await contract.deployed();
+        // Wait for deployment
+        await contract.deployed();
+
+        return {
+          contractAddress: contract.address,
+          txHash: contract.deployTransaction.hash,
+        };
+      },
+      'CONTRACT_ERROR',
+      'Failed to deploy contract. This may be due to insufficient gas, network congestion, or invalid parameters.',
+      'CONTRACT_DEPLOYMENT_FAILED'
+    );
+
+    setIsDeploying(false);
+
+    if (deploymentResult.success) {
+      const { contractAddress } = deploymentResult.data;
 
       // Update Redux state with new contract address
       const newContractAddresses = { ...contractAddresses };
       if (selectedNetwork === 'mainnet') {
-        newContractAddresses.mainnet = contract.address;
+        newContractAddresses.mainnet = contractAddress;
       } else if (selectedNetwork === 'sepolia') {
-        newContractAddresses.sepolia = contract.address;
+        newContractAddresses.sepolia = contractAddress;
       } else if (selectedNetwork === 'arbitrum') {
-        newContractAddresses.arbitrum = contract.address;
+        newContractAddresses.arbitrum = contractAddress;
       } else if (selectedNetwork === 'polygon') {
-        newContractAddresses.polygon = contract.address;
+        newContractAddresses.polygon = contractAddress;
       }
 
       dispatch(updateTandaPaySettings({
@@ -234,16 +290,16 @@ export default function ContractDeploymentModal(props: Props): Node {
 
       // Notify parent component
       if (onDeploymentComplete) {
-        onDeploymentComplete(contract.address);
+        onDeploymentComplete(contractAddress);
       }
 
       onClose();
-    } catch (error) {
-      setErrorMessage(error.message || 'Failed to deploy contract');
-    } finally {
-      setIsDeploying(false);
+    } else {
+      // Show user-friendly error alert
+      TandaPayErrorHandler.handleError(deploymentResult.error, true);
+      setErrorMessage(deploymentResult.error.userMessage ?? 'Contract deployment failed');
     }
-  }, [selectedToken, secretaryAddress, selectedNetwork, contractAddresses, dispatch, onDeploymentComplete, onClose]);
+  }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit, contractAddresses, dispatch, onDeploymentComplete, onClose]);
 
   const handleClose = useCallback(() => {
     if (!isDeploying && !isEstimating) {
@@ -295,6 +351,21 @@ export default function ContractDeploymentModal(props: Props): Node {
             />
           </View>
 
+          <View style={customStyles.section}>
+            <NumberInput
+              value={customGasLimit}
+              onChangeText={handleGasLimitChange}
+              label="Gas Limit"
+              placeholder="15000000"
+              min={1000000}
+              max={50000000}
+              disabled={isDeploying || isEstimating}
+            />
+            <ZulipText style={customStyles.gasLimitHelper}>
+              Default: 15M gas. Increase if deployment fails due to insufficient gas.
+            </ZulipText>
+          </View>
+
           {(errorMessage != null && errorMessage !== '') && (
             <ZulipText style={customStyles.errorText}>
               {errorMessage}
@@ -317,8 +388,6 @@ export default function ContractDeploymentModal(props: Props): Node {
               </ZulipText>
               <ZulipText style={customStyles.estimateValue}>
                 {gasEstimate}
-                {' '}
-                ETH
               </ZulipText>
             </View>
           )}
