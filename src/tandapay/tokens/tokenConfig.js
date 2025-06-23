@@ -3,7 +3,7 @@
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
 import type { Token } from './tokenTypes';
-import { getChainByNetwork } from '../definitions';
+import { getChainByNetwork, type SupportedNetwork, type NetworkIdentifier } from '../definitions';
 
 // Cache for default tokens to ensure object identity consistency
 const defaultTokensCache: Map<string, $ReadOnlyArray<Token>> = new Map();
@@ -12,7 +12,7 @@ const defaultTokensCache: Map<string, $ReadOnlyArray<Token>> = new Map();
  * Default tokens that are always available in the wallet
  * These tokens will be shown to all users by default
  */
-export function getDefaultTokens(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' = 'sepolia'): $ReadOnlyArray<Token> {
+export function getDefaultTokens(network: SupportedNetwork = 'sepolia'): $ReadOnlyArray<Token> {
   // Check cache first to ensure object identity consistency
   const cached = defaultTokensCache.get(network);
   if (cached) {
@@ -58,7 +58,7 @@ export function getDefaultTokens(network: 'mainnet' | 'sepolia' | 'arbitrum' | '
  */
 export function getAllTokens(
   customTokens: $ReadOnlyArray<Token>,
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'
+  network: NetworkIdentifier = 'sepolia'
 ): $ReadOnlyArray<Token> {
   if (network === 'custom') {
     // For custom networks, default to ETH as native token
@@ -81,7 +81,7 @@ export function getAllTokens(
 export function findTokenBySymbol(
   symbol: string,
   customTokens: $ReadOnlyArray<Token>,
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'
+  network: NetworkIdentifier = 'sepolia'
 ): Token | null {
   const allTokens = getAllTokens(customTokens, network);
   return allTokens.find(token => token.symbol === symbol) || null;

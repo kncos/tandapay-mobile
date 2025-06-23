@@ -10,7 +10,7 @@
 import { Alchemy, Network } from 'alchemy-sdk';
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
-import { getChainByNetwork } from '../definitions';
+import { getChainByNetwork, type SupportedNetwork } from '../definitions';
 
 export type TransactionDetails = {|
   gasPrice: ?string,
@@ -48,7 +48,7 @@ function bigNumberToString(value: mixed): ?string {
 /**
  * Map network name to Alchemy network constant
  */
-function getAlchemyNetwork(networkName: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): typeof Network.ETH_MAINNET {
+function getAlchemyNetwork(networkName: SupportedNetwork): typeof Network.ETH_MAINNET {
   const chainConfig = getChainByNetwork(networkName);
 
   switch (chainConfig.id) {
@@ -110,7 +110,7 @@ function calculateTransactionFee(gasAmount: ?string, gasPrice: ?string, effectiv
 /**
  * Fetch detailed transaction information
  */
-export async function fetchTransactionDetails(txHash: string, apiKey: string, network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' = 'mainnet'): Promise<TransactionDetails | null> {
+export async function fetchTransactionDetails(txHash: string, apiKey: string, network: SupportedNetwork = 'mainnet'): Promise<TransactionDetails | null> {
   try {
     // Use our centralized chain definitions to get the Alchemy network
     const alchemyNetwork = getAlchemyNetwork(network);

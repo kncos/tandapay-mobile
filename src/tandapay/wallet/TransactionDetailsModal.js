@@ -15,12 +15,13 @@ import { formatTimestamp } from './TransactionUtils';
 import { fetchTransactionDetails, formatGasInfoForDisplay } from './TransactionDetailsFetcher';
 import type { TransactionDetails } from './TransactionDetailsFetcher';
 import { getAlchemyApiKey } from './WalletManager';
+import type { SupportedNetwork } from '../definitions/types';
 
 type Props = {|
   visible: boolean,
   transaction: ?mixed, // EtherscanTransaction format from convertTransferToEtherscanFormat
   walletAddress: string,
-  network?: string,
+  network?: SupportedNetwork,
   onClose: () => void,
   onViewInExplorer: (txHash: string) => void,
 |};

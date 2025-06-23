@@ -7,9 +7,10 @@ import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux
 import { switchNetwork, setCustomRpc, clearCustomRpc } from '../redux/actions';
 import { validateCustomRpcConfig } from '../providers/ProviderManager';
 import { useBalanceInvalidation } from './useBalanceInvalidation';
+import type { NetworkIdentifier } from '../definitions/types';
 
 type NetworkHookReturn = {|
-  selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  selectedNetwork: NetworkIdentifier,
   customRpcConfig: ?{|
     name: string,
     rpcUrl: string,
@@ -18,7 +19,7 @@ type NetworkHookReturn = {|
   |},
   loading: boolean,
   switchingNetwork: ?string,
-  handleNetworkSwitch: (network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom') => Promise<void>,
+  handleNetworkSwitch: (network: NetworkIdentifier) => Promise<void>,
   handleSaveCustomRpc: (config: {|
     name: string,
     rpcUrl: string,
@@ -41,7 +42,7 @@ export function useNetworkSettings(): NetworkHookReturn {
   const [loading, setLoading] = useState(false);
   const [switchingNetwork, setSwitchingNetwork] = useState(null);
 
-  const handleNetworkSwitch = useCallback(async (network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom') => {
+  const handleNetworkSwitch = useCallback(async (network: NetworkIdentifier) => {
     if (network === selectedNetwork || switchingNetwork) {
       return;
     }
@@ -79,7 +80,7 @@ export function useNetworkSettings(): NetworkHookReturn {
         Alert.alert('Invalid Configuration', validationResult.error.userMessage != null ? validationResult.error.userMessage : 'Please check your RPC configuration');
         return;
       }
-      
+
       dispatch(setCustomRpc(validationResult.data));
 
       Alert.alert(

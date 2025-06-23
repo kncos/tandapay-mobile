@@ -6,7 +6,7 @@ import { ethers } from 'ethers';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
 import { getAlchemyApiKey } from '../wallet/WalletManager';
-import { getChainByNetwork, getSupportedNetworks as getSupportedNetworksFromDefinitions } from '../definitions';
+import { getChainByNetwork, getSupportedNetworks as getSupportedNetworksFromDefinitions, type SupportedNetwork, type NetworkIdentifier } from '../definitions';
 
 // Fallback Alchemy API key for development (will be replaced with user's key when available)
 const FALLBACK_ALCHEMY_API = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
@@ -36,7 +36,7 @@ type NetworkConfig = {|
 /**
  * Get network configuration dynamically (for networks that need API keys)
  */
-async function getNetworkConfig(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): Promise<NetworkConfig> {
+async function getNetworkConfig(network: SupportedNetwork): Promise<NetworkConfig> {
   if (network === 'sepolia') {
     const sepoliaUrl = await getAlchemySepoliaUrl();
     const chain = getChainByNetwork('sepolia');
@@ -98,7 +98,7 @@ function evictLRUIfNeeded(): void {
  * Get provider instance for a specific network or custom configuration with error handling
  */
 export async function createProvider(
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  network: NetworkIdentifier,
   customConfig?: NetworkConfig
 ): Promise<TandaPayResult<mixed>> {
   try {
@@ -181,7 +181,7 @@ export function getCacheStats(): {| size: number, maxSize: number, keys: Array<s
 /**
  * Get all supported networks
  */
-export function getSupportedNetworks(): $ReadOnlyArray<'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'> {
+export function getSupportedNetworks(): $ReadOnlyArray<SupportedNetwork> {
   return getSupportedNetworksFromDefinitions();
 }
 
@@ -233,7 +233,7 @@ export function validateCustomRpcConfig(config: {
  * Get basic network configuration synchronously (for UI display purposes)
  * Note: For sepolia, this returns static info without the dynamic API key URL
  */
-export function getNetworkDisplayInfo(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): {|
+export function getNetworkDisplayInfo(network: SupportedNetwork): {|
   name: string,
   chainId: number,
   blockExplorerUrl?: string,

@@ -6,6 +6,7 @@ import type {
 import type {
   TandaPaySettingsUpdateAction,
 } from '../../actionTypes';
+import type { NetworkIdentifier, SupportedNetwork } from '../definitions/types';
 import {
   TANDAPAY_SETTINGS_UPDATE,
   TANDAPAY_TOKEN_SELECT,
@@ -99,7 +100,7 @@ export function invalidateAllTokenBalances(tokenSymbols: $ReadOnlyArray<string>)
 /**
  * Action creator for switching networks
  */
-export function switchNetwork(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'): TandaPaySettingsUpdateAction {
+export function switchNetwork(network: NetworkIdentifier): TandaPaySettingsUpdateAction {
   return {
     type: TANDAPAY_SETTINGS_UPDATE,
     settings: {
@@ -129,7 +130,7 @@ export function setCustomRpc(config: {|
 /**
  * Action creator for clearing custom RPC (switch back to built-in network)
  */
-export function clearCustomRpc(fallbackNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' = 'mainnet'): TandaPaySettingsUpdateAction {
+export function clearCustomRpc(fallbackNetwork: SupportedNetwork = 'mainnet'): TandaPaySettingsUpdateAction {
   return {
     type: TANDAPAY_SETTINGS_UPDATE,
     settings: {

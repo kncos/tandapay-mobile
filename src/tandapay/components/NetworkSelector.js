@@ -9,10 +9,11 @@ import { ThemeContext } from '../../styles';
 import { TandaPayColors, TandaPayTypography, TandaPayLayout, TandaPayComponents } from '../styles';
 import { getSupportedNetworks, getNetworkDisplayInfo } from '../providers/ProviderManager';
 import Card from './Card';
+import type { NetworkIdentifier } from '../definitions/types';
 
 type Props = $ReadOnly<{|
   selectedNetwork: string,
-  onNetworkSelect: (network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom') => Promise<void>,
+  onNetworkSelect: (network: NetworkIdentifier) => Promise<void>,
   switchingNetwork?: ?string,
   disabled?: boolean,
   customRpcConfig?: ?{|

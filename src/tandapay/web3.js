@@ -7,6 +7,7 @@ import { ethers } from 'ethers';
 
 import type { Token } from './tokens/tokenTypes';
 import type { TandaPayResult, GasEstimateData, TokenInfo } from './errors/types';
+import type { NetworkIdentifier } from './definitions/types';
 import TandaPayErrorHandler from './errors/ErrorHandler';
 import { createProvider } from './providers/ProviderManager';
 
@@ -41,9 +42,9 @@ const ERC20_ABI = [
  * Falls back to parameter or default if Redux state is unavailable
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
-export async function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'): Promise<any> {
+export async function getProvider(networkOverride?: NetworkIdentifier): Promise<any> {
   // Try to get network from Redux state first
-  let network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'; // default fallback
+  let network: NetworkIdentifier = 'sepolia'; // default fallback
   let customConfig = null;
 
   try {
@@ -101,7 +102,7 @@ export async function getProvider(networkOverride?: 'mainnet' | 'sepolia' | 'arb
 export async function fetchBalance(
   token: Token,
   address: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+  network?: NetworkIdentifier
 ): Promise<TandaPayResult<string>> {
   return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
@@ -187,7 +188,7 @@ export async function transferToken(
   fromPrivateKey: string,
   toAddress: string,
   amount: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+  network?: NetworkIdentifier
 ): Promise<TandaPayResult<string>> {
   return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
@@ -350,7 +351,7 @@ export async function transferToken(
  */
 export async function getTokenInfo(
   contractAddress: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+  network?: NetworkIdentifier
 ): Promise<TandaPayResult<TokenInfo>> {
   return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
@@ -438,7 +439,7 @@ export async function estimateTransferGas(
   fromAddress: string,
   toAddress: string,
   amount: string,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+  network?: NetworkIdentifier
 ): Promise<TandaPayResult<GasEstimateData>> {
   return TandaPayErrorHandler.withEthersErrorHandling(
     async () => {
@@ -586,7 +587,7 @@ export async function estimateTransferGas(
  * Get current network gas price
  */
 export async function getGasPrice(
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+  network?: NetworkIdentifier
 ): Promise<string> {
   try {
     const provider = await getProvider(network);

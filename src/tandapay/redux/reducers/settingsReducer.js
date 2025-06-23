@@ -1,4 +1,5 @@
 /* @flow strict-local */
+import type { NetworkIdentifier } from '../../definitions/types';
 
 import type { Action } from '../../../types';
 import {
@@ -9,7 +10,7 @@ import { validateTandaPaySettings } from '../../stateValidation';
 
 // Settings-specific state
 export type TandaPaySettingsState = $ReadOnly<{|
-  selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  selectedNetwork: NetworkIdentifier,
   customRpcConfig: ?{|
     name: string,
     rpcUrl: string,

@@ -13,7 +13,7 @@ import { Alchemy, Network } from 'alchemy-sdk';
 import { AlchemyTransferFetcher } from './AlchemyTransferFetcher';
 import { ChronologicalTransferManager } from './ChronologicalTransferManager';
 import { getAlchemyApiKey } from './WalletManager';
-import { getChainByNetwork } from '../definitions';
+import { getChainByNetwork, type SupportedNetwork } from '../definitions';
 import type { TandaPayError } from '../errors/types';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 
@@ -22,7 +22,7 @@ type Transfer = mixed;
 /**
  * Map network name to Alchemy network constant using chain definitions
  */
-function getAlchemyNetwork(networkName: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): typeof Network.ETH_MAINNET {
+function getAlchemyNetwork(networkName: SupportedNetwork): typeof Network.ETH_MAINNET {
   const chainConfig = getChainByNetwork(networkName);
 
   switch (chainConfig.id) {
@@ -58,7 +58,7 @@ export type LoadMoreState =
 type UseTransactionHistoryProps = {|
   walletAddress: ?string,
   apiKeyConfigured: boolean,
-  network?: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon',
+  network?: SupportedNetwork,
 |};
 
 type UseTransactionHistoryReturn = {|

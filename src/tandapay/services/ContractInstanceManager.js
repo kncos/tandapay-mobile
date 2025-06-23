@@ -18,6 +18,7 @@ import { createProvider } from '../providers/ProviderManager';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
 import type { PerAccountState } from '../../reduxTypes';
+import type { SupportedNetwork, NetworkIdentifier } from '../definitions/types';
 
 /**
  * Contract instance cache to avoid creating multiple instances
@@ -32,7 +33,7 @@ const contractInstanceCache = new Map();
  */
 // $FlowFixMe[unclear-type] - ethers contract types are complex
 export async function createTandaPayContractWithSigner(
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon',
+  network: SupportedNetwork,
   state: PerAccountState
   // $FlowFixMe[unclear-type] - ethers contract types are complex
 ): Promise<TandaPayResult<any>> {
@@ -94,7 +95,7 @@ export async function createTandaPayContractWithSigner(
  */
 // $FlowFixMe[unclear-type] - ethers contract types are complex
 export async function createTandaPayContractWithProvider(
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon',
+  network: SupportedNetwork,
   state: PerAccountState
   // $FlowFixMe[unclear-type] - ethers contract types are complex
 ): Promise<TandaPayResult<any>> {
@@ -153,7 +154,7 @@ export function clearContractCache(): void {
  * @param state The Redux state containing user-configured contract addresses
  * @returns The contract address or null if not configured
  */
-export function getContractAddress(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon', state: PerAccountState): ?string {
+export function getContractAddress(network: SupportedNetwork, state: PerAccountState): ?string {
   return getTandaPayContractAddressForNetwork(state, network);
 }
 
@@ -163,7 +164,7 @@ export function getContractAddress(network: 'mainnet' | 'sepolia' | 'arbitrum' |
  * @param state The Redux state containing user-configured contract addresses
  * @returns True if a valid contract address is configured for the network
  */
-export function isTandaPayAvailable(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon', state: PerAccountState): boolean {
+export function isTandaPayAvailable(network: SupportedNetwork, state: PerAccountState): boolean {
   const address = getTandaPayContractAddressForNetwork(state, network);
   return address != null && address.trim() !== '' && address !== '0x0000000000000000000000000000000000000000';
 }
@@ -180,7 +181,7 @@ export function isTandaPayAvailable(network: 'mainnet' | 'sepolia' | 'arbitrum' 
  */
 // $FlowFixMe[unclear-type] - ethers contract types are complex
 export async function createTandaPayContractWithSignerFromState(
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  network: NetworkIdentifier,
   state: PerAccountState
   // $FlowFixMe[unclear-type] - ethers contract types are complex
 ): Promise<TandaPayResult<any>> {
@@ -256,7 +257,7 @@ export async function createTandaPayContractWithSignerFromState(
  */
 // $FlowFixMe[unclear-type] - ethers contract types are complex
 export async function createTandaPayContractWithProviderFromState(
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  network: NetworkIdentifier,
   state: PerAccountState
   // $FlowFixMe[unclear-type] - ethers contract types are complex
 ): Promise<TandaPayResult<any>> {

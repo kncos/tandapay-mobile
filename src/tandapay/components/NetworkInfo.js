@@ -8,9 +8,10 @@ import ZulipText from '../../common/ZulipText';
 import { getNetworkDisplayInfo } from '../providers/ProviderManager';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import Card from './Card';
+import type { NetworkIdentifier } from '../definitions/types';
 
 type Props = $ReadOnly<{|
-  selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  selectedNetwork: NetworkIdentifier,
   customRpcConfig?: ?{|
     name: string,
     rpcUrl: string,

@@ -7,9 +7,10 @@ import { View } from 'react-native';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { getNetworkDisplayInfo } from '../providers/ProviderManager';
+import type { NetworkIdentifier } from '../definitions/types';
 
 type Props = $ReadOnly<{|
-  selectedNetwork: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom',
+  selectedNetwork: NetworkIdentifier,
   customRpcConfig?: ?{|
     name: string,
     rpcUrl: string,

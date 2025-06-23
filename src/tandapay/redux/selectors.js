@@ -4,6 +4,7 @@ import type {
   TandaPayState,
 } from './reducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
+import type { NetworkIdentifier } from '../definitions/types';
 
 // Main TandaPay state selector
 export const getTandaPayState = (state: PerAccountState): TandaPayState => {
@@ -63,7 +64,7 @@ export const getTandaPaySettings = (state: PerAccountState): TandaPaySettingsSta
   return tandaPayState.settings;
 };
 
-export const getTandaPaySelectedNetwork = (state: PerAccountState): 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' => {
+export const getTandaPaySelectedNetwork = (state: PerAccountState): NetworkIdentifier => {
   try {
     return getTandaPaySettings(state).selectedNetwork || 'sepolia';
   } catch (error) {
@@ -115,7 +116,7 @@ export const getTandaPayContractAddresses = (state: PerAccountState): {|
 
 export const getTandaPayContractAddressForNetwork = (
   state: PerAccountState,
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom'
+  network: NetworkIdentifier
 ): ?string => {
   try {
     const contractAddresses = getTandaPayContractAddresses(state);
