@@ -21,24 +21,25 @@ const styles = {
   inputContainer: {
     position: 'relative',
     marginBottom: 12,
+    width: '100%',
   },
   scrollContainer: {
     borderWidth: 1,
     borderRadius: 6,
     paddingRight: 36, // Make room for copy icon
-    height: 40, // Fixed height for bounded scrolling
+    height: 50, // Increased height for better visibility
+    width: '100%',
   },
   scrollableText: {
     fontFamily: 'monospace', // Explicit monospace font
-    fontSize: 11,
-    padding: 10,
-    lineHeight: 16,
-    minWidth: '100%', // Ensure text doesn't wrap
+    fontSize: 12,
+    padding: 12,
+    lineHeight: 18,
     opacity: 0.9,
   },
   overlayButton: {
     position: 'absolute',
-    right: 6,
+    right: 8,
     top: '50%',
     transform: [{ translateY: -12 }],
     width: 24,
@@ -46,7 +47,7 @@ const styles = {
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
 };
 
@@ -76,7 +77,7 @@ export default function ScrollableTextBox({
             backgroundColor: themeData.cardColor,
           }
         ]}
-        contentContainerStyle={{ alignItems: 'center' }}
+        contentContainerStyle={{ justifyContent: 'center', alignItems: 'center', minHeight: 50 }}
         showsHorizontalScrollIndicator={false}
       >
         <ZulipText

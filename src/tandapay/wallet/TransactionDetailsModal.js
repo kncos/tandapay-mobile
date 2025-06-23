@@ -249,7 +249,6 @@ export default function TransactionDetailsModal({
                 <ScrollableTextBox
                   text={etherscanTransaction.from}
                   label="From address"
-                  size="small"
                   onCopy={copyToClipboard}
                 />
               </View>
@@ -259,7 +258,6 @@ export default function TransactionDetailsModal({
                 <ScrollableTextBox
                   text={etherscanTransaction.to}
                   label="To address"
-                  size="small"
                   onCopy={copyToClipboard}
                 />
               </View>
@@ -270,7 +268,6 @@ export default function TransactionDetailsModal({
                   <ScrollableTextBox
                     text={etherscanTransaction.contractAddress}
                     label="Token contract"
-                    size="small"
                     onCopy={copyToClipboard}
                   />
                 </View>
@@ -285,7 +282,6 @@ export default function TransactionDetailsModal({
                 <ScrollableTextBox
                   text={etherscanTransaction.hash}
                   label="Transaction hash"
-                  size="normal"
                   onCopy={copyToClipboard}
                 />
               </View>

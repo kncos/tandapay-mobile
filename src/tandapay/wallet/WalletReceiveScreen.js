@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet, Alert, Share } from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
 
 // suppress flow error for react-native-qrcode-svg
 // $FlowFixMe[untyped-import]
@@ -14,9 +13,9 @@ import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import { HALF_COLOR } from '../../styles';
 import { getWalletAddress } from './WalletManager';
 import { TandaPayColors } from '../styles';
+import { ScrollableTextBox } from '../components';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-receive'>,
@@ -29,28 +28,9 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
-  addressContainer: {
-    backgroundColor: HALF_COLOR,
-    padding: 16,
-    borderRadius: 8,
-    marginVertical: 24,
-    width: '100%',
-  },
-  addressText: {
-    fontFamily: 'monospace',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     width: '100%',
     marginTop: 20,
-  },
-  button: {
-    flex: 1,
-    marginHorizontal: 6,
   },
   instructions: {
     textAlign: 'center',
@@ -105,17 +85,6 @@ export default function WalletReceiveScreen(props: Props): Node {
     loadWalletAddress();
   }, []);
 
-  const handleCopyAddress = async () => {
-    if (walletAddress != null && walletAddress !== '') {
-      await Clipboard.setString(walletAddress);
-      Alert.alert(
-        'Address Copied',
-        'Your wallet address has been copied to the clipboard.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
   const handleShareAddress = async () => {
     if (walletAddress != null && walletAddress !== '') {
       try {
@@ -127,18 +96,6 @@ export default function WalletReceiveScreen(props: Props): Node {
         Alert.alert('Error', 'Failed to share wallet address');
       }
     }
-  };
-
-  const formatAddress = (address: string): string => {
-    // Format address with line breaks for better readability
-    if (address.length > 20) {
-      const chunks = [];
-      for (let i = 0; i < address.length; i += 20) {
-        chunks.push(address.slice(i, i + 20));
-      }
-      return chunks.join('\n');
-    }
-    return address;
   };
 
   if (loading) {
@@ -176,22 +133,14 @@ export default function WalletReceiveScreen(props: Props): Node {
 
         <QRCodeComponent value={walletAddress} />
 
-        <View style={styles.addressContainer}>
-          <ZulipText
-            style={styles.addressText}
-            text={formatAddress(walletAddress)}
-          />
-        </View>
+        <ScrollableTextBox
+          text={walletAddress}
+          label="Wallet Address"
+          onCopy={(text, label) => Alert.alert('Copied', `${label} copied to clipboard`)}
+        />
 
         <View style={styles.buttonContainer}>
           <ZulipButton
-            style={styles.button}
-            text="Copy Address"
-            onPress={handleCopyAddress}
-          />
-          <ZulipButton
-            style={styles.button}
-            secondary
             text="Share"
             onPress={handleShareAddress}
           />
