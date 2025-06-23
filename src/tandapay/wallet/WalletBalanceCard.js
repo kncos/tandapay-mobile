@@ -1,6 +1,6 @@
 // @flow strict-local
 
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import type { Node } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
@@ -15,7 +15,7 @@ import { ThemeContext } from '../../styles';
 import { BRAND_COLOR, HIGHLIGHT_COLOR, kErrorColor } from '../../styles/constants';
 import { useSelector, useDispatch } from '../../react-redux';
 import { selectToken } from '../redux/actions';
-import { getSelectedToken, getAvailableTokens } from '../tokens/tokenSelectors';
+import { getSelectedToken, getAvailableTokens, getSelectedTokenSymbol } from '../tokens/tokenSelectors';
 import { useUpdateBalance } from './hooks/useUpdateBalance';
 import { TandaPayColors } from '../styles';
 import Card from '../components/Card';
@@ -191,10 +191,37 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
   const dispatch = useDispatch();
   const selectedToken = useSelector(getSelectedToken);
   const availableTokens = useSelector(getAvailableTokens);
+  const selectedTokenSymbol = useSelector(getSelectedTokenSymbol);
   const themeData = useContext(ThemeContext);
+
+  // Auto-select native token if current selection is invalid for this network
+  useEffect(() => {
+    if (availableTokens.length > 0) {
+      // Check if the current selected token symbol exists in available tokens
+      const tokenExists = availableTokens.some(token => token.symbol === selectedTokenSymbol);
+
+      if (!tokenExists) {
+        // Auto-select the native token (first in the list)
+        const nativeToken = availableTokens[0];
+        console.log('Auto-selecting native token:', nativeToken.symbol, 'for network');
+        dispatch(selectToken(nativeToken.symbol));
+      }
+    }
+  }, [availableTokens, selectedTokenSymbol, dispatch]);
 
   // Use the custom hook for balance management
   const { balance, loading, error, refreshBalance } = useUpdateBalance(selectedToken, walletAddress);
+
+  // Debug log to see what error state we have
+  console.log('WalletBalanceCard: error state:', {
+    hasError: error != null,
+    errorType: error?.type,
+    errorMessage: error?.message,
+    errorUserMessage: error?.userMessage,
+    selectedToken: selectedToken?.symbol,
+    balance,
+    loading
+  });
 
   const handleTokenSelect = (token: Token) => {
     dispatch(selectToken(token.symbol));

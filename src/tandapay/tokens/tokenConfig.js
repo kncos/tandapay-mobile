@@ -47,15 +47,36 @@ export function getDefaultTokens(network: 'mainnet' | 'sepolia' | 'arbitrum' | '
 
   const addresses = NETWORK_TOKEN_ADDRESSES[network] || NETWORK_TOKEN_ADDRESSES.sepolia;
 
+  // Define native token based on network
+  let nativeToken;
+  switch (network) {
+    case 'polygon':
+      nativeToken = {
+        symbol: 'MATIC',
+        address: null, // Native token, no contract address
+        name: 'Polygon',
+        decimals: 18,
+        isDefault: true,
+        isCustom: false,
+      };
+      break;
+    case 'mainnet':
+    case 'sepolia':
+    case 'arbitrum':
+    default:
+      nativeToken = {
+        symbol: 'ETH',
+        address: null, // Native token, no contract address
+        name: 'Ethereum',
+        decimals: 18,
+        isDefault: true,
+        isCustom: false,
+      };
+      break;
+  }
+
   const tokens = [
-    {
-      symbol: 'ETH',
-      address: null, // Native token, no contract address
-      name: 'Ethereum',
-      decimals: 18,
-      isDefault: true,
-      isCustom: false,
-    },
+    nativeToken,
     {
       symbol: 'USDC',
       address: addresses.USDC,
@@ -95,7 +116,7 @@ export function getAllTokens(
   network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' | 'custom' = 'sepolia'
 ): $ReadOnlyArray<Token> {
   if (network === 'custom') {
-    // For custom networks, only return custom tokens and ETH
+    // For custom networks, default to ETH as native token
     const ethToken = {
       symbol: 'ETH',
       address: null,

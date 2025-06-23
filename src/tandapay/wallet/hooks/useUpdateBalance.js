@@ -41,24 +41,41 @@ export function useUpdateBalance(
   );
 
   // Debug logging
-  // console.log('useUpdateBalance: token =', token?.symbol, 'walletAddress =', walletAddress);
+  console.log('useUpdateBalance DEBUG:', {
+    tokenSymbol: token?.symbol,
+    walletAddress,
+    network,
+    hasError: error != null,
+    errorType: error?.type,
+    errorMessage: error?.message,
+    errorUserMessage: error?.userMessage,
+    loading,
+    balance,
+    isBalanceStale
+  });
 
   const refreshBalance = useCallback(async () => {
     if (!token || walletAddress == null || walletAddress === '') {
+      console.log('refreshBalance: early return - missing token or address');
       return;
     }
 
     try {
+      console.log('refreshBalance: starting fetch for', token.symbol, 'on network', network);
       setLoading(true);
       setError(null);
 
       const result = await fetchBalance(token, walletAddress, network);
+      console.log('refreshBalance: fetchBalance result:', result);
+
       if (result.success) {
         dispatch(updateTokenBalance(token.symbol, result.data));
       } else {
+        console.log('refreshBalance: setting error:', result.error);
         setError(result.error);
       }
     } catch (err) {
+      console.log('refreshBalance: caught error:', err);
       // Fallback error handling for unexpected errors
       const fallbackError = TandaPayErrorHandler.createError(
         'UNKNOWN_ERROR',
@@ -68,6 +85,7 @@ export function useUpdateBalance(
           retryable: true,
         }
       );
+      console.log('refreshBalance: setting fallback error:', fallbackError);
       setError(fallbackError);
     } finally {
       setLoading(false);
@@ -104,15 +122,29 @@ export function useUpdateBalance(
             return;
           }
 
+          // Debug log the result
+          console.log('fetchBalance result:', {
+            success: result.success,
+            data: result.success ? result.data : null,
+            error: result.success ? null : {
+              type: result.error.type,
+              message: result.error.message,
+              userMessage: result.error.userMessage,
+              retryable: result.error.retryable
+            }
+          });
+
           if (result.success) {
             dispatch(updateTokenBalance(token.symbol, result.data));
           } else {
+            console.log('Setting error in useUpdateBalance:', result.error);
             setError(result.error);
           }
           setLoading(false);
         })
         .catch(err => {
           if (isMounted) {
+            console.log('useUpdateBalance: async catch error:', err);
             // Fallback error handling for unexpected errors
             const fallbackError = TandaPayErrorHandler.createError(
               'UNKNOWN_ERROR',

@@ -2,6 +2,8 @@
 
 import type { PerAccountState } from '../../reduxTypes';
 import type { Token, TokenState } from './tokenTypes';
+import { getTandaPaySelectedNetwork } from '../redux/selectors';
+import { getDefaultTokens as getDefaultTokensFromConfig } from './tokenConfig';
 
 /**
  * Get the token state from Redux state
@@ -22,8 +24,14 @@ export function getSelectedTokenSymbol(state: PerAccountState): string {
  */
 export function getAvailableTokens(state: PerAccountState): $ReadOnlyArray<Token> {
   const tokenState = getTokenState(state);
-  // Use tokens directly from state instead of calling dynamic functions
-  return [...tokenState.defaultTokens, ...tokenState.customTokens];
+  const selectedNetwork = getTandaPaySelectedNetwork(state);
+
+  // Get network-specific default tokens
+  const supportedNetwork = selectedNetwork === 'custom' ? 'sepolia' : selectedNetwork;
+  const networkDefaultTokens = getDefaultTokensFromConfig(supportedNetwork);
+
+  // Combine network-specific default tokens with custom tokens
+  return [...networkDefaultTokens, ...tokenState.customTokens];
 }
 
 /**
@@ -32,7 +40,17 @@ export function getAvailableTokens(state: PerAccountState): $ReadOnlyArray<Token
 export function getSelectedToken(state: PerAccountState): Token | null {
   const tokenState = getTokenState(state);
   const allTokens = getAvailableTokens(state);
-  return allTokens.find(token => token.symbol === tokenState.selectedTokenSymbol) || null;
+
+  // Try to find the selected token first
+  let selectedToken = allTokens.find(token => token.symbol === tokenState.selectedTokenSymbol);
+
+  // If the selected token doesn't exist in the current network's token list,
+  // fallback to the native token (first token in the list)
+  if (!selectedToken && allTokens.length > 0) {
+    selectedToken = allTokens[0]; // First token is always the native token
+  }
+
+  return selectedToken || null;
 }
 
 /**
@@ -83,5 +101,7 @@ export function getCustomTokens(state: PerAccountState): $ReadOnlyArray<Token> {
  * Get only the default tokens
  */
 export function getDefaultTokens(state: PerAccountState): $ReadOnlyArray<Token> {
-  return getTokenState(state).defaultTokens;
+  const selectedNetwork = getTandaPaySelectedNetwork(state);
+  const supportedNetwork = selectedNetwork === 'custom' ? 'sepolia' : selectedNetwork;
+  return getDefaultTokensFromConfig(supportedNetwork);
 }
