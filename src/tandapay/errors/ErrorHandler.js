@@ -36,10 +36,6 @@ class TandaPayErrorHandler {
    * Handle an error by logging and optionally showing user alert
    */
   static handleError(error: TandaPayError, showAlert: boolean = true): void {
-    // Always log for debugging
-    // eslint-disable-next-line no-console
-    console.error(`[TandaPay ${error.type}]`, error.message, error.details);
-
     // Show user-friendly alert if requested and user message exists
     if (showAlert && error.userMessage != null && error.userMessage.length > 0) {
       const buttons = error.retryable === true
@@ -49,8 +45,6 @@ class TandaPayErrorHandler {
               text: 'Retry',
               onPress: () => {
                 // Note: Actual retry logic will be implemented by calling code
-                // eslint-disable-next-line no-console
-                console.log('User requested retry for:', error.type);
               }
             }
           ]

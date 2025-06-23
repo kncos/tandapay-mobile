@@ -159,8 +159,6 @@ export default function TransactionDetailsModal({
             setGasDetails(details);
           })
           .catch((error) => {
-            // eslint-disable-next-line no-console
-            console.warn('Error fetching gas details:', error);
             // Silently fail - we'll show "Unknown" for gas info
             setGasDetails(null);
           })

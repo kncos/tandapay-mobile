@@ -1,3 +1,5 @@
+/* @flow strict-local */
+
 export const mainnet = Object.freeze({
   id: 1,
   name: 'Ethereum',

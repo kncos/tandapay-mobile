@@ -160,8 +160,7 @@ export default function WalletScreen(props: Props): Node {
         setApiKeyConfigured(false);
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Unexpected error checking wallet:', error);
+      // Handle unexpected errors silently
     } finally {
       setLoading(false);
     }

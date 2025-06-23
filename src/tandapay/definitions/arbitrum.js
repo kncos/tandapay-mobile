@@ -1,3 +1,5 @@
+/* @flow strict-local */
+
 export const arbitrum = Object.freeze({
   id: 42_161,
   name: 'Arbitrum One',

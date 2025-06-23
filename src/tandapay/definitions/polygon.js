@@ -1,3 +1,5 @@
+/* @flow strict-local */
+
 export const polygon = Object.freeze({
   id: 137,
   name: 'Polygon',
@@ -27,5 +29,17 @@ export const polygon = Object.freeze({
       symbol: 'USDC',
       name: 'USD Coin',
     },
+    dai: {
+      address: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
+      decimals: 18,
+      symbol: 'DAI',
+      name: 'Dai Stablecoin',
+    },
+    usdt: {
+      address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F',
+      decimals: 6,
+      symbol: 'USDT',
+      name: 'Tether USD',
+    }
   }
 });

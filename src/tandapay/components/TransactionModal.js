@@ -8,8 +8,7 @@ import type { WriteTransaction } from '../contract/writeTransactionObjects';
 import TransactionParameterForm from './TransactionParameterForm';
 import TransactionEstimateAndSend from './TransactionEstimateAndSend';
 import { useTransactionForm } from '../hooks/useTransactionForm';
-import { createTandaPayContractWithSignerFromState } from '../services/ContractInstanceManager';
-import { isContractDeployed } from '../config/TandaPayConfig';
+import { createTandaPayContractWithSignerFromState, isTandaPayAvailable } from '../services/ContractInstanceManager';
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork } from '../redux/selectors';
@@ -93,7 +92,7 @@ export default function TransactionModal(props: Props): Node {
       }
 
       // Check if contract is deployed on the selected network
-      if (!isContractDeployed(selectedNetwork)) {
+      if (!isTandaPayAvailable(selectedNetwork, reduxState)) {
         return {
           success: false,
           error: `TandaPay contract not deployed on ${selectedNetwork}. Please check the network configuration or contact support.`,
@@ -155,7 +154,7 @@ export default function TransactionModal(props: Props): Node {
       }
 
       // Check if contract is deployed on the selected network
-      if (!isContractDeployed(selectedNetwork)) {
+      if (!isTandaPayAvailable(selectedNetwork, reduxState)) {
         return {
           success: false,
           error: `TandaPay contract not deployed on ${selectedNetwork}. Please check the network configuration or contact support.`,

@@ -12,7 +12,6 @@ import { ethers } from 'ethers';
 
 // $FlowFixMe[untyped-import] - TandaPayInfo module doesn't have Flow types
 import { TandaPayInfo } from '../contract/TandaPay';
-import { getTandaPayContractAddress, isContractDeployed } from '../config/TandaPayConfig';
 import { getTandaPayContractAddressForNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { getWalletInstance } from '../wallet/WalletManager';
 import { createProvider } from '../providers/ProviderManager';
@@ -28,25 +27,28 @@ const contractInstanceCache = new Map();
 /**
  * Create a TandaPay contract instance with signer for write operations
  * @param network The network to connect to
+ * @param state The Redux state containing user-configured contract addresses
  * @returns A TandaPayResult containing the contract instance
  */
 // $FlowFixMe[unclear-type] - ethers contract types are complex
 export async function createTandaPayContractWithSigner(
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon',
+  state: PerAccountState
   // $FlowFixMe[unclear-type] - ethers contract types are complex
 ): Promise<TandaPayResult<any>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      // Check if contract is deployed on this network
-      if (!isContractDeployed(network)) {
+      // Get user-configured contract address
+      const contractAddress = getTandaPayContractAddressForNetwork(state, network);
+
+      if (contractAddress == null || contractAddress.trim() === '' || contractAddress === '0x0000000000000000000000000000000000000000') {
         throw TandaPayErrorHandler.createError(
           'CONTRACT_ERROR',
-          `TandaPay contract not deployed on ${network}`,
-          { userMessage: `TandaPay is not yet available on ${network}. Please try a different network.` }
+          `TandaPay contract address not configured for ${network}`,
+          { userMessage: `Please configure a TandaPay contract address for ${network} in the network settings.` }
         );
       }
 
-      const contractAddress = getTandaPayContractAddress(network);
       const cacheKey = `${network}_${contractAddress}_signer`;
 
       // Check cache first
@@ -87,25 +89,28 @@ export async function createTandaPayContractWithSigner(
 /**
  * Create a TandaPay contract instance with provider for read operations
  * @param network The network to connect to
+ * @param state The Redux state containing user-configured contract addresses
  * @returns A TandaPayResult containing the contract instance
  */
 // $FlowFixMe[unclear-type] - ethers contract types are complex
 export async function createTandaPayContractWithProvider(
-  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'
+  network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon',
+  state: PerAccountState
   // $FlowFixMe[unclear-type] - ethers contract types are complex
 ): Promise<TandaPayResult<any>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      // Check if contract is deployed on this network
-      if (!isContractDeployed(network)) {
+      // Get user-configured contract address
+      const contractAddress = getTandaPayContractAddressForNetwork(state, network);
+
+      if (contractAddress == null || contractAddress.trim() === '' || contractAddress === '0x0000000000000000000000000000000000000000') {
         throw TandaPayErrorHandler.createError(
           'CONTRACT_ERROR',
-          `TandaPay contract not deployed on ${network}`,
-          { userMessage: `TandaPay is not yet available on ${network}. Please try a different network.` }
+          `TandaPay contract address not configured for ${network}`,
+          { userMessage: `Please configure a TandaPay contract address for ${network} in the network settings.` }
         );
       }
 
-      const contractAddress = getTandaPayContractAddress(network);
       const cacheKey = `${network}_${contractAddress}_provider`;
 
       // Check cache first
@@ -143,21 +148,24 @@ export function clearContractCache(): void {
 }
 
 /**
- * Get the current contract address for a network
+ * Get the current contract address for a network from user settings
  * @param network The network name
- * @returns The contract address
+ * @param state The Redux state containing user-configured contract addresses
+ * @returns The contract address or null if not configured
  */
-export function getContractAddress(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): string {
-  return getTandaPayContractAddress(network);
+export function getContractAddress(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon', state: PerAccountState): ?string {
+  return getTandaPayContractAddressForNetwork(state, network);
 }
 
 /**
- * Check if TandaPay is available on a specific network
+ * Check if TandaPay contract address is configured for a specific network
  * @param network The network name
- * @returns True if TandaPay is deployed on the network
+ * @param state The Redux state containing user-configured contract addresses
+ * @returns True if a valid contract address is configured for the network
  */
-export function isTandaPayAvailable(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): boolean {
-  return isContractDeployed(network);
+export function isTandaPayAvailable(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon', state: PerAccountState): boolean {
+  const address = getTandaPayContractAddressForNetwork(state, network);
+  return address != null && address.trim() !== '' && address !== '0x0000000000000000000000000000000000000000';
 }
 
 // =============================================================================

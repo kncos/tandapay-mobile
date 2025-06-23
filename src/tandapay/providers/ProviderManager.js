@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
 import { getAlchemyApiKey } from '../wallet/WalletManager';
+import { getChainByNetwork, getSupportedNetworks as getSupportedNetworksFromDefinitions } from '../definitions';
 
 // Fallback Alchemy API key for development (will be replaced with user's key when available)
 const FALLBACK_ALCHEMY_API = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
@@ -36,38 +37,24 @@ type NetworkConfig = {|
  * Get network configuration dynamically (for networks that need API keys)
  */
 async function getNetworkConfig(network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): Promise<NetworkConfig> {
-  const staticConfigs = {
-    mainnet: {
-      name: 'Ethereum Mainnet',
-      rpcUrl: 'https://eth.merkle.io', // Free public node
-      chainId: 1,
-      blockExplorerUrl: 'https://etherscan.io',
-    },
-    arbitrum: {
-      name: 'Arbitrum One',
-      rpcUrl: 'https://arb1.arbitrum.io/rpc', // Free public node
-      chainId: 42161,
-      blockExplorerUrl: 'https://arbiscan.io',
-    },
-    polygon: {
-      name: 'Polygon',
-      rpcUrl: 'https://polygon-rpc.com', // Free public node
-      chainId: 137,
-      blockExplorerUrl: 'https://polygonscan.com',
-    },
-  };
-
   if (network === 'sepolia') {
     const sepoliaUrl = await getAlchemySepoliaUrl();
+    const chain = getChainByNetwork('sepolia');
     return {
-      name: 'Sepolia Testnet',
+      name: chain.name,
       rpcUrl: sepoliaUrl,
-      chainId: 11155111,
-      blockExplorerUrl: 'https://sepolia.etherscan.io',
+      chainId: chain.id,
+      blockExplorerUrl: chain.blockExplorers.default.url,
     };
   }
 
-  return staticConfigs[network];
+  const chain = getChainByNetwork(network);
+  return {
+    name: chain.name,
+    rpcUrl: chain.rpcUrls.default.http[0],
+    chainId: chain.id,
+    blockExplorerUrl: chain.blockExplorers.default.url,
+  };
 }
 
 /**
@@ -195,7 +182,7 @@ export function getCacheStats(): {| size: number, maxSize: number, keys: Array<s
  * Get all supported networks
  */
 export function getSupportedNetworks(): $ReadOnlyArray<'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'> {
-  return ['mainnet', 'sepolia', 'arbitrum', 'polygon'];
+  return getSupportedNetworksFromDefinitions();
 }
 
 /**
@@ -251,28 +238,10 @@ export function getNetworkDisplayInfo(network: 'mainnet' | 'sepolia' | 'arbitrum
   chainId: number,
   blockExplorerUrl?: string,
 |} {
-  const configs = {
-    mainnet: {
-      name: 'Ethereum Mainnet',
-      chainId: 1,
-      blockExplorerUrl: 'https://etherscan.io',
-    },
-    sepolia: {
-      name: 'Sepolia Testnet',
-      chainId: 11155111,
-      blockExplorerUrl: 'https://sepolia.etherscan.io',
-    },
-    arbitrum: {
-      name: 'Arbitrum One',
-      chainId: 42161,
-      blockExplorerUrl: 'https://arbiscan.io',
-    },
-    polygon: {
-      name: 'Polygon',
-      chainId: 137,
-      blockExplorerUrl: 'https://polygonscan.com',
-    },
+  const chain = getChainByNetwork(network);
+  return {
+    name: chain.name,
+    chainId: chain.id,
+    blockExplorerUrl: chain.blockExplorers.default.url,
   };
-
-  return configs[network];
 }

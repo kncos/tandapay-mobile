@@ -203,7 +203,6 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
       if (!tokenExists) {
         // Auto-select the native token (first in the list)
         const nativeToken = availableTokens[0];
-        console.log('Auto-selecting native token:', nativeToken.symbol, 'for network');
         dispatch(selectToken(nativeToken.symbol));
       }
     }
@@ -211,17 +210,6 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
 
   // Use the custom hook for balance management
   const { balance, loading, error, refreshBalance } = useUpdateBalance(selectedToken, walletAddress);
-
-  // Debug log to see what error state we have
-  console.log('WalletBalanceCard: error state:', {
-    hasError: error != null,
-    errorType: error?.type,
-    errorMessage: error?.message,
-    errorUserMessage: error?.userMessage,
-    selectedToken: selectedToken?.symbol,
-    balance,
-    loading
-  });
 
   const handleTokenSelect = (token: Token) => {
     dispatch(selectToken(token.symbol));

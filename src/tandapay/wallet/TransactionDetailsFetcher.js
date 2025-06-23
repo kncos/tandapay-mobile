@@ -10,6 +10,7 @@
 import { Alchemy, Network } from 'alchemy-sdk';
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
+import { getChainByNetwork } from '../definitions';
 
 export type TransactionDetails = {|
   gasPrice: ?string,
@@ -41,6 +42,26 @@ function bigNumberToString(value: mixed): ?string {
     return String(value);
   } catch (error) {
     return null;
+  }
+}
+
+/**
+ * Map network name to Alchemy network constant
+ */
+function getAlchemyNetwork(networkName: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): typeof Network.ETH_MAINNET {
+  const chainConfig = getChainByNetwork(networkName);
+
+  switch (chainConfig.id) {
+    case 1:
+      return Network.ETH_MAINNET;
+    case 11155111:
+      return Network.ETH_SEPOLIA;
+    case 42161:
+      return Network.ARB_MAINNET;
+    case 137:
+      return Network.MATIC_MAINNET;
+    default:
+      return Network.ETH_SEPOLIA; // Default to Sepolia
   }
 }
 
@@ -89,26 +110,10 @@ function calculateTransactionFee(gasAmount: ?string, gasPrice: ?string, effectiv
 /**
  * Fetch detailed transaction information
  */
-export async function fetchTransactionDetails(txHash: string, apiKey: string, network: string = 'mainnet'): Promise<TransactionDetails | null> {
+export async function fetchTransactionDetails(txHash: string, apiKey: string, network: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon' = 'mainnet'): Promise<TransactionDetails | null> {
   try {
-    // Map network name to Alchemy network - same mapping as useTransactionHistory
-    let alchemyNetwork;
-    switch (network) {
-      case 'mainnet':
-        alchemyNetwork = Network.ETH_MAINNET;
-        break;
-      case 'sepolia':
-        alchemyNetwork = Network.ETH_SEPOLIA;
-        break;
-      case 'arbitrum':
-        alchemyNetwork = Network.ARB_MAINNET;
-        break;
-      case 'polygon':
-        alchemyNetwork = Network.MATIC_MAINNET;
-        break;
-      default:
-        alchemyNetwork = Network.ETH_SEPOLIA; // Default to Sepolia
-    }
+    // Use our centralized chain definitions to get the Alchemy network
+    const alchemyNetwork = getAlchemyNetwork(network);
 
     const config = {
       apiKey,
@@ -145,7 +150,6 @@ export async function fetchTransactionDetails(txHash: string, apiKey: string, ne
     };
   } catch (error) {
     // eslint-disable-next-line no-console
-    console.warn('Error fetching transaction details:', error);
     return null;
   }
 }

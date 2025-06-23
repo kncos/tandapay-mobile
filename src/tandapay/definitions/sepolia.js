@@ -1,3 +1,5 @@
+/* @flow strict-local */
+
 export const sepolia = Object.freeze({
   id: 11_155_111,
   name: 'Sepolia',
@@ -33,13 +35,13 @@ export const sepolia = Object.freeze({
       name: 'USD Coin',
     },
     dai: {
-      address: '0x511243992D17992E34125EF1274C7DCA4a94C030',
+      address: '0x3e622317f8C93f7328350cF0B56d9eD4C620C5d6',
       decimals: 18,
       symbol: 'DAI',
       name: 'Dai Stablecoin',
     },
     usdt: {
-      address: '0xfe80d187f052C18532DfEFD0152647786fb0A7c6',
+      address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
       decimals: 6,
       symbol: 'USDT',
       name: 'Tether USD',

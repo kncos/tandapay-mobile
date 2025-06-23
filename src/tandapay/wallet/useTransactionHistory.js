@@ -13,10 +13,36 @@ import { Alchemy, Network } from 'alchemy-sdk';
 import { AlchemyTransferFetcher } from './AlchemyTransferFetcher';
 import { ChronologicalTransferManager } from './ChronologicalTransferManager';
 import { getAlchemyApiKey } from './WalletManager';
+import { getChainByNetwork } from '../definitions';
 import type { TandaPayError } from '../errors/types';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 
 type Transfer = mixed;
+
+/**
+ * Map network name to Alchemy network constant using chain definitions
+ */
+function getAlchemyNetwork(networkName: 'mainnet' | 'sepolia' | 'arbitrum' | 'polygon'): typeof Network.ETH_MAINNET {
+  const chainConfig = getChainByNetwork(networkName);
+
+  switch (chainConfig.id) {
+    case 1:
+      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+      return Network.ETH_MAINNET;
+    case 11155111:
+      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+      return Network.ETH_SEPOLIA;
+    case 42161:
+      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+      return Network.ARB_MAINNET;
+    case 137:
+      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+      return Network.MATIC_MAINNET;
+    default:
+      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
+      return Network.ETH_SEPOLIA; // Default to Sepolia
+  }
+}
 
 export type TransactionState =
   | {| status: 'idle' |}
@@ -78,29 +104,8 @@ export default function useTransactionHistory({
 
       const apiKey = apiKeyResult.data;
 
-      // Map network to Alchemy Network enum
-      let alchemyNetwork;
-      switch (network) {
-        case 'mainnet':
-          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
-          alchemyNetwork = Network.ETH_MAINNET;
-          break;
-        case 'sepolia':
-          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
-          alchemyNetwork = Network.ETH_SEPOLIA;
-          break;
-        case 'arbitrum':
-          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
-          alchemyNetwork = Network.ARB_MAINNET;
-          break;
-        case 'polygon':
-          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
-          alchemyNetwork = Network.MATIC_MAINNET;
-          break;
-        default:
-          // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
-          alchemyNetwork = Network.ETH_SEPOLIA; // Default to Sepolia
-      }
+      // Use our centralized chain definitions to get the Alchemy network
+      const alchemyNetwork = getAlchemyNetwork(network);
 
       // $FlowFixMe[untyped-import] - alchemy-sdk Alchemy is untyped
       const alchemy = new Alchemy({
