@@ -24,7 +24,7 @@ describe('useUpdateBalance migration', () => {
 
   it('fetchBalance returns TandaPayResult on success', async () => {
     const mockBalance = '1.234567890123456789';
-    // $FlowFixMe - mocking web3 module
+    // $FlowFixMe[unclear-type] - mocking web3 module
     (web3.fetchBalance: any).mockResolvedValue({
       success: true,
       data: mockBalance,
@@ -49,7 +49,7 @@ describe('useUpdateBalance migration', () => {
       retryable: true,
     };
 
-    // $FlowFixMe - mocking web3 module
+    // $FlowFixMe[unclear-type] - mocking web3 module
     (web3.fetchBalance: any).mockResolvedValue({
       success: false,
       error: mockError,
@@ -62,11 +62,11 @@ describe('useUpdateBalance migration', () => {
     );
 
     expect(result.success).toBe(false);
-    // $FlowFixMe - we know result has error when success is false
+    // $FlowFixMe[incompatible-use] - we know result has error when success is false
     expect(result.error.type).toBe('NETWORK_ERROR');
-    // $FlowFixMe - we know result has error when success is false
+    // $FlowFixMe[incompatible-use] - we know result has error when success is false
     expect(result.error.userMessage).toBe(mockError.userMessage);
-    // $FlowFixMe - we know result has error when success is false
+    // $FlowFixMe[incompatible-use] - we know result has error when success is false
     expect(result.error.retryable).toBe(true);
   });
 
@@ -79,7 +79,7 @@ describe('useUpdateBalance migration', () => {
       retryable: false,
     };
 
-    // $FlowFixMe - mocking web3 module
+    // $FlowFixMe[unclear-type] - mocking web3 module
     (web3.fetchBalance: any).mockResolvedValue({
       success: false,
       error: mockError,
@@ -93,11 +93,11 @@ describe('useUpdateBalance migration', () => {
 
     // Test the new pattern - no conditional expects
     expect(result.success).toBe(false);
-    // $FlowFixMe - we know result has error when success is false
+    // $FlowFixMe[incompatible-use] - we know result has error when success is false
     expect(result.error.type).toBe('VALIDATION_ERROR');
-    // $FlowFixMe - we know result has error when success is false
+    // $FlowFixMe[incompatible-use] - we know result has error when success is false
     expect(result.error.retryable).toBe(false);
-    // $FlowFixMe - we know result has error when success is false
+    // $FlowFixMe[incompatible-use] - we know result has error when success is false
     expect(result.error.userMessage).toBeDefined();
   });
 });

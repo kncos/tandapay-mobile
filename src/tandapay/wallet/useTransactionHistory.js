@@ -27,19 +27,14 @@ function getAlchemyNetwork(networkName: SupportedNetwork): typeof Network.ETH_MA
 
   switch (chainConfig.id) {
     case 1:
-      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
       return Network.ETH_MAINNET;
     case 11155111:
-      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
       return Network.ETH_SEPOLIA;
     case 42161:
-      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
       return Network.ARB_MAINNET;
     case 137:
-      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
       return Network.MATIC_MAINNET;
     default:
-      // $FlowFixMe[untyped-import] - alchemy-sdk Network is untyped
       return Network.ETH_SEPOLIA; // Default to Sepolia
   }
 }
@@ -107,7 +102,6 @@ export default function useTransactionHistory({
       // Use our centralized chain definitions to get the Alchemy network
       const alchemyNetwork = getAlchemyNetwork(network);
 
-      // $FlowFixMe[untyped-import] - alchemy-sdk Alchemy is untyped
       const alchemy = new Alchemy({
         apiKey,
         network: alchemyNetwork,

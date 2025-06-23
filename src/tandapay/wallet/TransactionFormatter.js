@@ -9,7 +9,6 @@
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
 
-// $FlowFixMe[unclear-type] - Transfer objects have complex structure from Alchemy
 type Transfer = mixed;
 
 export type FormattedTransfer = {|

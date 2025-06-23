@@ -21,8 +21,8 @@ import type { LoadMoreState } from './useTransactionHistory';
 import type { TandaPayError } from '../errors/types';
 import TandaPayStyles, { TandaPayColors } from '../styles';
 import ZulipTextButton from '../../common/ZulipTextButton';
+import type { SupportedNetwork } from '../definitions/types';
 
-// $FlowFixMe[unclear-type] - Transfer objects have complex structure from Alchemy
 type Transfer = mixed;
 
 export type TransactionState =
@@ -34,7 +34,7 @@ export type TransactionState =
 type Props = {|
   walletAddress: string,
   apiKeyConfigured: boolean,
-  network?: string,
+  network?: SupportedNetwork,
   transactionState: TransactionState,
   loadMoreState: LoadMoreState,
   onLoadMore: () => void,
@@ -56,7 +56,6 @@ export default function TransactionList({
   onViewExplorer,
   onViewTransactionInExplorer,
 }: Props): Node {
-  // $FlowFixMe[unclear-type] - Complex transaction object structure
   const [selectedTransaction, setSelectedTransaction] = useState<?mixed>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const themeData = useContext(ThemeContext);
@@ -150,10 +149,6 @@ export default function TransactionList({
         <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
           This wallet has no transaction history yet.
         </ZulipText>
-        <ZulipButton
-          text="View in Explorer"
-          onPress={onViewExplorer}
-        />
       </View>
     );
   }
@@ -216,7 +211,6 @@ export default function TransactionList({
           <TransactionDetailsModal
             visible={modalVisible}
             onClose={hideTransactionDetails}
-            // $FlowFixMe[incompatible-type] - selectedTransaction is guaranteed to be valid
             transaction={selectedTransaction}
             walletAddress={walletAddress}
             network={network}
