@@ -15,6 +15,7 @@ import Screen from '../../common/Screen';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import Input from '../../common/Input';
+import { ScrollableTextBox } from '../components';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import type { RouteProp } from '../../react-navigation';
 
@@ -35,9 +36,6 @@ const customStyles = {
     marginBottom: 12,
   },
   tokenItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
     marginBottom: 8,
@@ -202,33 +200,44 @@ export default function TokenManagementScreen(props: Props): Node {
                 {
                   backgroundColor: themeData.cardColor,
                   borderColor: themeData.dividerColor,
+                  flexDirection: 'column', // Change to column layout
+                  alignItems: 'stretch', // Stretch to full width
                 },
               ]}
             >
-              <View style={customStyles.tokenInfo}>
-                <ZulipText style={[customStyles.tokenSymbol, { color: themeData.color }]}>
-                  {token.symbol}
-                </ZulipText>
-                <ZulipText style={[customStyles.tokenName, { color: themeData.color }]}>
-                  {token.name}
-                </ZulipText>
-                {token.address != null && token.address !== '' && (
-                  <ZulipText style={[customStyles.tokenName, { color: themeData.color, fontSize: 12 }]}>
-                    {token.address}
+              {/* First row: Token info and badge/button */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={customStyles.tokenInfo}>
+                  <ZulipText style={[customStyles.tokenSymbol, { color: themeData.color }]}>
+                    {token.symbol}
                   </ZulipText>
+                  <ZulipText style={[customStyles.tokenName, { color: themeData.color }]}>
+                    {token.name}
+                  </ZulipText>
+                </View>
+
+                {token.isDefault ? (
+                  <View style={customStyles.defaultBadge}>
+                    <ZulipText style={customStyles.badgeText}>DEFAULT</ZulipText>
+                  </View>
+                ) : (
+                  <ZulipButton
+                    style={{ backgroundColor: TandaPayColors.error }}
+                    text="Remove"
+                    onPress={() => handleRemoveToken(token)}
+                  />
                 )}
               </View>
 
-              {token.isDefault ? (
-                <View style={customStyles.defaultBadge}>
-                  <ZulipText style={customStyles.badgeText}>DEFAULT</ZulipText>
+              {/* Second row: Address ScrollableTextBox (if address exists) */}
+              {token.address != null && token.address !== '' && (
+                <View style={{ marginTop: 12 }}>
+                  <ScrollableTextBox
+                    text={token.address}
+                    label={`${token.symbol} Address`}
+                    onCopy={(text, label) => Alert.alert('Copied', `${label} copied to clipboard`)}
+                  />
                 </View>
-              ) : (
-                <ZulipButton
-                  style={{ backgroundColor: TandaPayColors.error }}
-                  text="Remove"
-                  onPress={() => handleRemoveToken(token)}
-                />
               )}
             </View>
           ))}
