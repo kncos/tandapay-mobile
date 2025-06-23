@@ -15,6 +15,7 @@ import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import AddressInput from './AddressInput';
 import Card from './Card';
+import ContractDeploymentModal from './ContractDeploymentModal';
 import TandaPayStyles, { TandaPayColors, TandaPayTypography } from '../styles';
 
 type Props = $ReadOnly<{|
@@ -50,6 +51,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
 
   const [addressInput, setAddressInput] = useState(currentAddress || '');
   const [saving, setSaving] = useState(false);
+  const [showDeploymentModal, setShowDeploymentModal] = useState(false);
 
   // Update input when network changes
   React.useEffect(() => {
@@ -86,6 +88,41 @@ export default function ContractAddressConfiguration(props: Props): Node {
     setAddressInput('');
   }, []);
 
+  const handleShowDeploymentModal = useCallback(() => {
+    setShowDeploymentModal(true);
+  }, []);
+
+  const handleCloseDeploymentModal = useCallback(() => {
+    setShowDeploymentModal(false);
+  }, []);
+
+  const handleDeploymentComplete = useCallback((contractAddress: string) => {
+    setAddressInput(contractAddress);
+    setShowDeploymentModal(false);
+    // Auto-save the deployed address after a short delay
+    setTimeout(() => {
+      setSaving(true);
+      const newContractAddresses = { ...contractAddresses };
+
+      if (selectedNetwork === 'mainnet') {
+        newContractAddresses.mainnet = contractAddress;
+      } else if (selectedNetwork === 'sepolia') {
+        newContractAddresses.sepolia = contractAddress;
+      } else if (selectedNetwork === 'arbitrum') {
+        newContractAddresses.arbitrum = contractAddress;
+      } else if (selectedNetwork === 'polygon') {
+        newContractAddresses.polygon = contractAddress;
+      } else if (selectedNetwork === 'custom') {
+        newContractAddresses.custom = contractAddress;
+      }
+
+      dispatch(updateTandaPaySettings({
+        contractAddresses: newContractAddresses,
+      }));
+      setSaving(false);
+    }, 100);
+  }, [dispatch, selectedNetwork, contractAddresses]);
+
   const hasChanges = (addressInput.trim() || null) !== currentAddress;
   const isValidAddress = addressInput.trim() === '' || /^0x[a-fA-F0-9]{40}$/.test(addressInput.trim());
 
@@ -120,6 +157,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
       />
 
       <View style={TandaPayStyles.buttonRow}>
+
         <ZulipButton
           style={TandaPayStyles.button}
           text="Clear"
@@ -135,6 +173,20 @@ export default function ContractAddressConfiguration(props: Props): Node {
           progress={saving}
         />
       </View>
+      <View style={TandaPayStyles.buttonRow}>
+        <ZulipButton
+          style={TandaPayStyles.button}
+          text="Deploy Contract"
+          onPress={handleShowDeploymentModal}
+          disabled={disabled || saving || !isValidAddress}
+        />
+      </View>
+
+      <ContractDeploymentModal
+        visible={showDeploymentModal}
+        onClose={handleCloseDeploymentModal}
+        onDeploymentComplete={handleDeploymentComplete}
+      />
     </Card>
   );
 }
