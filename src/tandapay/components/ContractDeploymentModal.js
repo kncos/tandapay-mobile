@@ -384,8 +384,9 @@ export default function ContractDeploymentModal(props: Props): Node {
                 tokens={availableTokens}
                 selectedToken={selectedToken}
                 onTokenSelect={handleTokenSelect}
-                placeholder="Select token for TandaPay contract"
+                placeholder="Select ERC20 token for TandaPay contract"
                 disabled={isDeploying || isEstimating}
+                erc20Only
               />
             </View>
 

@@ -15,6 +15,7 @@ type Props = $ReadOnly<{|
   onTokenSelect: (token: Token) => void,
   placeholder?: string,
   disabled?: boolean,
+  erc20Only?: boolean,
 |}>;
 
 const customStyles = {
@@ -86,8 +87,13 @@ const customStyles = {
 };
 
 export default function TokenPicker(props: Props): Node {
-  const { tokens, selectedToken, onTokenSelect, placeholder = 'Select a token', disabled = false } = props;
+  const { tokens, selectedToken, onTokenSelect, placeholder = 'Select a token', disabled = false, erc20Only = false } = props;
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Filter tokens based on erc20Only flag
+  const filteredTokens = erc20Only
+    ? tokens.filter(token => token.address != null && token.address !== '')
+    : tokens;
 
   const handleOpenModal = useCallback(() => {
     if (!disabled) {
@@ -157,7 +163,7 @@ export default function TokenPicker(props: Props): Node {
             </ZulipText>
 
             <FlatList
-              data={tokens}
+              data={filteredTokens}
               renderItem={renderTokenItem}
               keyExtractor={(item, index) => (item.address != null && item.address !== '') ? item.address : `native-${index}`}
               showsVerticalScrollIndicator={false}
