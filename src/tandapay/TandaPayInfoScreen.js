@@ -9,6 +9,7 @@ import type { RouteProp } from '../react-navigation';
 import Screen from '../common/Screen';
 import ZulipText from '../common/ZulipText';
 import ZulipButton from '../common/ZulipButton';
+import ZulipTextButton from '../common/ZulipTextButton';
 import { Card } from './components';
 import {
   IconServer,
@@ -458,18 +459,16 @@ export default function TandaPayInfoScreen(props: Props): Node {
               marginBottom: 8
             }}
             >
-              <ZulipText style={{ color: HALF_COLOR }}>Members:</ZulipText>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ZulipText style={{ fontWeight: 'bold', marginRight: 8 }}>
+              <View style={{ flex: 1 }}>
+                <ZulipText style={{ color: HALF_COLOR }}>Members:</ZulipText>
+                <ZulipText style={{ fontWeight: 'bold' }}>
                   {formatBigNumber(communityInfo.currentMemberCount) || '0'}
                 </ZulipText>
-                <ZulipButton
-                  style={TandaPayStyles.button}
-                  text="View"
-                  onPress={() => Alert.alert('Coming Soon', 'Member list will be available in a future update.')}
-                  secondary
-                />
               </View>
+              <ZulipTextButton
+                label="View"
+                onPress={() => Alert.alert('Coming Soon', 'Member list will be available in a future update.')}
+              />
             </View>
 
             <View style={{
@@ -478,18 +477,16 @@ export default function TandaPayInfoScreen(props: Props): Node {
               alignItems: 'center'
             }}
             >
-              <ZulipText style={{ color: HALF_COLOR }}>Subgroups:</ZulipText>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ZulipText style={{ fontWeight: 'bold', marginRight: 8 }}>
+              <View style={{ flex: 1 }}>
+                <ZulipText style={{ color: HALF_COLOR }}>Subgroups:</ZulipText>
+                <ZulipText style={{ fontWeight: 'bold' }}>
                   {formatBigNumber(communityInfo.currentSubgroupCount) || '0'}
                 </ZulipText>
-                <ZulipButton
-                  style={TandaPayStyles.button}
-                  text="View"
-                  onPress={() => Alert.alert('Coming Soon', 'Subgroup list will be available in a future update.')}
-                  secondary
-                />
               </View>
+              <ZulipTextButton
+                label="View"
+                onPress={() => Alert.alert('Coming Soon', 'Subgroup list will be available in a future update.')}
+              />
             </View>
           </Card>
         )}

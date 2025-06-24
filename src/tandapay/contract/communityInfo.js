@@ -3,6 +3,8 @@
 import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType } from './types';
 import { getProvider } from '../web3';
 import { getTandaPayReadActions } from './read';
+import { TandaPayInfo } from './TandaPay';
+import { executeTandaPayMulticall } from './multicall';
 import { getTandaPayNetworkPerformance, getCurrentTandaPayContractAddress } from '../redux/selectors';
 import { tryGetActiveAccountState } from '../../selectors';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
@@ -46,8 +48,16 @@ type CacheEntry = {
  * TandaPay Community Information Service
  *
  * This class provides a high-level interface for fetching comprehensive
- * community information from a TandaPay contract, with built-in caching,
+ * community information from a TandaPay contract. It uses efficient multicall
+ * batching to minimize network requests and provides built-in caching,
  * rate limiting, and error handling.
+ *
+ * The service automatically handles:
+ * - Contract address resolution from Redux store
+ * - Efficient multicall batching for blockchain reads
+ * - Intelligent caching with configurable expiration
+ * - Robust error handling and retry mechanisms
+ * - User-specific data fetching when userAddress is provided
  */
 class TandaPayCommunityInfo {
   config: CommunityInfoConfig;
@@ -83,7 +93,6 @@ class TandaPayCommunityInfo {
     try {
       const provider = await getProvider();
       const contractAddress: string = this._contractAddress || '';
-
       this.readActions = getTandaPayReadActions(provider, contractAddress);
       this._initialized = true;
     } catch (error) {
@@ -190,7 +199,7 @@ class TandaPayCommunityInfo {
   async getCommunityInfo(forceRefresh?: boolean): Promise<CommunityInfo> {
     // Initialize provider and contracts if not already done
     await this._initialize();
-    
+
     const shouldForceRefresh = forceRefresh || false;
     const cacheKey = `community_${this._contractAddress || 'unknown'}_${this.config.userAddress ?? 'anonymous'}`;
 
@@ -204,7 +213,74 @@ class TandaPayCommunityInfo {
       }
     }
 
-    // Fetch basic community information using direct contract calls
+    // Fetch basic community data
+    const basicData = await this._fetchBasicCommunityData();
+
+    // Fetch period-specific data
+    const periodData = await this._fetchPeriodData(basicData.currentPeriodId);
+
+    // Fetch user-specific data if applicable
+    const userData = await this._fetchUserData();
+
+    // Build the final community info object
+    const communityInfo: CommunityInfo = {
+      ...basicData,
+      currentPeriodInfo: periodData.periodInfo,
+      claimIdsInCurrentPeriod: periodData.claimIdsInPeriod,
+      whitelistedClaimIdsInCurrentPeriod: periodData.whitelistedClaimIds,
+      userMemberInfo: userData.userMemberInfo,
+      userSubgroupInfo: userData.userSubgroupInfo,
+      lastUpdated: Date.now(),
+    };
+
+    // Cache the result
+    this.cache.set(cacheKey, {
+      data: communityInfo,
+      timestamp: Date.now(),
+    });
+
+    return communityInfo;
+  }
+
+  /**
+   * Fetch basic community data using multicall for efficiency
+   * @private
+   */
+  async _fetchBasicCommunityData(): Promise<{
+    paymentTokenAddress: string,
+    currentMemberCount: BigNumber,
+    currentSubgroupCount: BigNumber,
+    currentClaimId: BigNumber,
+    currentPeriodId: BigNumber,
+    totalCoverageAmount: BigNumber,
+    basePremium: BigNumber,
+    communityState: TandaPayStateType,
+    secretaryAddress: string,
+    secretarySuccessorList: Array<string>,
+  }> {
+    const basicCalls = [
+      { functionName: 'getPaymentTokenAddress' },
+      { functionName: 'getCurrentMemberCount' },
+      { functionName: 'getCurrentSubgroupCount' },
+      { functionName: 'getCurrentClaimId' },
+      { functionName: 'getCurrentPeriodId' },
+      { functionName: 'getTotalCoverageAmount' },
+      { functionName: 'getBasePremium' },
+      { functionName: 'getCommunityState' },
+      { functionName: 'getSecretaryAddress' },
+      { functionName: 'getSecretarySuccessorList' },
+    ];
+
+    const basicResult = await executeTandaPayMulticall(
+      this._contractAddress || '',
+      TandaPayInfo.abi,
+      basicCalls
+    );
+
+    if (!basicResult.success) {
+      throw basicResult.error;
+    }
+
     const [
       paymentTokenAddress,
       currentMemberCount,
@@ -216,91 +292,9 @@ class TandaPayCommunityInfo {
       communityState,
       secretaryAddress,
       secretarySuccessorList
-    ] = await Promise.all([
-      this.rateLimitedContractCall('getPaymentTokenAddress'),
-      this.rateLimitedContractCall('getCurrentMemberCount'),
-      this.rateLimitedContractCall('getCurrentSubgroupCount'),
-      this.rateLimitedContractCall('getCurrentClaimId'),
-      this.rateLimitedContractCall('getCurrentPeriodId'),
-      this.rateLimitedContractCall('getTotalCoverageAmount'),
-      this.rateLimitedContractCall('getBasePremium'),
-      this.rateLimitedContractCall('getCommunityState'),
-      this.rateLimitedContractCall('getSecretaryAddress'),
-      this.rateLimitedContractCall('getSecretarySuccessorList'),
-    ]);
+    ] = basicResult.data;
 
-    // Fetch period-specific information
-    const [
-      periodInfo,
-      claimIdsInPeriod,
-      whitelistedClaimIds
-    ] = await Promise.all([
-      this.rateLimitedContractCall('getPeriodInfo', [currentPeriodId]),
-      this.rateLimitedContractCall('getClaimIdsInPeriod', [currentPeriodId]),
-      this.rateLimitedContractCall('getWhitelistedClaimIdsInPeriod', [currentPeriodId]),
-    ]);
-
-    // Build current period info - safe null checks
-    const currentPeriodInfo = {
-      startTimestamp: periodInfo?.startTimestamp ?? 0,
-      endTimestamp: periodInfo?.endTimestamp ?? 0,
-      coverageAmount: periodInfo?.coverageAmount ?? 0,
-      totalPremiumsPaid: periodInfo?.totalPremiumsPaid ?? 0,
-      claimIds: periodInfo?.claimIds ?? [],
-    };
-
-    // Initialize user info as null
-    let userMemberInfo = null;
-    let userSubgroupInfo = null;
-
-    // Fetch user-specific information if user address is provided
-    if (this.config.userAddress != null) {
-      try {
-        const memberInfo = await this.rateLimitedContractCall('getMemberInfoFromAddress', [
-          this.config.userAddress,
-          0 // current period
-        ]);
-
-        if (memberInfo != null && memberInfo !== false && this.config.userAddress != null) {
-          userMemberInfo = {
-            id: memberInfo.id ?? 0,
-            subgroupId: memberInfo.subgroupId ?? 0,
-            walletAddress: memberInfo.walletAddress ?? this.config.userAddress,
-            communityEscrowAmount: memberInfo.communityEscrowAmount ?? 0,
-            savingsEscrowAmount: memberInfo.savingsEscrowAmount ?? 0,
-            pendingRefundAmount: memberInfo.pendingRefundAmount ?? 0,
-            availableToWithdrawAmount: memberInfo.availableToWithdrawAmount ?? 0,
-            isEligibleForCoverageThisPeriod: memberInfo.isEligibleForCoverageThisPeriod ?? false,
-            isPremiumPaidThisPeriod: memberInfo.isPremiumPaidThisPeriod ?? false,
-            queuedRefundAmountThisPeriod: memberInfo.queuedRefundAmountThisPeriod ?? 0,
-            memberStatus: memberInfo.memberStatus ?? 0,
-            assignmentStatus: memberInfo.assignmentStatus ?? 0,
-          };
-
-          // Fetch subgroup information if user has a subgroup
-          const subgroupIdNum = memberInfo.subgroupId;
-          if (subgroupIdNum != null && subgroupIdNum !== false && subgroupIdNum > 0) {
-            try {
-              const subgroupInfo = await this.rateLimitedContractCall('getSubgroupInfo', [subgroupIdNum]);
-              if (subgroupInfo != null && subgroupInfo !== false) {
-                userSubgroupInfo = {
-                  id: subgroupIdNum,
-                  members: subgroupInfo.members ?? [],
-                  isValid: subgroupInfo.isValid ?? false,
-                };
-              }
-            } catch (subgroupError) {
-              // Subgroup fetch failed, but continue with null subgroup info
-            }
-          }
-        }
-      } catch (memberError) {
-        // Member info fetch failed, continue with null user info
-      }
-    }
-
-    // Build the final community info object with safe null checks
-    const communityInfo: CommunityInfo = {
+    return {
       paymentTokenAddress: String(paymentTokenAddress ?? ''),
       currentMemberCount: currentMemberCount ?? 0,
       currentSubgroupCount: currentSubgroupCount ?? 0,
@@ -311,21 +305,112 @@ class TandaPayCommunityInfo {
       communityState: communityState ?? 0,
       secretaryAddress: String(secretaryAddress ?? ''),
       secretarySuccessorList: secretarySuccessorList ?? [],
-      currentPeriodInfo,
-      claimIdsInCurrentPeriod: claimIdsInPeriod ?? [],
-      whitelistedClaimIdsInCurrentPeriod: whitelistedClaimIds ?? [],
-      userMemberInfo,
-      userSubgroupInfo,
-      lastUpdated: Date.now(),
     };
+  }
 
-    // Cache the result
-    this.cache.set(cacheKey, {
-      data: communityInfo,
-      timestamp: Date.now(),
-    });
+  /**
+   * Fetch period-specific data using multicall for efficiency
+   * @private
+   */
+  async _fetchPeriodData(currentPeriodId: BigNumber): Promise<{
+    periodInfo: PeriodInfo,
+    claimIdsInPeriod: Array<BigNumber>,
+    whitelistedClaimIds: Array<BigNumber>,
+  }> {
+    const periodCalls = [
+      { functionName: 'getPeriodIdToPeriodInfo', args: [currentPeriodId] },
+      { functionName: 'getClaimIdsInPeriod', args: [currentPeriodId] },
+      { functionName: 'getWhitelistedClaimIdsInPeriod', args: [currentPeriodId] },
+    ];
 
-    return communityInfo;
+    const periodResult = await executeTandaPayMulticall(
+      this._contractAddress || '',
+      TandaPayInfo.abi,
+      periodCalls
+    );
+
+    if (!periodResult.success) {
+      throw periodResult.error;
+    }
+
+    const [
+      periodInfo,
+      claimIdsInPeriod,
+      whitelistedClaimIds
+    ] = periodResult.data;
+
+    return {
+      periodInfo: {
+        startTimestamp: periodInfo?.startedAt ?? 0,
+        endTimestamp: periodInfo?.willEndAt ?? 0,
+        coverageAmount: periodInfo?.coverage ?? 0,
+        totalPremiumsPaid: periodInfo?.totalPaid ?? 0,
+        claimIds: periodInfo?.claimIds ?? [],
+      },
+      claimIdsInPeriod: claimIdsInPeriod ?? [],
+      whitelistedClaimIds: whitelistedClaimIds ?? [],
+    };
+  }
+
+  /**
+   * Fetch user-specific data (member and subgroup info) with fallback error handling
+   * @private
+   */
+  async _fetchUserData(): Promise<{
+    userMemberInfo: ?MemberInfo,
+    userSubgroupInfo: ?SubgroupInfo,
+  }> {
+    if (this.config.userAddress == null) {
+      return { userMemberInfo: null, userSubgroupInfo: null };
+    }
+
+    let userMemberInfo = null;
+    let userSubgroupInfo = null;
+
+    try {
+      const memberInfo = await this.rateLimitedContractCall('getMemberInfoFromAddress', [
+        this.config.userAddress,
+        0 // current period
+      ]);
+
+      if (memberInfo != null && memberInfo !== false && this.config.userAddress != null) {
+        userMemberInfo = {
+          id: memberInfo.id ?? 0,
+          subgroupId: memberInfo.subgroupId ?? 0,
+          walletAddress: memberInfo.walletAddress ?? this.config.userAddress,
+          communityEscrowAmount: memberInfo.communityEscrowAmount ?? 0,
+          savingsEscrowAmount: memberInfo.savingsEscrowAmount ?? 0,
+          pendingRefundAmount: memberInfo.pendingRefundAmount ?? 0,
+          availableToWithdrawAmount: memberInfo.availableToWithdrawAmount ?? 0,
+          isEligibleForCoverageThisPeriod: memberInfo.isEligibleForCoverageThisPeriod ?? false,
+          isPremiumPaidThisPeriod: memberInfo.isPremiumPaidThisPeriod ?? false,
+          queuedRefundAmountThisPeriod: memberInfo.queuedRefundAmountThisPeriod ?? 0,
+          memberStatus: memberInfo.memberStatus ?? 0,
+          assignmentStatus: memberInfo.assignmentStatus ?? 0,
+        };
+
+        // Fetch subgroup information if user has a subgroup
+        const subgroupIdNum = memberInfo.subgroupId;
+        if (subgroupIdNum != null && subgroupIdNum !== false && subgroupIdNum > 0) {
+          try {
+            const subgroupInfo = await this.rateLimitedContractCall('getSubgroupInfo', [subgroupIdNum]);
+            if (subgroupInfo != null && subgroupInfo !== false) {
+              userSubgroupInfo = {
+                id: subgroupIdNum,
+                members: subgroupInfo.members ?? [],
+                isValid: subgroupInfo.isValid ?? false,
+              };
+            }
+          } catch (subgroupError) {
+            // Subgroup fetch failed, but continue with null subgroup info
+          }
+        }
+      }
+    } catch (memberError) {
+      // Member info fetch failed, continue with null user info
+    }
+
+    return { userMemberInfo, userSubgroupInfo };
   }
 
   /**
