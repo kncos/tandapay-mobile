@@ -48,8 +48,8 @@ jq --version >/dev/null 2>&1 \
 # Circle logo with TandaPay branding in colored circle.
 src_icon_circle="${root_dir}"/tools/new_tandapay_assets/tandapay-logo-circle.svg
 
-# Circle logo with DEBUG banner (reusing existing zulip-icon-debug.svg structure).
-src_icon_debug="${root_dir}"/tools/zulip-icon-debug.svg
+# Circle logo with DEBUG banner - TandaPay version with DEBUG overlay.
+src_icon_debug="${root_dir}"/tools/tandapay-icon-debug.svg
 
 # Square/full-bleed logo with TandaPay branding in colored square.
 src_icon_square="${root_dir}"/tools/new_tandapay_assets/tandapay-logo-square.svg
@@ -67,6 +67,8 @@ src_icon_white_logo="${root_dir}"/tools/new_tandapay_assets/tandapay-logo.svg
     || die "Expected TandaPay square logo at: ${src_icon_square}"
 [ -r "${src_icon_white_logo}" ] \
     || die "Expected TandaPay standalone logo at: ${src_icon_white_logo}"
+[ -r "${src_icon_debug}" ] \
+    || die "Expected TandaPay debug logo at: ${src_icon_debug}"
 
 
 make_one_ios_app_icon() {
