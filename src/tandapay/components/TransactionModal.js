@@ -12,13 +12,16 @@ import { createTandaPayContractWithSignerFromState, isTandaPayAvailable } from '
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork } from '../redux/selectors';
-import { HALF_COLOR, QUARTER_COLOR } from '../../styles/constants';
+import { QUARTER_COLOR } from '../../styles/constants';
 import type {
   TransactionParams,
   EstimateGasCallback,
   SendTransactionCallback,
   GasEstimate,
 } from './TransactionEstimateAndSend';
+import { TandaPayColors, TandaPayTypography } from '../styles';
+import Card from './Card';
+import ZulipText from '../../common/ZulipText';
 
 type Props = $ReadOnly<{|
   visible: boolean,
@@ -236,24 +239,23 @@ export default function TransactionModal(props: Props): Node {
   const styles = {
     overlay: {
       flex: 1,
-      backgroundColor: HALF_COLOR,
+      backgroundColor: TandaPayColors.overlay,
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 16,
     },
-    modal: {
-      backgroundColor: themeData.cardColor,
-      borderRadius: 16,
-      padding: 20,
-      width: '100%',
-      maxWidth: 400,
+    modalCard: {
+      margin: 20,
       maxHeight: '80%',
+      width: '90%',
     },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: themeData.dividerColor,
     },
     title: {
       fontSize: 20,
@@ -271,7 +273,6 @@ export default function TransactionModal(props: Props): Node {
     },
     closeButtonText: {
       fontSize: 24,
-      color: themeData.color,
       fontWeight: 'bold',
     },
     description: {
@@ -280,10 +281,6 @@ export default function TransactionModal(props: Props): Node {
       opacity: 0.7,
       marginBottom: 20,
       lineHeight: 20,
-    },
-    scrollView: {
-      maxHeight: 300,
-      marginBottom: 20,
     },
     noParamsMessage: {
       padding: 16,
@@ -304,21 +301,23 @@ export default function TransactionModal(props: Props): Node {
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modal}>
+        <Card style={styles.modalCard}>
           <View style={styles.header}>
-            <Text style={styles.title}>{transaction.displayName}</Text>
+            <ZulipText style={{ ...TandaPayTypography.sectionTitle, marginBottom: 0 }}>
+              {transaction.displayName}
+            </ZulipText>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>×</Text>
+              <ZulipText style={styles.closeButtonText}>×</ZulipText>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.description}>{transaction.description}</Text>
 
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false}>
             {transaction.requiresParams && transaction.parameters ? (
               <TransactionParameterForm
                 transaction={transaction}
@@ -349,7 +348,7 @@ export default function TransactionModal(props: Props): Node {
               disabled={isSubmitting}
             />
           </ScrollView>
-        </View>
+        </Card>
       </View>
     </Modal>
   );

@@ -171,10 +171,10 @@ export default function ContractDeploymentModal(props: Props): Node {
           ? selectedToken.address
           : ethers.constants.AddressZero;        // Create deployment transaction data
         const deployTransaction = factory.getDeployTransaction(tokenAddress, secretaryAddress.trim());
-        
+
         // Use custom gas limit for estimation
         const userGasLimit = ethers.BigNumber.from(customGasLimit);
-        
+
         // Validate that the custom gas limit is sufficient by estimating
         await signer.estimateGas({
           ...deployTransaction,

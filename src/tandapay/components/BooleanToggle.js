@@ -8,6 +8,7 @@ import ZulipText from '../../common/ZulipText';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import { ThemeContext } from '../../styles';
 import Card from './Card';
+import { QUARTER_COLOR } from '../../styles/constants';
 
 type Props = $ReadOnly<{|
   value: boolean,
@@ -21,6 +22,7 @@ type Props = $ReadOnly<{|
 const customStyles = {
   container: {
     marginBottom: 16,
+    borderRadius: 16,
   },
   content: {
     flexDirection: 'row',
@@ -55,8 +57,8 @@ export default function BooleanToggle(props: Props): Node {
     onValueChange,
     label,
     description,
+    backgroundColor = QUARTER_COLOR,
     disabled = false,
-    style,
   } = props;
 
   const themeData = useContext(ThemeContext);
@@ -68,39 +70,36 @@ export default function BooleanToggle(props: Props): Node {
   };
 
   return (
-    <View style={[customStyles.container, style]}>
-      <Card style={disabled ? customStyles.disabledContainer : null}>
-        <TouchableOpacity
-          style={customStyles.content}
-          onPress={handlePress}
-          disabled={disabled}
-          activeOpacity={0.7}
-        >
-          <View style={customStyles.textContainer}>
-            <ZulipText style={customStyles.label}>
-              {label}
+    <View style={[customStyles.container, { backgroundColor }]}>
+      <TouchableOpacity
+        style={customStyles.content}
+        onPress={handlePress}
+        disabled={disabled}
+        activeOpacity={0.7}
+      >
+        <View style={customStyles.textContainer}>
+          <ZulipText style={customStyles.label}>
+            {label}
+          </ZulipText>
+          {description != null && description !== '' && (
+            <ZulipText style={customStyles.description}>
+              {description}
             </ZulipText>
-            {description != null && description !== '' && (
-              <ZulipText style={customStyles.description}>
-                {description}
-              </ZulipText>
-            )}
-          </View>
+          )}
+        </View>
 
-          <Switch
-            value={value}
-            onValueChange={onValueChange}
-            disabled={disabled}
-            style={customStyles.switch}
-            trackColor={{
-              false: themeData.dividerColor,
-              true: TandaPayColors.primary,
-            }}
-            thumbColor={value ? TandaPayColors.white : TandaPayColors.disabled}
-            ios_backgroundColor={themeData.dividerColor}
-          />
-        </TouchableOpacity>
-      </Card>
+        <Switch
+          value={value}
+          onValueChange={onValueChange}
+          disabled={disabled}
+          style={customStyles.switch}
+          trackColor={{
+            false: themeData.dividerColor,
+            true: TandaPayColors.primary,
+          }}
+          thumbColor={value ? TandaPayColors.white : TandaPayColors.disabled}
+        />
+      </TouchableOpacity>
     </View>
   );
 }

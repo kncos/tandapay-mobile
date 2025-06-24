@@ -16,6 +16,7 @@ import { fetchTransactionDetails, formatGasInfoForDisplay } from './TransactionD
 import type { TransactionDetails } from './TransactionDetailsFetcher';
 import { getAlchemyApiKey } from './WalletManager';
 import type { SupportedNetwork } from '../definitions/types';
+import { QUARTER_COLOR } from '../../styles/constants';
 
 type Props = {|
   visible: boolean,
@@ -47,10 +48,15 @@ const styles = {
     borderBottomWidth: 1,
   },
   closeButton: {
-    padding: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: QUARTER_COLOR,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
   },
   section: {
@@ -200,11 +206,11 @@ export default function TransactionDetailsModal({
       <View style={styles.modalOverlay}>
         <Card style={styles.modalCard}>
           <View style={[styles.header, { borderBottomColor: themeData.dividerColor }]}>
-            <ZulipText style={TandaPayTypography.sectionTitle}>
+            <ZulipText style={{ ...TandaPayTypography.sectionTitle, marginBottom: 0 }}>
               Transaction Details
             </ZulipText>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-              <ZulipText style={[styles.closeButtonText, { color: TandaPayColors.primary }]}>✕</ZulipText>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <ZulipText style={styles.closeButtonText}>×</ZulipText>
             </TouchableOpacity>
           </View>
 
