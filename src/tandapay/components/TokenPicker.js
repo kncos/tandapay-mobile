@@ -1,12 +1,15 @@
 /* @flow strict-local */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import type { Node } from 'react';
 import { View, TouchableOpacity, Modal, FlatList } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import { TandaPayColors, TandaPayTypography } from '../styles';
+import { HIGHLIGHT_COLOR } from '../../styles/constants';
+import { ThemeContext } from '../../styles';
+import Card from './Card';
 import type { Token } from '../tokens/tokenTypes';
 
 type Props = $ReadOnly<{|
@@ -22,23 +25,25 @@ const customStyles = {
   pickerContainer: {
     marginBottom: 16,
   },
-  pickerButton: {
-    borderWidth: 1,
-    borderColor: TandaPayColors.subtle,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: TandaPayColors.white,
+  cardContainer: {
+    alignSelf: 'stretch',
+    borderWidth: 2,
+    borderColor: HIGHLIGHT_COLOR,
   },
-  pickerButtonDisabled: {
+  cardDisabled: {
     backgroundColor: TandaPayColors.disabled,
     opacity: 0.5,
+    borderColor: TandaPayColors.subtle,
+  },
+  pickerButton: {
+    padding: 12,
+    backgroundColor: 'transparent',
   },
   pickerText: {
     ...TandaPayTypography.body,
   },
   pickerPlaceholder: {
     ...TandaPayTypography.body,
-    color: TandaPayColors.disabled,
   },
   modalContainer: {
     flex: 1,
@@ -47,7 +52,6 @@ const customStyles = {
   },
   modalContent: {
     margin: 20,
-    backgroundColor: TandaPayColors.white,
     borderRadius: 12,
     padding: 20,
     maxHeight: '80%',
@@ -68,11 +72,9 @@ const customStyles = {
   },
   tokenSymbol: {
     ...TandaPayTypography.caption,
-    color: TandaPayColors.disabled,
   },
   tokenAddress: {
     ...TandaPayTypography.caption,
-    color: TandaPayColors.disabled,
     fontFamily: 'monospace',
   },
   buttonRow: {
@@ -89,6 +91,7 @@ const customStyles = {
 export default function TokenPicker(props: Props): Node {
   const { tokens, selectedToken, onTokenSelect, placeholder = 'Select a token', disabled = false, erc20Only = false } = props;
   const [modalVisible, setModalVisible] = useState(false);
+  const themeData = useContext(ThemeContext);
 
   // Filter tokens based on erc20Only flag
   const filteredTokens = erc20Only
@@ -115,19 +118,19 @@ export default function TokenPicker(props: Props): Node {
       style={customStyles.tokenItem}
       onPress={() => handleTokenSelect(item)}
     >
-      <ZulipText style={customStyles.tokenName}>
+      <ZulipText style={[customStyles.tokenName, { color: themeData.color }]}>
         {item.name}
       </ZulipText>
-      <ZulipText style={customStyles.tokenSymbol}>
+      <ZulipText style={[customStyles.tokenSymbol, { color: themeData.color }]}>
         {item.symbol}
       </ZulipText>
       {(item.address != null && item.address !== '') && (
-        <ZulipText style={customStyles.tokenAddress}>
+        <ZulipText style={[customStyles.tokenAddress, { color: themeData.color }]}>
           {item.address}
         </ZulipText>
       )}
     </TouchableOpacity>
-  ), [handleTokenSelect]);
+  ), [handleTokenSelect, themeData.color]);
 
   const displayText = selectedToken
     ? `${selectedToken.name} (${selectedToken.symbol})`
@@ -135,20 +138,30 @@ export default function TokenPicker(props: Props): Node {
 
   return (
     <View style={customStyles.pickerContainer}>
-      <TouchableOpacity
+      <Card
         style={[
-          customStyles.pickerButton,
-          disabled && customStyles.pickerButtonDisabled,
+          customStyles.cardContainer,
+          disabled && customStyles.cardDisabled,
         ]}
-        onPress={handleOpenModal}
-        disabled={disabled}
+        borderRadius={16}
+        padding={2}
+        backgroundColor={themeData.cardColor}
       >
-        <ZulipText
-          style={selectedToken ? customStyles.pickerText : customStyles.pickerPlaceholder}
+        <TouchableOpacity
+          style={customStyles.pickerButton}
+          onPress={handleOpenModal}
+          disabled={disabled}
         >
-          {displayText}
-        </ZulipText>
-      </TouchableOpacity>
+          <ZulipText
+            style={[
+              selectedToken ? customStyles.pickerText : customStyles.pickerPlaceholder,
+              { color: selectedToken ? themeData.color : TandaPayColors.disabled }
+            ]}
+          >
+            {displayText}
+          </ZulipText>
+        </TouchableOpacity>
+      </Card>
 
       <Modal
         visible={modalVisible}
@@ -157,8 +170,8 @@ export default function TokenPicker(props: Props): Node {
         onRequestClose={handleCloseModal}
       >
         <View style={customStyles.modalContainer}>
-          <View style={customStyles.modalContent}>
-            <ZulipText style={customStyles.modalTitle}>
+          <View style={[customStyles.modalContent, { backgroundColor: themeData.cardColor }]}>
+            <ZulipText style={[customStyles.modalTitle, { color: themeData.color }]}>
               Select Token
             </ZulipText>
 
