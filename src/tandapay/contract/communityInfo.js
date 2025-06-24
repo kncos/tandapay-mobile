@@ -1,12 +1,9 @@
 /* @flow */
 
-// $FlowFixMe[untyped-import] - ethereum-multicall is a third-party library
-import { Multicall } from 'ethereum-multicall';
 import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType } from './types';
 import { getProvider } from '../web3';
 import { getTandaPayReadActions } from './read';
-import { TandaPayInfo } from './TandaPay';
-import { getTandaPayNetworkPerformance } from '../redux/selectors';
+import { getTandaPayNetworkPerformance, getCurrentTandaPayContractAddress } from '../redux/selectors';
 import { tryGetActiveAccountState } from '../../selectors';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
@@ -14,8 +11,9 @@ import store from '../../boot/store';
 
 // Configuration type for the community info class
 type CommunityInfoConfig = {
-  contractAddress: string,
+  contractAddress?: ?string, // Made optional since we can get it from Redux
   userAddress?: ?string,
+  forceContractAddress?: ?string, // Override for testing/specific cases
 };
 
 // Comprehensive community information type
@@ -55,18 +53,76 @@ class TandaPayCommunityInfo {
   config: CommunityInfoConfig;
   readActions: any;
   cache: Map<string, CacheEntry>;
-  multicall: any;
+  _contractAddress: ?string;
+  _initialized: boolean;
 
   constructor(config: CommunityInfoConfig) {
     this.config = config;
-
-    this.readActions = getTandaPayReadActions(
-      getProvider(),
-      this.config.contractAddress
-    );
-
     this.cache = new Map();
-    this.multicall = new Multicall({ web3Instance: getProvider(), tryAggregate: true });
+    this._initialized = false;
+
+    // Get contract address from config or Redux store
+    this._contractAddress = this._resolveContractAddress();
+
+    if (!this._contractAddress) {
+      throw TandaPayErrorHandler.createValidationError(
+        'No TandaPay contract address configured',
+        'Please configure a TandaPay contract address in settings before accessing community information.'
+      );
+    }
+  }
+
+  /**
+   * Initialize the provider and contract instances asynchronously
+   */
+  async _initialize(): Promise<void> {
+    if (this._initialized) {
+      return;
+    }
+
+    try {
+      const provider = await getProvider();
+      const contractAddress: string = this._contractAddress || '';
+
+      this.readActions = getTandaPayReadActions(provider, contractAddress);
+      this._initialized = true;
+    } catch (error) {
+      throw TandaPayErrorHandler.createNetworkError(
+        `Failed to initialize TandaPay community info: ${error.message}`,
+        'Unable to connect to the TandaPay network. Please check your connection and try again.'
+      );
+    }
+  }
+
+  /**
+   * Resolve the contract address from config or Redux store
+   */
+  _resolveContractAddress(): ?string {
+    // Check force override first
+    if (this.config.forceContractAddress) {
+      return this.config.forceContractAddress;
+    }
+
+    // Check config parameter
+    if (this.config.contractAddress) {
+      return this.config.contractAddress;
+    }
+
+    // Try to get from Redux store
+    try {
+      const globalState = store.getState();
+      const perAccountState = tryGetActiveAccountState(globalState);
+      if (perAccountState) {
+        const contractAddress = getCurrentTandaPayContractAddress(perAccountState);
+        if (contractAddress) {
+          return contractAddress;
+        }
+      }
+    } catch (error) {
+      // Continue to check other sources
+    }
+
+    return null;
   }
 
   /**
@@ -132,8 +188,11 @@ class TandaPayCommunityInfo {
    * Get comprehensive community information using multicall for efficiency
    */
   async getCommunityInfo(forceRefresh?: boolean): Promise<CommunityInfo> {
+    // Initialize provider and contracts if not already done
+    await this._initialize();
+    
     const shouldForceRefresh = forceRefresh || false;
-    const cacheKey = `community_${this.config.contractAddress}_${this.config.userAddress ?? 'anonymous'}`;
+    const cacheKey = `community_${this._contractAddress || 'unknown'}_${this.config.userAddress ?? 'anonymous'}`;
 
     // Check cache first unless force refresh is requested
     if (!shouldForceRefresh) {
@@ -145,65 +204,41 @@ class TandaPayCommunityInfo {
       }
     }
 
-    // Use multicall to batch basic information calls
-    const basicCalls = [
-      { reference: 'paymentTokenAddress', methodName: 'getPaymentTokenAddress', methodParameters: [] },
-      { reference: 'currentMemberCount', methodName: 'getCurrentMemberCount', methodParameters: [] },
-      { reference: 'currentSubgroupCount', methodName: 'getCurrentSubgroupCount', methodParameters: [] },
-      { reference: 'currentClaimId', methodName: 'getCurrentClaimId', methodParameters: [] },
-      { reference: 'currentPeriodId', methodName: 'getCurrentPeriodId', methodParameters: [] },
-      { reference: 'totalCoverageAmount', methodName: 'getTotalCoverageAmount', methodParameters: [] },
-      { reference: 'basePremium', methodName: 'getBasePremium', methodParameters: [] },
-      { reference: 'communityState', methodName: 'getCommunityState', methodParameters: [] },
-      { reference: 'secretaryAddress', methodName: 'getSecretaryAddress', methodParameters: [] },
-      { reference: 'secretarySuccessorList', methodName: 'getSecretarySuccessorList', methodParameters: [] },
-    ];
+    // Fetch basic community information using direct contract calls
+    const [
+      paymentTokenAddress,
+      currentMemberCount,
+      currentSubgroupCount,
+      currentClaimId,
+      currentPeriodId,
+      totalCoverageAmount,
+      basePremium,
+      communityState,
+      secretaryAddress,
+      secretarySuccessorList
+    ] = await Promise.all([
+      this.rateLimitedContractCall('getPaymentTokenAddress'),
+      this.rateLimitedContractCall('getCurrentMemberCount'),
+      this.rateLimitedContractCall('getCurrentSubgroupCount'),
+      this.rateLimitedContractCall('getCurrentClaimId'),
+      this.rateLimitedContractCall('getCurrentPeriodId'),
+      this.rateLimitedContractCall('getTotalCoverageAmount'),
+      this.rateLimitedContractCall('getBasePremium'),
+      this.rateLimitedContractCall('getCommunityState'),
+      this.rateLimitedContractCall('getSecretaryAddress'),
+      this.rateLimitedContractCall('getSecretarySuccessorList'),
+    ]);
 
-    const basicContractCallContext = {
-      reference: 'tandaPayContract',
-      contractAddress: this.config.contractAddress,
-      abi: TandaPayInfo.abi,
-      calls: basicCalls,
-    };
-
-    const basicResults = await this.multicall.call([basicContractCallContext]);
-    const basicData = basicResults.results.tandaPayContract.callsReturnContext;
-
-    // Extract basic results
-    const currentPeriodId = basicData.find(call => call.reference === 'currentPeriodId')?.returnValues[0];
-
-    // Fetch period-specific information using multicall
-    const periodCalls = [
-      { reference: 'periodInfo', methodName: 'getPeriodInfo', methodParameters: [currentPeriodId] },
-      { reference: 'claimIdsInPeriod', methodName: 'getClaimIdsInPeriod', methodParameters: [currentPeriodId] },
-      { reference: 'whitelistedClaimIds', methodName: 'getWhitelistedClaimIdsInPeriod', methodParameters: [currentPeriodId] },
-    ];
-
-    const periodContractCallContext = {
-      reference: 'tandaPayContract',
-      contractAddress: this.config.contractAddress,
-      abi: TandaPayInfo.abi,
-      calls: periodCalls,
-    };
-
-    const periodResults = await this.multicall.call([periodContractCallContext]);
-    const periodData = periodResults.results.tandaPayContract.callsReturnContext;
-
-    // Extract period results
-    const periodInfo = periodData.find(call => call.reference === 'periodInfo')?.returnValues[0];
-    const claimIdsInPeriod = periodData.find(call => call.reference === 'claimIdsInPeriod')?.returnValues;
-    const whitelistedClaimIds = periodData.find(call => call.reference === 'whitelistedClaimIds')?.returnValues;
-
-    // Extract basic data values from multicall results
-    const paymentTokenAddress = basicData.find(call => call.reference === 'paymentTokenAddress')?.returnValues[0];
-    const currentMemberCount = basicData.find(call => call.reference === 'currentMemberCount')?.returnValues[0];
-    const currentSubgroupCount = basicData.find(call => call.reference === 'currentSubgroupCount')?.returnValues[0];
-    const currentClaimId = basicData.find(call => call.reference === 'currentClaimId')?.returnValues[0];
-    const totalCoverageAmount = basicData.find(call => call.reference === 'totalCoverageAmount')?.returnValues[0];
-    const basePremium = basicData.find(call => call.reference === 'basePremium')?.returnValues[0];
-    const communityState = basicData.find(call => call.reference === 'communityState')?.returnValues[0];
-    const secretaryAddress = basicData.find(call => call.reference === 'secretaryAddress')?.returnValues[0];
-    const secretarySuccessorList = basicData.find(call => call.reference === 'secretarySuccessorList')?.returnValues;
+    // Fetch period-specific information
+    const [
+      periodInfo,
+      claimIdsInPeriod,
+      whitelistedClaimIds
+    ] = await Promise.all([
+      this.rateLimitedContractCall('getPeriodInfo', [currentPeriodId]),
+      this.rateLimitedContractCall('getClaimIdsInPeriod', [currentPeriodId]),
+      this.rateLimitedContractCall('getWhitelistedClaimIdsInPeriod', [currentPeriodId]),
+    ]);
 
     // Build current period info - safe null checks
     const currentPeriodInfo = {
@@ -297,7 +332,7 @@ class TandaPayCommunityInfo {
    * Get cached community information if available
    */
   getCachedCommunityInfo(): ?CommunityInfo {
-    const cacheKey = `community_${this.config.contractAddress}_${this.config.userAddress ?? 'anonymous'}`;
+    const cacheKey = `community_${this._contractAddress || 'unknown'}_${this.config.userAddress ?? 'anonymous'}`;
     const cached = this.cache.get(cacheKey);
     const performanceSettings = this.getNetworkPerformanceSettings();
     const cacheExpiration = performanceSettings.cacheExpirationMs;
@@ -322,11 +357,15 @@ class TandaPayCommunityInfo {
   updateConfig(newConfig: $Shape<CommunityInfoConfig>): void {
     this.config = { ...this.config, ...newConfig };
 
+    // Re-resolve contract address with new config
+    const newContractAddress = this._resolveContractAddress();
+
     // If contract address changed, recreate read actions
-    if (newConfig.contractAddress != null) {
+    if (newContractAddress && newContractAddress !== this._contractAddress) {
+      this._contractAddress = newContractAddress;
       this.readActions = getTandaPayReadActions(
         getProvider(),
-        this.config.contractAddress
+        newContractAddress
       );
     }
   }
@@ -359,22 +398,46 @@ class TandaPayCommunityInfo {
 
 /**
  * Factory function to create a new TandaPay Community Info instance
+ * Will automatically get contract address from Redux store if not provided
  */
-export function createCommunityInfo(config: CommunityInfoConfig): TandaPayCommunityInfo {
-  return new TandaPayCommunityInfo(config);
+export function createCommunityInfo(config?: CommunityInfoConfig): TandaPayCommunityInfo {
+  const defaultConfig: CommunityInfoConfig = {
+    contractAddress: null,
+    userAddress: null,
+    forceContractAddress: null,
+  };
+  return new TandaPayCommunityInfo(config || defaultConfig);
 }
 
 /**
  * Convenience function to quickly fetch community info with minimal configuration
+ * Automatically uses contract address from Redux store if not provided
  */
 export async function fetchCommunityInfo(
-  contractAddress: string,
+  contractAddress?: ?string,
   userAddress?: ?string
-): Promise<CommunityInfo> {
-  const communityInfo = createCommunityInfo({
-    contractAddress,
-    userAddress,
-  });
+): Promise<TandaPayResult<CommunityInfo>> {
+  try {
+    const communityInfo = createCommunityInfo({
+      contractAddress,
+      userAddress,
+    });
 
-  return communityInfo.getCommunityInfo();
+    const result = await communityInfo.getCommunityInfo();
+    return { success: true, data: result };
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+
+    const tandaPayError = TandaPayErrorHandler.createError(
+      'CONTRACT_ERROR',
+      'Failed to fetch community information',
+      {
+        userMessage: 'Unable to fetch community information. Please check your network connection and contract settings.',
+        details: error
+      }
+    );
+    return { success: false, error: tandaPayError };
+  }
 }
