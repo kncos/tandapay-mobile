@@ -163,16 +163,50 @@ make_android_icon() {
     make_one_android_icon $(( size_dp *   4   )) xxxhdpi
 }
 
+make_android_adaptive_icon() {
+    local src_fg="$1" bg_color="$2" sourceset="$3"
+    
+    # Create adaptive icon directories
+    mkdir -p android/app/src/"${sourceset}"/res/mipmap-anydpi-v26
+    mkdir -p android/app/src/"${sourceset}"/res/values
+    
+    # Generate foreground icons (sized for adaptive icon safe zone)
+    make_android_icon "${src_fg}" 48 "${sourceset}" mipmap ic_launcher_foreground
+    
+    # Create background color file
+    echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/"${sourceset}"/res/values/ic_launcher_background.xml
+    echo '<resources>' >> android/app/src/"${sourceset}"/res/values/ic_launcher_background.xml
+    echo "    <color name=\"ic_launcher_background\">${bg_color}</color>" >> android/app/src/"${sourceset}"/res/values/ic_launcher_background.xml
+    echo '</resources>' >> android/app/src/"${sourceset}"/res/values/ic_launcher_background.xml
+    
+    # Create adaptive icon XML
+    echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher.xml
+    echo '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher.xml
+    echo '    <background android:drawable="@color/ic_launcher_background"/>' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher.xml
+    echo '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher.xml
+    echo '</adaptive-icon>' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher.xml
+
+    # Create round adaptive icon XML
+    echo '<?xml version="1.0" encoding="utf-8"?>' > android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher_round.xml
+    echo '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher_round.xml
+    echo '    <background android:drawable="@color/ic_launcher_background"/>' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher_round.xml
+    echo '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher_round.xml
+    echo '</adaptive-icon>' >> android/app/src/"${sourceset}"/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+    # Still generate legacy icons for older Android versions
+    make_android_icon "${src_fg}" 48 "${sourceset}" mipmap ic_launcher
+    make_android_icon "${src_fg}" 48 "${sourceset}" mipmap ic_launcher_round
+}
+
 make_android() {
     # https://developer.android.com/google-play/resources/icon-design-specifications
     # This generated file we don't commit to the repo, because it isn't
     # needed in the build.
     inkscape "${src_icon_square}" -w 512 --export-png=tandapay-icon-google-play.png
 
-    # Launcher icon goes in a mipmap:
-    #   https://developer.android.com/training/multiscreen/screendensities#mipmap
-    make_android_icon "${src_icon_circle}" 48 main mipmap ic_launcher
-    make_android_icon "${src_icon_debug}" 48 debug mipmap ic_launcher
+    # Generate adaptive icons for main and debug builds
+    make_android_adaptive_icon "${src_icon_circle}" "#152D26" main
+    make_android_adaptive_icon "${src_icon_debug}" "#152D26" debug
 
     # docs: https://developer.android.com/about/versions/android-5.0-changes#BehaviorNotifications
     make_android_icon "${src_icon_white_logo}" 24 main drawable tandapay_notification
@@ -205,4 +239,4 @@ Generated assets:
 - Root app-logo.png and app-logo.svg
 - Static assets (logo.png, message-loading.png)
 - Google Play store icon (tandapay-icon-google-play.png)
-EOF
+EO60
