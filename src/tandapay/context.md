@@ -1,0 +1,15 @@
+- We are working in a fork of an existing mobile application (zulip mobile)
+- All of our code is in `src/tandapay`, we don't modify code outside of this directory except when absolutely necessary (e.g., modifying `AppNavigator.js` to add more screens)
+- We use `src/tandapay/errors` for our error handling utilities
+- We store state using redux, tandapay specific stuff can be found in `src/tandapay/redux`
+- This is a web3 application -- we use ethers.js v5 and you also have access to alchemy-sdk
+- We use expo secure store for storage/retrieval of any API keys as well as wallet information (e.g., the mnemonic phrase)
+- This application has a simple built in ethereum wallet which lets the user send/receive the default token (ETH on most chains, but can be different such as POL on polygon) as well as ERC20 tokens
+- This application supports a few ERC20 tokens by default (DAI, USDC, USDT) and a few networks by default (mainnet, arbitrum, sepolia, polygon) -- but the user can configure custom rpc settings and can add custom tokens. Settings are persistent using redux, custom tokens are per-network
+- The primary purpose of our code is to bundle all of the functionality necessary to use the TandaPay smart contract. The TandaPay smart contract related code is mostly in `src/tandapay/contract`, with `src/tandapay/contract/TandaPay.js` containing the actual solidity build artifact. The build artifact is exported as an object `TandaPayInfo` and we access the abi with `TandaPayInfo.abi` and the bytecode with `TandaPayInfo.bytecode.object`
+- various components are available in `src/tandapay/components`, as well as in the broader codebase. We frequently use components like `ZulipButton` and `ZulipText` because they have built in styling consistent with the rest of the app.
+- Lots of our styling is stored in `src/tandapay/styles` -- in here, you can get various colors, as well as styles for certain components. There are also global constants like `HALF_COLOR`, `QUARTER_COLOR`, and `BRAND_COLOR` which come from `src/styles/constants.js`.
+- avoid using any mock data, hardcoded api keys, or other rigid things. The goal here is to make a production app. There are situations where a placeholder may be used but we only keep it temporarily
+- there are various `.md` files throughout `src/tandapay`, many of these might be outdated so you can use them to get context but beware that they might not be fully up to date
+- The TandaPay contract can be deployed from straight within the app. We don't hard code the contract address because users will be part of a community and each community has its own deployment. Not all users will deploy a contract, but all contracts will be deployed by our users, and thus they can configure the contract address in the `TandaPayNetworkSettingsScreen`.
+- There is NO FLOW SCRIPT. Flow has an IDE integration, you have access to see problems within any file you view, so any flow errors will just be listed as problems. Do not run `npm run flow` or any similar commands because it will NOT work.
