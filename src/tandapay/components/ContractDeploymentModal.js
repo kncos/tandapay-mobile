@@ -1,8 +1,8 @@
 /* @flow strict-local */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import type { Node } from 'react';
-import { View, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Modal, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
@@ -18,11 +18,13 @@ import TandaPayErrorHandler from '../errors/ErrorHandler';
 import AddressInput from './AddressInput';
 import TokenPicker from './TokenPicker';
 import NumberInput from './NumberInput';
-import ModalContainer from './ModalContainer';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
+import { ThemeContext } from '../../styles';
 import TandaPayStyles, { TandaPayColors, TandaPayTypography } from '../styles';
 import type { Token } from '../tokens/tokenTypes';
+import { QUARTER_COLOR } from '../../styles/constants';
+import Card from './Card';
 
 type Props = $ReadOnly<{|
   visible: boolean,
@@ -30,74 +32,11 @@ type Props = $ReadOnly<{|
   onDeploymentComplete?: (contractAddress: string) => void,
 |}>;
 
-const customStyles = {
-  title: {
-    ...TandaPayTypography.sectionTitle,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  description: {
-    ...TandaPayTypography.body,
-    color: TandaPayColors.disabled,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    ...TandaPayTypography.label,
-    marginBottom: 8,
-  },
-  disclaimer: {
-    ...TandaPayTypography.caption,
-    color: TandaPayColors.warning,
-    marginBottom: 20,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  estimateSection: {
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: TandaPayColors.white,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: TandaPayColors.subtle,
-  },
-  estimateTitle: {
-    ...TandaPayTypography.label,
-    marginBottom: 8,
-  },
-  estimateValue: {
-    ...TandaPayTypography.body,
-    fontWeight: 'bold',
-  },
-  errorText: {
-    ...TandaPayTypography.body,
-    color: TandaPayColors.error,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  loadingText: {
-    ...TandaPayTypography.body,
-    marginTop: 8,
-  },
-  gasLimitHelper: {
-    ...TandaPayTypography.caption,
-    color: TandaPayColors.disabled,
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-};
-
 export default function ContractDeploymentModal(props: Props): Node {
   const { visible, onClose, onDeploymentComplete } = props;
 
   const dispatch = useDispatch();
+  const themeData = useContext(ThemeContext);
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const contractAddresses = useSelector(getTandaPayContractAddresses);
   const availableTokens = useSelector(getAvailableTokens);
@@ -119,6 +58,111 @@ export default function ContractDeploymentModal(props: Props): Node {
     && isValidGasLimit
     && selectedNetwork !== 'custom';
   const canDeploy = canEstimate && gasEstimate != null;
+
+  const handleClose = useCallback(() => {
+    if (!isDeploying && !isEstimating) {
+      onClose();
+    }
+  }, [onClose, isDeploying, isEstimating]);
+
+  const styles = {
+    overlay: {
+      flex: 1,
+      backgroundColor: TandaPayColors.overlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalCard: {
+      margin: 20,
+      maxHeight: '80%',
+      width: '90%',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: themeData.dividerColor,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: themeData.color,
+      flex: 1,
+    },
+    closeButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: QUARTER_COLOR,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    closeButtonText: {
+      fontSize: 24,
+      fontWeight: 'bold',
+    },
+    description: {
+      fontSize: 14,
+      color: themeData.color,
+      opacity: 0.7,
+      marginBottom: 20,
+      lineHeight: 20,
+      textAlign: 'center',
+    },
+    disclaimer: {
+      ...TandaPayTypography.caption,
+      color: TandaPayColors.warning,
+      marginBottom: 20,
+      textAlign: 'center',
+      fontStyle: 'italic',
+    },
+    section: {
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      ...TandaPayTypography.label,
+      marginBottom: 8,
+    },
+    estimateSection: {
+      marginBottom: 20,
+      padding: 16,
+      backgroundColor: TandaPayColors.white,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: TandaPayColors.subtle,
+    },
+    estimateTitle: {
+      ...TandaPayTypography.label,
+      marginBottom: 8,
+    },
+    estimateValue: {
+      ...TandaPayTypography.body,
+      fontWeight: 'bold',
+    },
+    errorText: {
+      ...TandaPayTypography.body,
+      color: TandaPayColors.error,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    loadingContainer: {
+      alignItems: 'center',
+      marginVertical: 16,
+    },
+    loadingText: {
+      ...TandaPayTypography.body,
+      marginTop: 8,
+    },
+    gasLimitHelper: {
+      ...TandaPayTypography.caption,
+      color: TandaPayColors.disabled,
+      marginTop: 4,
+      fontStyle: 'italic',
+    },
+  };
 
   const handleTokenSelect = useCallback((token: Token) => {
     setSelectedToken(token);
@@ -301,123 +345,129 @@ export default function ContractDeploymentModal(props: Props): Node {
     }
   }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit, contractAddresses, dispatch, onDeploymentComplete, onClose]);
 
-  const handleClose = useCallback(() => {
-    if (!isDeploying && !isEstimating) {
-      onClose();
-    }
-  }, [onClose, isDeploying, isEstimating]);
-
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <ModalContainer onClose={handleClose}>
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <ZulipText style={customStyles.title}>
-            Deploy TandaPay Contract
-          </ZulipText>
-
-          <ZulipText style={customStyles.description}>
-            Deploy a new TandaPay contract for your community on
-            {' '}
-            {selectedNetwork}
-            .
-          </ZulipText>
-
-          <ZulipText style={customStyles.disclaimer}>
-            Warning: Contract deployment is permanent and cannot be undone.
-            Make sure you have the correct token and secretary address.
-          </ZulipText>
-
-          <View style={customStyles.section}>
-            <ZulipText style={customStyles.sectionTitle}>
-              Token for Contract
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={handleClose}
+    >
+      <View style={styles.overlay}>
+        <Card style={styles.modalCard}>
+          <View style={styles.header}>
+            <ZulipText style={{ ...TandaPayTypography.sectionTitle, marginBottom: 0 }}>
+              Deploy TandaPay Contract
             </ZulipText>
-            <TokenPicker
-              tokens={availableTokens}
-              selectedToken={selectedToken}
-              onTokenSelect={handleTokenSelect}
-              placeholder="Select token for TandaPay contract"
-              disabled={isDeploying || isEstimating}
-            />
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+              <ZulipText style={styles.closeButtonText}>×</ZulipText>
+            </TouchableOpacity>
           </View>
 
-          <View style={customStyles.section}>
-            <AddressInput
-              value={secretaryAddress}
-              onChangeText={setSecretaryAddress}
-              placeholder="0x..."
-              label="Secretary Address"
-              disabled={isDeploying || isEstimating}
-              showQRButton
-            />
-          </View>
-
-          <View style={customStyles.section}>
-            <NumberInput
-              value={customGasLimit}
-              onChangeText={handleGasLimitChange}
-              label="Gas Limit"
-              placeholder="15000000"
-              min={1000000}
-              max={50000000}
-              disabled={isDeploying || isEstimating}
-            />
-            <ZulipText style={customStyles.gasLimitHelper}>
-              Default: 15M gas. Increase if deployment fails due to insufficient gas.
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <ZulipText style={styles.description}>
+              Deploy a new TandaPay contract for your community on
+              {' '}
+              {selectedNetwork}
+              .
             </ZulipText>
-          </View>
 
-          {(errorMessage != null && errorMessage !== '') && (
-            <ZulipText style={customStyles.errorText}>
-              {errorMessage}
+            <ZulipText style={styles.disclaimer}>
+              Warning: Contract deployment is permanent and cannot be undone.
+              Make sure you have the correct token and secretary address.
             </ZulipText>
-          )}
 
-          {(isEstimating || isDeploying) && (
-            <View style={customStyles.loadingContainer}>
-              <ActivityIndicator size="large" color={TandaPayColors.primary} />
-              <ZulipText style={customStyles.loadingText}>
-                {isEstimating ? 'Estimating deployment cost...' : 'Deploying contract...'}
+            <View style={styles.section}>
+              <ZulipText style={styles.sectionTitle}>
+                Token for Contract
+              </ZulipText>
+              <TokenPicker
+                tokens={availableTokens}
+                selectedToken={selectedToken}
+                onTokenSelect={handleTokenSelect}
+                placeholder="Select token for TandaPay contract"
+                disabled={isDeploying || isEstimating}
+              />
+            </View>
+
+            <View style={styles.section}>
+              <AddressInput
+                value={secretaryAddress}
+                onChangeText={setSecretaryAddress}
+                placeholder="0x..."
+                label="Secretary Address"
+                disabled={isDeploying || isEstimating}
+                showQRButton
+              />
+            </View>
+
+            <View style={styles.section}>
+              <NumberInput
+                value={customGasLimit}
+                onChangeText={handleGasLimitChange}
+                label="Gas Limit"
+                placeholder="15000000"
+                min={1000000}
+                max={50000000}
+                disabled={isDeploying || isEstimating}
+              />
+              <ZulipText style={styles.gasLimitHelper}>
+                Default: 15M gas. Increase if deployment fails due to insufficient gas.
               </ZulipText>
             </View>
-          )}
 
-          {(gasEstimate != null && gasEstimate !== '') && !isEstimating && (
-            <View style={customStyles.estimateSection}>
-              <ZulipText style={customStyles.estimateTitle}>
-                Estimated Deployment Cost
+            {(errorMessage != null && errorMessage !== '') && (
+              <ZulipText style={styles.errorText}>
+                {errorMessage}
               </ZulipText>
-              <ZulipText style={customStyles.estimateValue}>
-                {gasEstimate}
-              </ZulipText>
+            )}
+
+            {(isEstimating || isDeploying) && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={TandaPayColors.primary} />
+                <ZulipText style={styles.loadingText}>
+                  {isEstimating ? 'Estimating deployment cost...' : 'Deploying contract...'}
+                </ZulipText>
+              </View>
+            )}
+
+            {(gasEstimate != null && gasEstimate !== '') && !isEstimating && (
+              <View style={styles.estimateSection}>
+                <ZulipText style={styles.estimateTitle}>
+                  Estimated Deployment Cost
+                </ZulipText>
+                <ZulipText style={styles.estimateValue}>
+                  {gasEstimate}
+                </ZulipText>
+              </View>
+            )}
+
+            <View style={TandaPayStyles.buttonRow}>
+              <ZulipButton
+                style={TandaPayStyles.button}
+                text="Estimate Cost"
+                onPress={handleEstimateGas}
+                disabled={!canEstimate || isEstimating || isDeploying}
+              />
+
+              <ZulipButton
+                style={TandaPayStyles.button}
+                text={isDeploying ? 'Deploying...' : 'Deploy Contract'}
+                onPress={handleDeploy}
+                disabled={!canDeploy || isDeploying || isEstimating}
+              />
             </View>
-          )}
 
-          <View style={TandaPayStyles.buttonRow}>
-            <ZulipButton
-              style={TandaPayStyles.button}
-              text="Estimate Cost"
-              onPress={handleEstimateGas}
-              disabled={!canEstimate || isEstimating || isDeploying}
-            />
-
-            <ZulipButton
-              style={TandaPayStyles.button}
-              text={isDeploying ? 'Deploying...' : 'Deploy Contract'}
-              onPress={handleDeploy}
-              disabled={!canDeploy || isDeploying || isEstimating}
-            />
-          </View>
-
-          <View style={TandaPayStyles.buttonRow}>
-            <ZulipButton
-              style={TandaPayStyles.button}
-              text="Cancel"
-              onPress={handleClose}
-              disabled={isDeploying || isEstimating}
-            />
-          </View>
-        </ScrollView>
-      </ModalContainer>
+            <View style={TandaPayStyles.buttonRow}>
+              <ZulipButton
+                style={TandaPayStyles.button}
+                text="Cancel"
+                onPress={handleClose}
+                disabled={isDeploying || isEstimating}
+              />
+            </View>
+          </ScrollView>
+        </Card>
+      </View>
     </Modal>
   );
 }
