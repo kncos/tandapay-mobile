@@ -6,8 +6,12 @@ import { View, TouchableOpacity, Modal, FlatList } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
+import { IconCaretDown } from '../../common/Icons';
 import { TandaPayColors, TandaPayTypography } from '../styles';
-import { HIGHLIGHT_COLOR } from '../../styles/constants';
+import {
+  HALF_COLOR,
+  HIGHLIGHT_COLOR,
+} from '../../styles/constants';
 import { ThemeContext } from '../../styles';
 import Card from './Card';
 import type { Token } from '../tokens/tokenTypes';
@@ -38,6 +42,9 @@ const customStyles = {
   pickerButton: {
     padding: 12,
     backgroundColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   pickerText: {
     ...TandaPayTypography.body,
@@ -160,6 +167,10 @@ export default function TokenPicker(props: Props): Node {
           >
             {displayText}
           </ZulipText>
+          <IconCaretDown
+            size={16}
+            color={HALF_COLOR}
+          />
         </TouchableOpacity>
       </Card>
 
