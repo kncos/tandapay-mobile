@@ -62,9 +62,7 @@ export default class CompatibilityScreen extends PureComponent<{||}> {
         <Text style={styles.text}>This app is too old!</Text>
         <Text style={styles.text}>Please update to the latest version.</Text>
         <View style={styles.badgeContainer}>
-          <Touchable>
-            {Platform.OS === 'ios' ? <AppStoreBadge /> : <GooglePlayBadge />}
-          </Touchable>
+          <Touchable>{Platform.OS === 'ios' ? <AppStoreBadge /> : <GooglePlayBadge />}</Touchable>
         </View>
       </View>
     );

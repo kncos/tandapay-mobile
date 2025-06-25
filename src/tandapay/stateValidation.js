@@ -62,9 +62,11 @@ export function validateCustomRpcConfig(config: mixed): ValidationResult {
       errors.push('Chain ID must be a positive integer');
     }
 
-    if (blockExplorerUrl !== undefined
+    if (
+      blockExplorerUrl !== undefined
       && (typeof blockExplorerUrl !== 'string'
-        || (!blockExplorerUrl.startsWith('http://') && !blockExplorerUrl.startsWith('https://')))) {
+        || (!blockExplorerUrl.startsWith('http://') && !blockExplorerUrl.startsWith('https://')))
+    ) {
       errors.push('Block explorer URL must be a valid HTTP/HTTPS URL or undefined');
     }
   }
@@ -107,7 +109,11 @@ export function validateNetworkPerformance(performance: mixed): ValidationResult
     }
 
     if (retryAttempts !== undefined) {
-      if (typeof retryAttempts !== 'number' || retryAttempts < 0 || !Number.isInteger(retryAttempts)) {
+      if (
+        typeof retryAttempts !== 'number'
+        || retryAttempts < 0
+        || !Number.isInteger(retryAttempts)
+      ) {
         errors.push('Retry attempts must be a non-negative integer');
       }
     }

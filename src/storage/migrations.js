@@ -10,7 +10,14 @@ type PartialState = $ReadOnly<$Rest<GlobalState, { ... }>>;
 // Like GlobalState, but with only the properties from historicalStoreKeys.
 type StoreKeysState = SubsetProperties<
   GlobalState,
-  { migrations: mixed, accounts: mixed, drafts: mixed, outbox: mixed, settings: mixed, tandaPay: mixed },
+  {
+    migrations: mixed,
+    accounts: mixed,
+    drafts: mixed,
+    outbox: mixed,
+    settings: mixed,
+    tandaPay: mixed,
+  },
 >;
 
 // Like GlobalState, but making optional all except historicalStoreKeys.
@@ -557,8 +564,8 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
         },
         networkPerformance: {
           cacheExpirationMs: 30000, // 30 seconds default
-          rateLimitDelayMs: 100,    // 100ms between calls
-          retryAttempts: 3,         // 3 retry attempts
+          rateLimitDelayMs: 100, // 100ms between calls
+          retryAttempts: 3, // 3 retry attempts
         },
       },
       tokens: {

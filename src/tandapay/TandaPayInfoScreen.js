@@ -16,7 +16,7 @@ import {
   IconTandaPayInfo,
   IconAlertTriangle,
   IconPerson,
-  IconShield
+  IconShield,
 } from '../common/Icons';
 import { useSelector } from '../react-redux';
 import { getCurrentTandaPayContractAddress, getTandaPaySelectedNetwork } from './redux/selectors';
@@ -62,10 +62,12 @@ function bigNumberToNumber(value: mixed): number {
 
 // Helper function to format BigNumber values
 function formatBigNumber(value: mixed): string {
-  if (typeof value === 'string')
-{ return value; }
-  if (typeof value === 'number')
-{ return value.toString(); }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number') {
+    return value.toString();
+  }
   if (value != null && typeof value === 'object' && typeof value.toString === 'function') {
     return value.toString();
   }
@@ -80,9 +82,13 @@ function formatTimeDuration(seconds: number): string {
   const remainingSeconds = seconds % 60;
 
   if (days > 0) {
-    return `${days}d ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${days}d ${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   } else {
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 }
 
@@ -133,14 +139,18 @@ function getMemberStatusDisplayName(status: number): string {
 // Helper function to format token amounts
 function formatTokenAmount(amount: string | number, decimals: number = 18): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (num === 0)
-{ return '0'; }
-  if (num < 0.0001)
-{ return '<0.0001'; }
-  if (num >= 1000000)
-{ return `${(num / 1000000).toFixed(2)}M`; }
-  if (num >= 1000)
-{ return `${(num / 1000).toFixed(2)}K`; }
+  if (num === 0) {
+    return '0';
+  }
+  if (num < 0.0001) {
+    return '<0.0001';
+  }
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(2)}M`;
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(2)}K`;
+  }
   return num.toFixed(4).replace(/\.?0+$/, '');
 }
 
@@ -270,44 +280,51 @@ function TandaPayInfoScreen(props: Props): Node {
   const [refreshing, setRefreshing] = useState(false);
 
   // Redux selectors
-  const contractAddress = useSelector((state) => getCurrentTandaPayContractAddress(state));
+  const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
 
-  const selectedNetwork = useSelector((state) => getTandaPaySelectedNetwork(state));
+  const selectedNetwork = useSelector(state => getTandaPaySelectedNetwork(state));
 
   // Fetch community information
-  const fetchCommunityData = useCallback(async (forceRefresh: boolean = false) => {
-    try {
-      if (forceRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
+  const fetchCommunityData = useCallback(
+    async (forceRefresh: boolean = false) => {
+      try {
+        if (forceRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+        setError(null);
 
-      if (contractAddress == null || contractAddress.trim() === '') {
-        throw new Error('No TandaPay contract address configured. Please configure a contract address in settings.');
-      }
+        if (contractAddress == null || contractAddress.trim() === '') {
+          throw new Error(
+            'No TandaPay contract address configured. Please configure a contract address in settings.',
+          );
+        }
 
-      const result = await fetchCommunityInfo();
+        const result = await fetchCommunityInfo();
 
-      if (result.success) {
-        setCommunityInfo(result.data);
-      } else {
-        throw new Error(
-          result.error && typeof result.error.userMessage === 'string' && result.error.userMessage.trim() !== ''
-            ? result.error.userMessage
-            : 'Failed to fetch community information'
-        );
+        if (result.success) {
+          setCommunityInfo(result.data);
+        } else {
+          throw new Error(
+            result.error
+            && typeof result.error.userMessage === 'string'
+            && result.error.userMessage.trim() !== ''
+              ? result.error.userMessage
+              : 'Failed to fetch community information',
+          );
+        }
+      } catch (err) {
+        const errorMessage = (err && err.message) || 'Unknown error occurred';
+        setError(errorMessage);
+        setCommunityInfo(null);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (err) {
-      const errorMessage = (err && err.message) || 'Unknown error occurred';
-      setError(errorMessage);
-      setCommunityInfo(null);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [contractAddress]);
+    },
+    [contractAddress],
+  );
 
   // Initial load
   useEffect(() => {
@@ -321,8 +338,9 @@ function TandaPayInfoScreen(props: Props): Node {
 
   // Calculate period timing information
   const getPeriodTiming = useCallback(() => {
-    if (!communityInfo)
-{ return null; }
+    if (!communityInfo) {
+      return null;
+    }
 
     const currentPeriodId = bigNumberToNumber(communityInfo.currentPeriodId);
 
@@ -334,7 +352,7 @@ function TandaPayInfoScreen(props: Props): Node {
         statusText: 'Period not started',
         timeElapsedText: 'Period not started',
         timeRemainingText: 'Period not started',
-        progress: 0
+        progress: 0,
       };
     }
 
@@ -353,7 +371,7 @@ function TandaPayInfoScreen(props: Props): Node {
         statusText: 'Inactive',
         timeElapsedText: 'Period not configured',
         timeRemainingText: 'Period not configured',
-        progress: 0
+        progress: 0,
       };
     }
 
@@ -369,9 +387,9 @@ function TandaPayInfoScreen(props: Props): Node {
       timeRemaining: Math.max(0, timeRemaining),
       progress: Math.min(1, Math.max(0, timeElapsed / periodDuration)),
       isActive,
-      statusText: isActive ? 'Active' : (now < startTime ? 'Not started' : 'Ended'),
+      statusText: isActive ? 'Active' : now < startTime ? 'Not started' : 'Ended',
       timeElapsedText: null, // Will use formatTimeDuration
-      timeRemainingText: null // Will use formatTimeDuration
+      timeRemainingText: null, // Will use formatTimeDuration
     };
   }, [communityInfo]);
 
@@ -380,9 +398,7 @@ function TandaPayInfoScreen(props: Props): Node {
     return (
       <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
         <View style={styles.loadingContainer}>
-          <ZulipText style={styles.loadingText}>
-            Loading community information...
-          </ZulipText>
+          <ZulipText style={styles.loadingText}>Loading community information...</ZulipText>
         </View>
       </Screen>
     );
@@ -394,12 +410,8 @@ function TandaPayInfoScreen(props: Props): Node {
       <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
         <View style={styles.errorContainer}>
           <IconAlertTriangle size={48} color="#f44336" />
-          <ZulipText style={styles.errorTitle}>
-            Unable to Load Community Info
-          </ZulipText>
-          <ZulipText style={styles.errorText}>
-            {error}
-          </ZulipText>
+          <ZulipText style={styles.errorTitle}>Unable to Load Community Info</ZulipText>
+          <ZulipText style={styles.errorText}>{error}</ZulipText>
           <View style={TandaPayStyles.buttonRow}>
             <ZulipButton
               style={TandaPayStyles.button}
@@ -426,9 +438,7 @@ function TandaPayInfoScreen(props: Props): Node {
   return (
     <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
       <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
       >
@@ -436,9 +446,7 @@ function TandaPayInfoScreen(props: Props): Node {
         <Card style={styles.card}>
           <View style={styles.cardHeader}>
             <IconTandaPayInfo size={24} color={BRAND_COLOR} />
-            <ZulipText style={styles.cardTitle}>
-              Community Status
-            </ZulipText>
+            <ZulipText style={styles.cardTitle}>Community Status</ZulipText>
           </View>
 
           <View style={styles.infoRow}>
@@ -458,10 +466,9 @@ function TandaPayInfoScreen(props: Props): Node {
           <View style={styles.infoRow}>
             <ZulipText style={styles.infoLabel}>Contract:</ZulipText>
             <ZulipText style={styles.infoValueSmall}>
-              {(contractAddress != null && contractAddress.trim() !== '')
+              {contractAddress != null && contractAddress.trim() !== ''
                 ? `${contractAddress.slice(0, 6)}...${contractAddress.slice(-4)}`
-                : 'Not configured'
-              }
+                : 'Not configured'}
             </ZulipText>
           </View>
         </Card>
@@ -481,10 +488,11 @@ function TandaPayInfoScreen(props: Props): Node {
               <>
                 <View style={styles.infoRow}>
                   <ZulipText style={styles.infoLabel}>Status:</ZulipText>
-                  <ZulipText style={[
-                    styles.statusTextBase,
-                    { color: periodTiming.isActive ? '#4CAF50' : HALF_COLOR }
-                  ]}
+                  <ZulipText
+                    style={[
+                      styles.statusTextBase,
+                      { color: periodTiming.isActive ? '#4CAF50' : HALF_COLOR },
+                    ]}
                   >
                     {periodTiming.statusText || (periodTiming.isActive ? 'Active' : 'Inactive')}
                   </ZulipText>
@@ -494,9 +502,8 @@ function TandaPayInfoScreen(props: Props): Node {
                   <ZulipText style={styles.infoLabel}>Time Elapsed:</ZulipText>
                   <ZulipText style={styles.infoValue}>
                     {periodTiming.isInvalid
-                      ? (periodTiming.timeElapsedText || 'N/A')
-                      : formatTimeDuration(periodTiming.timeElapsed || 0)
-                    }
+                      ? periodTiming.timeElapsedText || 'N/A'
+                      : formatTimeDuration(periodTiming.timeElapsed || 0)}
                   </ZulipText>
                 </View>
 
@@ -504,9 +511,8 @@ function TandaPayInfoScreen(props: Props): Node {
                   <ZulipText style={styles.infoLabel}>Time Remaining:</ZulipText>
                   <ZulipText style={styles.infoValue}>
                     {periodTiming.isInvalid
-                      ? (periodTiming.timeRemainingText || 'N/A')
-                      : formatTimeDuration(periodTiming.timeRemaining || 0)
-                    }
+                      ? periodTiming.timeRemainingText || 'N/A'
+                      : formatTimeDuration(periodTiming.timeRemaining || 0)}
                   </ZulipText>
                 </View>
 
@@ -514,13 +520,14 @@ function TandaPayInfoScreen(props: Props): Node {
                 {!periodTiming.isInvalid && (
                   <>
                     <View style={styles.progressBarContainer}>
-                      <View style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${((periodTiming.progress || 0) * 100).toFixed(1)}%`,
-                          backgroundColor: BRAND_COLOR,
-                        }
-                      ]}
+                      <View
+                        style={[
+                          styles.progressBarFill,
+                          {
+                            width: `${((periodTiming.progress || 0) * 100).toFixed(1)}%`,
+                            backgroundColor: BRAND_COLOR,
+                          },
+                        ]}
                       />
                     </View>
 
@@ -540,9 +547,7 @@ function TandaPayInfoScreen(props: Props): Node {
           <Card style={styles.card}>
             <View style={styles.cardHeader}>
               <IconServer size={24} color={BRAND_COLOR} />
-              <ZulipText style={styles.cardTitle}>
-                Community Stats
-              </ZulipText>
+              <ZulipText style={styles.cardTitle}>Community Stats</ZulipText>
             </View>
 
             <View style={styles.infoRow}>
@@ -572,7 +577,9 @@ function TandaPayInfoScreen(props: Props): Node {
               </View>
               <ZulipTextButton
                 label="View"
-                onPress={() => Alert.alert('Coming Soon', 'Member list will be available in a future update.')}
+                onPress={() =>
+                  Alert.alert('Coming Soon', 'Member list will be available in a future update.')
+                }
               />
             </View>
 
@@ -585,7 +592,9 @@ function TandaPayInfoScreen(props: Props): Node {
               </View>
               <ZulipTextButton
                 label="View"
-                onPress={() => Alert.alert('Coming Soon', 'Subgroup list will be available in a future update.')}
+                onPress={() =>
+                  Alert.alert('Coming Soon', 'Subgroup list will be available in a future update.')
+                }
               />
             </View>
           </Card>
@@ -596,9 +605,7 @@ function TandaPayInfoScreen(props: Props): Node {
           <Card style={styles.card}>
             <View style={styles.cardHeader}>
               <IconPerson size={24} color={BRAND_COLOR} />
-              <ZulipText style={styles.cardTitle}>
-                Your Status
-              </ZulipText>
+              <ZulipText style={styles.cardTitle}>Your Status</ZulipText>
             </View>
 
             <View style={styles.infoRow}>
@@ -621,18 +628,21 @@ function TandaPayInfoScreen(props: Props): Node {
               <ZulipText style={styles.infoValue}>
                 {communityInfo.userSubgroupInfo
                   ? `#${formatBigNumber(communityInfo.userSubgroupInfo.id) || 'Unknown'}`
-                  : 'Not assigned'
-                }
+                  : 'Not assigned'}
               </ZulipText>
             </View>
 
             <View style={styles.infoRow}>
               <ZulipText style={styles.infoLabel}>Premium Paid:</ZulipText>
-              <ZulipText style={[
-                styles.statusTextBase,
-                { color: communityInfo.userMemberInfo?.isPremiumPaidThisPeriod
-                  ? '#4CAF50' : '#f44336' }
-              ]}
+              <ZulipText
+                style={[
+                  styles.statusTextBase,
+                  {
+                    color: communityInfo.userMemberInfo?.isPremiumPaidThisPeriod
+                      ? '#4CAF50'
+                      : '#f44336',
+                  },
+                ]}
               >
                 {communityInfo.userMemberInfo?.isPremiumPaidThisPeriod ? 'Yes' : 'No'}
               </ZulipText>
@@ -640,11 +650,15 @@ function TandaPayInfoScreen(props: Props): Node {
 
             <View style={styles.infoRow}>
               <ZulipText style={styles.infoLabel}>Coverage Eligible:</ZulipText>
-              <ZulipText style={[
-                styles.statusTextBase,
-                { color: communityInfo.userMemberInfo?.isEligibleForCoverageThisPeriod
-                  ? '#4CAF50' : '#f44336' }
-              ]}
+              <ZulipText
+                style={[
+                  styles.statusTextBase,
+                  {
+                    color: communityInfo.userMemberInfo?.isEligibleForCoverageThisPeriod
+                      ? '#4CAF50'
+                      : '#f44336',
+                  },
+                ]}
               >
                 {communityInfo.userMemberInfo?.isEligibleForCoverageThisPeriod ? 'Yes' : 'No'}
               </ZulipText>

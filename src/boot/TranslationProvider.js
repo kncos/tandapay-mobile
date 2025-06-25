@@ -33,7 +33,7 @@ const makeGetText = (intl: IntlShape): GetText => {
         // string that hasn't been added to
         // static/translations/messages_en.json. Please add it! :)
         defaultMessage: text,
-          // process.env.NODE_ENV === 'development' ? `UNTRANSLATED—${text}—UNTRANSLATED` : text,
+        // process.env.NODE_ENV === 'development' ? `UNTRANSLATED—${text}—UNTRANSLATED` : text,
       },
       values,
     );

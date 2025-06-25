@@ -7,7 +7,13 @@ import { ScrollView } from 'react-native';
 import type { RouteProp } from '../react-navigation';
 import type { AppNavigationProp } from '../nav/AppNavigator';
 import Screen from '../common/Screen';
-import { NetworkSelector, CustomRpcForm, NetworkInfo, NetworkPerformanceSettings, ContractAddressConfiguration } from './components';
+import {
+  NetworkSelector,
+  CustomRpcForm,
+  NetworkInfo,
+  NetworkPerformanceSettings,
+  ContractAddressConfiguration,
+} from './components';
 import { useNetworkSettings } from './hooks/useNetworkSettings';
 import { useNetworkPerformanceSettings } from './hooks/useNetworkPerformanceSettings';
 
@@ -57,9 +63,7 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
           disabled={Boolean(switchingNetwork)}
         />
 
-        <ContractAddressConfiguration
-          disabled={Boolean(switchingNetwork)}
-        />
+        <ContractAddressConfiguration disabled={Boolean(switchingNetwork)} />
 
         <NetworkPerformanceSettings
           cacheExpirationMs={cacheExpirationMs}
