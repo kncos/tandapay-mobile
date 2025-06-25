@@ -2,7 +2,7 @@
 
 import React, { useContext, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator , StyleSheet } from 'react-native';
 
 // $FlowFixMe[untyped-import] - @react-native-picker/picker is a third-party library
 import { Picker } from '@react-native-picker/picker';
@@ -41,7 +41,7 @@ type TokenPickerProps = {|
 |};
 
 // Custom styles as plain objects
-const styles = {
+const styles = StyleSheet.create({
   label: {
     fontSize: 16,
   },
@@ -119,7 +119,7 @@ const styles = {
     fontSize: 13,
     fontWeight: '600',
   },
-};
+});
 
 function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: TokenPickerProps): Node {
   if (!selectedToken) {

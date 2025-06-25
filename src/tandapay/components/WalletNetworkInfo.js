@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View , StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
@@ -19,7 +19,7 @@ type Props = $ReadOnly<{|
   |},
 |}>;
 
-const customStyles = {
+const customStyles = StyleSheet.create({
   networkName: {
     fontWeight: 'bold',
     marginBottom: 4,
@@ -28,7 +28,7 @@ const customStyles = {
     fontSize: 12,
     opacity: 0.7,
   },
-};
+});
 
 export default function WalletNetworkInfo(props: Props): Node {
   const { selectedNetwork, customRpcConfig } = props;

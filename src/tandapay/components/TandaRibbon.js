@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import ZulipText from '../../common/ZulipText';
 import { TandaPayColors } from '../styles';
 
 // Simple object for basic styles that don't need StyleSheet
-const ribbonStyles = {
+const ribbonStyles = StyleSheet.create({
   ribbon: {
     width: '100%',
     paddingVertical: 0,
@@ -28,7 +28,7 @@ const ribbonStyles = {
   contentContainer: {
     padding: 0,
   },
-};
+});
 
 type Props = $ReadOnly<{|
   label: string,

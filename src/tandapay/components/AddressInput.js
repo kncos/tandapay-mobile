@@ -2,19 +2,20 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, Alert, TouchableOpacity, Modal } from 'react-native';
+import { View, Alert, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
 // $FlowFixMe[untyped-import]
 import { BarCodeScanner } from 'expo-barcode-scanner';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import TandaPayErrorHandler from '../errors/ErrorHandler';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import Input from '../../common/Input';
 import ZulipText from '../../common/ZulipText';
 import { TandaPayColors, TandaPayTypography, TandaPayComponents, TandaPayLayout } from '../styles';
+import ErrorText from './ErrorText';
 
 type Props = $ReadOnly<{|
   value: string,
@@ -27,13 +28,9 @@ type Props = $ReadOnly<{|
 |}>;
 
 // Create only the styles that need customization beyond our centralized styles
-const customStyles = {
+const customStyles = StyleSheet.create({
   qrButtonIcon: {
     color: TandaPayColors.white,
-  },
-  errorText: {
-    ...TandaPayTypography.error,
-    color: TandaPayColors.error,
   },
   scannerModal: {
     flex: 1,
@@ -50,7 +47,7 @@ const customStyles = {
     marginHorizontal: 20,
     fontSize: 16,
   },
-};
+});
 
 export default function AddressInput(props: Props): Node {
   const {
@@ -73,7 +70,7 @@ export default function AddressInput(props: Props): Node {
       ethers.utils.getAddress(address.toLowerCase()); // Convert to lowercase first to handle mixed-case input
       return true;
     }, 'VALIDATION_ERROR');
-    
+
     return result.success;
   }, []);
 
@@ -154,7 +151,7 @@ export default function AddressInput(props: Props): Node {
       </View>
 
       {addressError ? (
-        <ZulipText style={customStyles.errorText}>{addressError}</ZulipText>
+        <ErrorText>{addressError}</ErrorText>
       ) : null}
 
       {/* QR Scanner Modal */}
@@ -200,6 +197,6 @@ export const validateEthereumAddress = (address: string): boolean => {
     ethers.utils.getAddress(address.toLowerCase());
     return true;
   }, 'VALIDATION_ERROR');
-  
+
   return result.success;
 };

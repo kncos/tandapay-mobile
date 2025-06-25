@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useContext } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { View, TouchableOpacity, Modal, FlatList , StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -25,7 +25,7 @@ type Props = $ReadOnly<{|
   erc20Only?: boolean,
 |}>;
 
-const customStyles = {
+const customStyles = StyleSheet.create({
   pickerContainer: {
     marginBottom: 16,
   },
@@ -93,7 +93,7 @@ const customStyles = {
     flex: 1,
     marginHorizontal: 8,
   },
-};
+});
 
 export default function TokenPicker(props: Props): Node {
   const { tokens, selectedToken, onTokenSelect, placeholder = 'Select a token', disabled = false, erc20Only = false } = props;

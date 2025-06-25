@@ -1,7 +1,7 @@
 // @flow
 
 import React, { useContext } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 import type { WriteTransaction, WriteTransactionParameter } from '../contract/writeTransactionObjects';
 import type { TransactionFormState } from '../hooks/useTransactionForm';
@@ -11,29 +11,18 @@ import AmountInput from './AmountInput';
 import NumberInput from './NumberInput';
 import BooleanToggle from './BooleanToggle';
 import AddressArrayInput from './AddressArrayInput';
+import ErrorText from './ErrorText';
 
+import FormStyles from '../styles/forms';
 import { TandaPayColors } from '../styles';
 import { ThemeContext } from '../../styles';
 
-const styles = {
-  container: {
-    marginVertical: 16,
-  },
-
+const styles = StyleSheet.create({
+  container: FormStyles.section,
   parametersContainer: {
     marginTop: 8,
   },
-
-  parameterContainer: {
-    marginBottom: 16,
-  },
-
-  errorText: {
-    color: TandaPayColors.error,
-    fontSize: 12,
-    marginTop: 4,
-  },
-
+  parameterContainer: FormStyles.container,
   unknownTypeContainer: {
     padding: 12,
     backgroundColor: TandaPayColors.warning,
@@ -41,7 +30,7 @@ const styles = {
     borderWidth: 1,
     borderColor: TandaPayColors.warning,
   },
-};
+});
 
 type Props = {|
   transaction: WriteTransaction,
@@ -71,7 +60,7 @@ function renderParameterInput(
             value={value || ''}
             onChangeText={(newValue: string) => onParameterChange(name, newValue)}
           />
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && <ErrorText>{error}</ErrorText>}
         </View>
       );
 
@@ -88,7 +77,7 @@ function renderParameterInput(
               tokenSymbol="ETH"
               tokenDecimals={18}
             />
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {error && <ErrorText>{error}</ErrorText>}
           </View>
         );
       } else {
@@ -100,7 +89,7 @@ function renderParameterInput(
               value={value || ''}
               onChangeText={(newValue: string) => onParameterChange(name, newValue)}
             />
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {error && <ErrorText>{error}</ErrorText>}
           </View>
         );
       }
@@ -113,7 +102,7 @@ function renderParameterInput(
             value={Boolean(value)}
             onValueChange={(newValue: boolean) => onParameterChange(name, newValue)}
           />
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && <ErrorText>{error}</ErrorText>}
         </View>
       );
 
@@ -125,7 +114,7 @@ function renderParameterInput(
             addresses={value || []}
             onAddressesChange={(newValue: string[]) => onParameterChange(name, newValue)}
           />
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && <ErrorText>{error}</ErrorText>}
         </View>
       );
 
@@ -155,12 +144,13 @@ export default function TransactionParameterForm({
   // Dynamic styles that use theme context
   const dynamicStyles = {
     ...styles,
-    title: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: themeData.color,
-      marginBottom: 16,
-    },
+    title: [
+      FormStyles.sectionTitle,
+      {
+        color: themeData.color,
+        fontSize: 16,
+      }
+    ],
     unknownTypeText: {
       color: themeData.color,
       fontSize: 14,

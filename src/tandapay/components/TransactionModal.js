@@ -1,7 +1,7 @@
 // @flow
 
 import React, { useCallback, useState, useContext, useMemo } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Modal, ScrollView, StyleSheet } from 'react-native';
 import type { Node } from 'react';
 
 import type { WriteTransaction } from '../contract/writeTransactionObjects';
@@ -12,16 +12,16 @@ import { createTandaPayContractWithSignerFromState, isTandaPayAvailable } from '
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork } from '../redux/selectors';
-import { QUARTER_COLOR } from '../../styles/constants';
 import type {
   TransactionParams,
   EstimateGasCallback,
   SendTransactionCallback,
   GasEstimate,
 } from './TransactionEstimateAndSend';
-import { TandaPayColors, TandaPayTypography } from '../styles';
+import { TandaPayColors } from '../styles';
 import Card from './Card';
 import ZulipText from '../../common/ZulipText';
+import CloseButton from './CloseButton';
 
 type Props = $ReadOnly<{|
   visible: boolean,
@@ -29,6 +29,50 @@ type Props = $ReadOnly<{|
   onClose: () => void,
   onTransactionComplete?: (result: any) => void,
 |}>;
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: TandaPayColors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    margin: 20,
+    maxHeight: '80%',
+    width: '90%',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  description: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  noParamsMessage: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  noParamsText: {
+    fontSize: 14,
+    opacity: 0.6,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+});
 
 export default function TransactionModal(props: Props): Node {
   const { visible, transaction, onClose, onTransactionComplete } = props;
@@ -236,67 +280,6 @@ export default function TransactionModal(props: Props): Node {
     return null;
   }
 
-  const styles = {
-    overlay: {
-      flex: 1,
-      backgroundColor: TandaPayColors.overlay,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalCard: {
-      margin: 20,
-      maxHeight: '80%',
-      width: '90%',
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 20,
-      paddingBottom: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: themeData.dividerColor,
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: themeData.color,
-      flex: 1,
-    },
-    closeButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: QUARTER_COLOR,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    closeButtonText: {
-      fontSize: 24,
-      fontWeight: 'bold',
-    },
-    description: {
-      fontSize: 14,
-      color: themeData.color,
-      opacity: 0.7,
-      marginBottom: 20,
-      lineHeight: 20,
-    },
-    noParamsMessage: {
-      padding: 16,
-      backgroundColor: themeData.backgroundColor,
-      borderRadius: 12,
-      marginBottom: 16,
-    },
-    noParamsText: {
-      fontSize: 14,
-      color: themeData.color,
-      opacity: 0.6,
-      fontStyle: 'italic',
-      textAlign: 'center',
-    },
-  };
-
   return (
     <Modal
       visible={visible}
@@ -306,16 +289,14 @@ export default function TransactionModal(props: Props): Node {
     >
       <View style={styles.overlay}>
         <Card style={styles.modalCard}>
-          <View style={styles.header}>
-            <ZulipText style={{ ...TandaPayTypography.sectionTitle, marginBottom: 0 }}>
+          <View style={[styles.header, { borderBottomColor: themeData.dividerColor }]}>
+            <ZulipText style={[styles.title, { color: themeData.color }]}>
               {transaction.displayName}
             </ZulipText>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <ZulipText style={styles.closeButtonText}>×</ZulipText>
-            </TouchableOpacity>
+            <CloseButton onPress={onClose} />
           </View>
 
-          <Text style={styles.description}>{transaction.description}</Text>
+          <Text style={[styles.description, { color: themeData.color }]}>{transaction.description}</Text>
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {transaction.requiresParams && transaction.parameters ? (
@@ -325,8 +306,8 @@ export default function TransactionModal(props: Props): Node {
                 onParameterChange={updateParameter}
               />
             ) : (
-              <View style={styles.noParamsMessage}>
-                <Text style={styles.noParamsText}>
+              <View style={[styles.noParamsMessage, { backgroundColor: themeData.backgroundColor }]}>
+                <Text style={[styles.noParamsText, { color: themeData.color }]}>
                   This transaction requires no additional parameters.
                 </Text>
               </View>

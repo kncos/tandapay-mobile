@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View , StyleSheet } from 'react-native';
 
 import ZulipText from '../../../../common/ZulipText';
 import WordChip from './WordChip';
@@ -14,7 +14,7 @@ type Props = $ReadOnly<{|
   onClear: (position: number) => void,
 |}>;
 
-const customStyles = {
+const customStyles = StyleSheet.create({
   verificationRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -34,7 +34,7 @@ const customStyles = {
     color: TandaPayColors.disabled,
     fontStyle: 'italic',
   },
-};
+});
 
 export default function VerificationRow(props: Props): Node {
   const { position, selectedWord, onClear } = props;

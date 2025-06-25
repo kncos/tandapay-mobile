@@ -2,7 +2,7 @@
 
 import React, { useState, useContext, useEffect } from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View , StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -28,7 +28,7 @@ type Props = $ReadOnly<{|
 |}>;
 
 // Custom styles as plain objects
-const customStyles = {
+const customStyles = StyleSheet.create({
   currentValuesTitle: {
     fontSize: 14,
     fontWeight: '600',
@@ -38,7 +38,7 @@ const customStyles = {
     fontSize: 12,
     marginBottom: 4,
   },
-};
+});
 
 export default function NetworkPerformanceSettings(props: Props): Node {
   const {

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useContext } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity, Alert } from 'react-native';
+import { View, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
@@ -10,7 +10,8 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
-import { TandaPayColors, TandaPayTypography } from '../styles';
+import { TandaPayTypography } from '../styles';
+import FormStyles from '../styles/forms';
 import { ThemeContext } from '../../styles';
 import AddressInput from './AddressInput';
 import Card from './Card';
@@ -25,61 +26,13 @@ type Props = $ReadOnly<{|
   style?: ?{},
 |}>;
 
-const customStyles = {
-  container: {
-    marginBottom: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  label: {
-    ...TandaPayTypography.label,
-  },
-  description: {
-    ...TandaPayTypography.description,
-    fontSize: 12,
-    opacity: 0.7,
-    marginBottom: 12,
-  },
+const customStyles = StyleSheet.create({
   addressItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  addressContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  removeButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: TandaPayColors.error,
-  },
-  removeIcon: {
-    color: TandaPayColors.white,
-  },
-  emptyState: {
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  emptyText: {
-    ...TandaPayTypography.description,
-    textAlign: 'center',
-  },
-  addButton: {
-    marginTop: 8,
-  },
-  disabledContainer: {
-    opacity: 0.6,
-  },
-};
+});
 
 export default function AddressArrayInput(props: Props): Node {
   const {
@@ -97,13 +50,12 @@ export default function AddressArrayInput(props: Props): Node {
 
   // Create dynamic styles that use theme context
   const dynamicStyles = {
-    ...customStyles,
     emptyState: {
-      ...customStyles.emptyState,
+      ...FormStyles.emptyState,
       borderColor: themeData.dividerColor,
     },
     emptyText: {
-      ...customStyles.emptyText,
+      ...FormStyles.emptyText,
       color: themeData.color,
       opacity: 0.6,
     },
@@ -164,9 +116,9 @@ export default function AddressArrayInput(props: Props): Node {
   }, []);
 
   return (
-    <View style={[customStyles.container, style]}>
-      <View style={customStyles.header}>
-        <ZulipText style={customStyles.label}>{label}</ZulipText>
+    <View style={[FormStyles.container, style]}>
+      <View style={FormStyles.header}>
+        <ZulipText style={FormStyles.label}>{label}</ZulipText>
         <ZulipText style={TandaPayTypography.description}>
           {addresses.length}
           /
@@ -175,12 +127,12 @@ export default function AddressArrayInput(props: Props): Node {
       </View>
 
       {description != null && description !== '' && (
-        <ZulipText style={customStyles.description}>
+        <ZulipText style={FormStyles.description}>
           {description}
         </ZulipText>
       )}
 
-      <Card style={disabled ? customStyles.disabledContainer : null}>
+      <Card style={disabled ? FormStyles.disabledContainer : null}>
         {/* Address List */}
         {addresses.length === 0 ? (
           <View style={dynamicStyles.emptyState}>
@@ -191,7 +143,7 @@ export default function AddressArrayInput(props: Props): Node {
         ) : (
           addresses.map((address, index) => (
             <View key={address} style={customStyles.addressItem}>
-              <View style={customStyles.addressContainer}>
+              <View style={FormStyles.inputContainer}>
                 <ZulipText style={TandaPayTypography.body}>
                   {formatAddress(address)}
                 </ZulipText>
@@ -201,10 +153,10 @@ export default function AddressArrayInput(props: Props): Node {
               </View>
               {!disabled && (
                 <TouchableOpacity
-                  style={customStyles.removeButton}
+                  style={FormStyles.removeButton}
                   onPress={() => handleRemoveAddress(index)}
                 >
-                  <Icon name="remove" size={16} style={customStyles.removeIcon} />
+                  <Icon name="remove" size={16} style={FormStyles.removeIcon} />
                 </TouchableOpacity>
               )}
             </View>
@@ -221,7 +173,7 @@ export default function AddressArrayInput(props: Props): Node {
               showQRButton
             />
             <ZulipButton
-              style={customStyles.addButton}
+              style={FormStyles.addButton}
               text="Add Address"
               onPress={handleAddAddress}
               disabled={!newAddress.trim()}

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useContext } from 'react';
 import type { Node } from 'react';
-import { View, Modal, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
@@ -22,8 +22,8 @@ import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import { ThemeContext } from '../../styles';
 import TandaPayStyles, { TandaPayColors, TandaPayTypography } from '../styles';
+import CloseButton from './CloseButton';
 import type { Token } from '../tokens/tokenTypes';
-import { QUARTER_COLOR } from '../../styles/constants';
 import Card from './Card';
 
 type Props = $ReadOnly<{|
@@ -31,6 +31,90 @@ type Props = $ReadOnly<{|
   onClose: () => void,
   onDeploymentComplete?: (contractAddress: string) => void,
 |}>;
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: TandaPayColors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    margin: 20,
+    maxHeight: '80%',
+    width: '90%',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  description: {
+    fontSize: 14,
+    opacity: 0.7,
+    marginBottom: 20,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  disclaimer: {
+    ...TandaPayTypography.caption,
+    color: TandaPayColors.warning,
+    marginBottom: 20,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    ...TandaPayTypography.label,
+    marginBottom: 8,
+  },
+  estimateSection: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: TandaPayColors.white,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: TandaPayColors.subtle,
+  },
+  estimateTitle: {
+    ...TandaPayTypography.label,
+    marginBottom: 8,
+  },
+  estimateValue: {
+    ...TandaPayTypography.body,
+    fontWeight: 'bold',
+  },
+  errorText: {
+    ...TandaPayTypography.body,
+    color: TandaPayColors.error,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  loadingText: {
+    ...TandaPayTypography.body,
+    marginTop: 8,
+  },
+  gasLimitHelper: {
+    ...TandaPayTypography.caption,
+    color: TandaPayColors.disabled,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+});
 
 export default function ContractDeploymentModal(props: Props): Node {
   const { visible, onClose, onDeploymentComplete } = props;
@@ -64,105 +148,6 @@ export default function ContractDeploymentModal(props: Props): Node {
       onClose();
     }
   }, [onClose, isDeploying, isEstimating]);
-
-  const styles = {
-    overlay: {
-      flex: 1,
-      backgroundColor: TandaPayColors.overlay,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    modalCard: {
-      margin: 20,
-      maxHeight: '80%',
-      width: '90%',
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 20,
-      paddingBottom: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: themeData.dividerColor,
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: themeData.color,
-      flex: 1,
-    },
-    closeButton: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: QUARTER_COLOR,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    closeButtonText: {
-      fontSize: 24,
-      fontWeight: 'bold',
-    },
-    description: {
-      fontSize: 14,
-      color: themeData.color,
-      opacity: 0.7,
-      marginBottom: 20,
-      lineHeight: 20,
-      textAlign: 'center',
-    },
-    disclaimer: {
-      ...TandaPayTypography.caption,
-      color: TandaPayColors.warning,
-      marginBottom: 20,
-      textAlign: 'center',
-      fontStyle: 'italic',
-    },
-    section: {
-      marginBottom: 20,
-    },
-    sectionTitle: {
-      ...TandaPayTypography.label,
-      marginBottom: 8,
-    },
-    estimateSection: {
-      marginBottom: 20,
-      padding: 16,
-      backgroundColor: TandaPayColors.white,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: TandaPayColors.subtle,
-    },
-    estimateTitle: {
-      ...TandaPayTypography.label,
-      marginBottom: 8,
-    },
-    estimateValue: {
-      ...TandaPayTypography.body,
-      fontWeight: 'bold',
-    },
-    errorText: {
-      ...TandaPayTypography.body,
-      color: TandaPayColors.error,
-      textAlign: 'center',
-      marginBottom: 16,
-    },
-    loadingContainer: {
-      alignItems: 'center',
-      marginVertical: 16,
-    },
-    loadingText: {
-      ...TandaPayTypography.body,
-      marginTop: 8,
-    },
-    gasLimitHelper: {
-      ...TandaPayTypography.caption,
-      color: TandaPayColors.disabled,
-      marginTop: 4,
-      fontStyle: 'italic',
-    },
-  };
 
   const handleTokenSelect = useCallback((token: Token) => {
     setSelectedToken(token);
@@ -354,17 +339,15 @@ export default function ContractDeploymentModal(props: Props): Node {
     >
       <View style={styles.overlay}>
         <Card style={styles.modalCard}>
-          <View style={styles.header}>
-            <ZulipText style={{ ...TandaPayTypography.sectionTitle, marginBottom: 0 }}>
+          <View style={[styles.header, { borderBottomColor: themeData.dividerColor }]}>
+            <ZulipText style={[styles.title, { color: themeData.color }]}>
               Deploy TandaPay Contract
             </ZulipText>
-            <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <ZulipText style={styles.closeButtonText}>×</ZulipText>
-            </TouchableOpacity>
+            <CloseButton onPress={handleClose} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            <ZulipText style={styles.description}>
+            <ZulipText style={[styles.description, { color: themeData.color }]}>
               Deploy a new TandaPay contract for your community on
               {' '}
               {selectedNetwork}

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View , StyleSheet } from 'react-native';
 
 import { useSelector, useDispatch } from '../../react-redux';
 import {
@@ -22,7 +22,7 @@ type Props = $ReadOnly<{|
   disabled?: boolean,
 |}>;
 
-const customStyles = {
+const customStyles = StyleSheet.create({
   card: {
     marginBottom: 16,
   },
@@ -39,7 +39,7 @@ const customStyles = {
     ...TandaPayTypography.label,
     marginBottom: 8,
   },
-};
+});
 
 export default function ContractAddressConfiguration(props: Props): Node {
   const { disabled = false } = props;

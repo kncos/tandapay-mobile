@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert , StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipText from '../../common/ZulipText';
@@ -17,7 +17,7 @@ type Props = {|
   onCopy?: (text: string, label: string) => void,
 |};
 
-const styles = {
+const styles = StyleSheet.create({
   inputContainer: {
     position: 'relative',
     marginBottom: 12,
@@ -49,7 +49,7 @@ const styles = {
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
-};
+});
 
 function defaultOnCopy(text: string, label: string) {
   Clipboard.setString(text);

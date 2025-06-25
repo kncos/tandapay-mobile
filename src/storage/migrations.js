@@ -548,6 +548,13 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
       settings: {
         selectedNetwork: 'sepolia',
         customRpcConfig: null,
+        contractAddresses: {
+          mainnet: null,
+          sepolia: null,
+          arbitrum: null,
+          polygon: null,
+          custom: null,
+        },
         networkPerformance: {
           cacheExpirationMs: 30000, // 30 seconds default
           rateLimitDelayMs: 100,    // 100ms between calls

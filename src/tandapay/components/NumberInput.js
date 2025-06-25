@@ -2,11 +2,13 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import Input from '../../common/Input';
 import ZulipText from '../../common/ZulipText';
-import { TandaPayColors, TandaPayTypography } from '../styles';
+import ErrorText from './ErrorText';
+import FormStyles from '../styles/forms';
+import { TandaPayTypography } from '../styles';
 
 type Props = $ReadOnly<{|
   value: string,
@@ -20,17 +22,9 @@ type Props = $ReadOnly<{|
   allowDecimals?: boolean,
 |}>;
 
-const customStyles = {
-  container: {
-    marginBottom: 16,
-  },
-  errorText: {
-    ...TandaPayTypography.description,
-    color: TandaPayColors.error,
-    fontSize: 12,
-    marginTop: 4,
-  },
-};
+const customStyles = StyleSheet.create({
+  container: FormStyles.container,
+});
 
 export default function NumberInput(props: Props): Node {
   const {
@@ -114,9 +108,9 @@ export default function NumberInput(props: Props): Node {
       />
 
       {numberError !== '' && (
-        <ZulipText style={customStyles.errorText}>
+        <ErrorText>
           {numberError}
-        </ZulipText>
+        </ErrorText>
       )}
     </View>
   );

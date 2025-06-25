@@ -101,7 +101,4 @@ src/tandapay/todo.md
 /fastlane/test_output
 
 # tandapay stuff
-src/tandapay/env.js
-navigation_analysis.md
-src/tandapay/tandapay-error-analysis.txt
-docs/phase1-3-completion-report.md
+src/tandapay/temp

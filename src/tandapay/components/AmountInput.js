@@ -6,7 +6,8 @@ import { View } from 'react-native';
 
 import Input from '../../common/Input';
 import ZulipText from '../../common/ZulipText';
-import { TandaPayColors, TandaPayTypography, TandaPayLayout } from '../styles';
+import { TandaPayTypography, TandaPayLayout } from '../styles';
+import ErrorText from './ErrorText';
 
 type Props = $ReadOnly<{|
   value: string,
@@ -18,14 +19,6 @@ type Props = $ReadOnly<{|
   style?: ?{},
   disabled?: boolean,
 |}>;
-
-// Custom styles for this component
-const customStyles = {
-  errorText: {
-    ...TandaPayTypography.error,
-    color: TandaPayColors.error,
-  },
-};
 
 export default function AmountInput(props: Props): Node {
   const {
@@ -105,7 +98,7 @@ export default function AmountInput(props: Props): Node {
       />
 
       {amountError ? (
-        <ZulipText style={customStyles.errorText}>{amountError}</ZulipText>
+        <ErrorText>{amountError}</ErrorText>
       ) : null}
     </View>
   );

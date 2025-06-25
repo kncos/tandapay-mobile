@@ -2,7 +2,7 @@
 
 import React, { useState, useContext, useCallback, useMemo } from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
@@ -30,7 +30,7 @@ import type {
   EstimateGasCallback,
   SendTransactionCallback,
   GasEstimate,
-} from '../components';
+} from '../components/TransactionEstimateAndSend';
 import { TandaPayLayout } from '../styles';
 
 type Props = $ReadOnly<{|
@@ -45,20 +45,36 @@ export default function WalletSendScreen(props: Props): Node {
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const customRpcConfig = useSelector(getTandaPayCustomRpcConfig);
 
-  // Create styles using theme context
-  const customStyles = {
+  // Create static styles (non-theme dependent)
+  const customStyles = StyleSheet.create({
     container: {
       flex: 1,
       padding: 16,
     },
     tokenInfo: {
-      backgroundColor: themeData.cardColor,
       padding: 16,
       borderRadius: 8,
       marginBottom: 24,
       alignItems: 'center',
     },
-  };
+    errorText: {
+      textAlign: 'center',
+      marginTop: 50,
+      fontSize: 16,
+    },
+    errorButton: {
+      marginTop: 20,
+    },
+    tokenSymbol: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 4,
+    },
+    tokenName: {
+      opacity: 0.7,
+      fontSize: 14,
+    },
+  });
 
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');

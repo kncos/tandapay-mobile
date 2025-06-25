@@ -2,7 +2,7 @@
 
 import React, { useState, useContext } from 'react';
 import type { Node } from 'react';
-import { View, Alert } from 'react-native';
+import { View, Alert , StyleSheet } from 'react-native';
 
 import { useSelector, useDispatch } from '../../react-redux';
 import { ThemeContext } from '../../styles';
@@ -25,7 +25,7 @@ type Props = $ReadOnly<{|
 |}>;
 
 // Custom styles for this component
-const customStyles = {
+const customStyles = StyleSheet.create({
   container: {
     padding: 16,
   },
@@ -64,7 +64,7 @@ const customStyles = {
     fontSize: 12,
     fontWeight: 'bold',
   },
-};
+});
 
 export default function TokenManagementScreen(props: Props): Node {
   const dispatch = useDispatch();

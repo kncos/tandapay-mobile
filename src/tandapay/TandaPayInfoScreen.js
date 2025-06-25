@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, RefreshControl, ScrollView, Alert } from 'react-native';
+import { View, RefreshControl, ScrollView, Alert, StyleSheet } from 'react-native';
 
 import type { AppNavigationProp } from '../nav/AppNavigator';
 import type { RouteProp } from '../react-navigation';
@@ -144,7 +144,123 @@ function formatTokenAmount(amount: string | number, decimals: number = 18): stri
   return num.toFixed(4).replace(/\.?0+$/, '');
 }
 
-export default function TandaPayInfoScreen(props: Props): Node {
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: HALF_COLOR,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: HALF_COLOR,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  card: {
+    marginBottom: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  infoLabel: {
+    color: HALF_COLOR,
+  },
+  infoValue: {
+    fontWeight: 'bold',
+  },
+  infoValueSmall: {
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  infoValueCapitalized: {
+    fontWeight: 'bold',
+    textTransform: 'capitalize',
+  },
+  progressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 4,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: HALF_COLOR,
+    textAlign: 'center',
+  },
+  flexRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  flex1: {
+    flex: 1,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  lastUpdatedText: {
+    fontSize: 12,
+    color: HALF_COLOR,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  // Dynamic style bases
+  statusTextBase: {
+    fontWeight: 'bold',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+});
+
+function TandaPayInfoScreen(props: Props): Node {
   const { navigation } = props;
 
   // State management
@@ -263,8 +379,8 @@ export default function TandaPayInfoScreen(props: Props): Node {
   if (loading && !communityInfo) {
     return (
       <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ZulipText style={{ fontSize: 16, color: HALF_COLOR }}>
+        <View style={styles.loadingContainer}>
+          <ZulipText style={styles.loadingText}>
             Loading community information...
           </ZulipText>
         </View>
@@ -276,12 +392,12 @@ export default function TandaPayInfoScreen(props: Props): Node {
   if (error != null && error.trim() !== '' && !communityInfo) {
     return (
       <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <View style={styles.errorContainer}>
           <IconAlertTriangle size={48} color="#f44336" />
-          <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginTop: 16, textAlign: 'center' }}>
+          <ZulipText style={styles.errorTitle}>
             Unable to Load Community Info
           </ZulipText>
-          <ZulipText style={{ fontSize: 14, color: HALF_COLOR, marginTop: 8, textAlign: 'center' }}>
+          <ZulipText style={styles.errorText}>
             {error}
           </ZulipText>
           <View style={TandaPayStyles.buttonRow}>
@@ -313,35 +429,35 @@ export default function TandaPayInfoScreen(props: Props): Node {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16 }}
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
       >
         {/* Community Status Card */}
-        <Card style={{ marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+        <Card style={styles.card}>
+          <View style={styles.cardHeader}>
             <IconTandaPayInfo size={24} color={BRAND_COLOR} />
-            <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 8 }}>
+            <ZulipText style={styles.cardTitle}>
               Community Status
             </ZulipText>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-            <ZulipText style={{ color: HALF_COLOR }}>State:</ZulipText>
-            <ZulipText style={{ fontWeight: 'bold' }}>
+          <View style={styles.infoRow}>
+            <ZulipText style={styles.infoLabel}>State:</ZulipText>
+            <ZulipText style={styles.infoValue}>
               {getCommunityStateDisplayName(communityInfo?.communityState || 0)}
             </ZulipText>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-            <ZulipText style={{ color: HALF_COLOR }}>Network:</ZulipText>
-            <ZulipText style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>
+          <View style={styles.infoRow}>
+            <ZulipText style={styles.infoLabel}>Network:</ZulipText>
+            <ZulipText style={[styles.infoValue, styles.infoValueCapitalized]}>
               {selectedNetwork}
             </ZulipText>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ZulipText style={{ color: HALF_COLOR }}>Contract:</ZulipText>
-            <ZulipText style={{ fontWeight: 'bold', fontSize: 12 }}>
+          <View style={styles.infoRow}>
+            <ZulipText style={styles.infoLabel}>Contract:</ZulipText>
+            <ZulipText style={styles.infoValueSmall}>
               {(contractAddress != null && contractAddress.trim() !== '')
                 ? `${contractAddress.slice(0, 6)}...${contractAddress.slice(-4)}`
                 : 'Not configured'
@@ -352,10 +468,10 @@ export default function TandaPayInfoScreen(props: Props): Node {
 
         {/* Period Information Card */}
         {communityInfo && (
-          <Card style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <Card style={styles.card}>
+            <View style={styles.cardHeader}>
               <IconShield size={24} color={BRAND_COLOR} />
-              <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 8 }}>
+              <ZulipText style={styles.cardTitle}>
                 Current Period #
                 {formatBigNumber(communityInfo.currentPeriodId) || '0'}
               </ZulipText>
@@ -363,20 +479,20 @@ export default function TandaPayInfoScreen(props: Props): Node {
 
             {periodTiming && (
               <>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <ZulipText style={{ color: HALF_COLOR }}>Status:</ZulipText>
-                  <ZulipText style={{
-                    fontWeight: 'bold',
-                    color: periodTiming.isActive ? '#4CAF50' : HALF_COLOR
-                  }}
+                <View style={styles.infoRow}>
+                  <ZulipText style={styles.infoLabel}>Status:</ZulipText>
+                  <ZulipText style={[
+                    styles.statusTextBase,
+                    { color: periodTiming.isActive ? '#4CAF50' : HALF_COLOR }
+                  ]}
                   >
                     {periodTiming.statusText || (periodTiming.isActive ? 'Active' : 'Inactive')}
                   </ZulipText>
                 </View>
 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <ZulipText style={{ color: HALF_COLOR }}>Time Elapsed:</ZulipText>
-                  <ZulipText style={{ fontWeight: 'bold' }}>
+                <View style={styles.infoRow}>
+                  <ZulipText style={styles.infoLabel}>Time Elapsed:</ZulipText>
+                  <ZulipText style={styles.infoValue}>
                     {periodTiming.isInvalid
                       ? (periodTiming.timeElapsedText || 'N/A')
                       : formatTimeDuration(periodTiming.timeElapsed || 0)
@@ -384,9 +500,9 @@ export default function TandaPayInfoScreen(props: Props): Node {
                   </ZulipText>
                 </View>
 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <ZulipText style={{ color: HALF_COLOR }}>Time Remaining:</ZulipText>
-                  <ZulipText style={{ fontWeight: 'bold' }}>
+                <View style={styles.infoRow}>
+                  <ZulipText style={styles.infoLabel}>Time Remaining:</ZulipText>
+                  <ZulipText style={styles.infoValue}>
                     {periodTiming.isInvalid
                       ? (periodTiming.timeRemainingText || 'N/A')
                       : formatTimeDuration(periodTiming.timeRemaining || 0)
@@ -397,23 +513,18 @@ export default function TandaPayInfoScreen(props: Props): Node {
                 {/* Progress bar - only show if period is valid */}
                 {!periodTiming.isInvalid && (
                   <>
-                    <View style={{
-                      height: 8,
-                      backgroundColor: '#f0f0f0',
-                      borderRadius: 4,
-                      marginBottom: 8
-                    }}
-                    >
-                      <View style={{
-                        height: '100%',
-                        width: `${((periodTiming.progress || 0) * 100).toFixed(1)}%`,
-                        backgroundColor: BRAND_COLOR,
-                        borderRadius: 4
-                      }}
+                    <View style={styles.progressBarContainer}>
+                      <View style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${((periodTiming.progress || 0) * 100).toFixed(1)}%`,
+                          backgroundColor: BRAND_COLOR,
+                        }
+                      ]}
                       />
                     </View>
 
-                    <ZulipText style={{ fontSize: 12, color: HALF_COLOR, textAlign: 'center' }}>
+                    <ZulipText style={styles.progressText}>
                       {((periodTiming.progress || 0) * 100).toFixed(1)}
                       % Complete
                     </ZulipText>
@@ -426,42 +537,36 @@ export default function TandaPayInfoScreen(props: Props): Node {
 
         {/* Community Stats Card */}
         {communityInfo && (
-          <Card style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <Card style={styles.card}>
+            <View style={styles.cardHeader}>
               <IconServer size={24} color={BRAND_COLOR} />
-              <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 8 }}>
+              <ZulipText style={styles.cardTitle}>
                 Community Stats
               </ZulipText>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <ZulipText style={{ color: HALF_COLOR }}>Base Premium:</ZulipText>
-              <ZulipText style={{ fontWeight: 'bold' }}>
+            <View style={styles.infoRow}>
+              <ZulipText style={styles.infoLabel}>Base Premium:</ZulipText>
+              <ZulipText style={styles.infoValue}>
                 {formatTokenAmount(formatBigNumber(communityInfo.basePremium) || '0')}
                 {' '}
                 ETH
               </ZulipText>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <ZulipText style={{ color: HALF_COLOR }}>Total Coverage:</ZulipText>
-              <ZulipText style={{ fontWeight: 'bold' }}>
+            <View style={styles.infoRow}>
+              <ZulipText style={styles.infoLabel}>Total Coverage:</ZulipText>
+              <ZulipText style={styles.infoValue}>
                 {formatTokenAmount(formatBigNumber(communityInfo.totalCoverageAmount) || '0')}
                 {' '}
                 ETH
               </ZulipText>
             </View>
 
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: 8
-            }}
-            >
-              <View style={{ flex: 1 }}>
-                <ZulipText style={{ color: HALF_COLOR }}>Members:</ZulipText>
-                <ZulipText style={{ fontWeight: 'bold' }}>
+            <View style={styles.flexRow}>
+              <View style={styles.flex1}>
+                <ZulipText style={styles.infoLabel}>Members:</ZulipText>
+                <ZulipText style={styles.infoValue}>
                   {formatBigNumber(communityInfo.currentMemberCount) || '0'}
                 </ZulipText>
               </View>
@@ -471,15 +576,10 @@ export default function TandaPayInfoScreen(props: Props): Node {
               />
             </View>
 
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-            >
-              <View style={{ flex: 1 }}>
-                <ZulipText style={{ color: HALF_COLOR }}>Subgroups:</ZulipText>
-                <ZulipText style={{ fontWeight: 'bold' }}>
+            <View style={styles.flexRow}>
+              <View style={styles.flex1}>
+                <ZulipText style={styles.infoLabel}>Subgroups:</ZulipText>
+                <ZulipText style={styles.infoValue}>
                   {formatBigNumber(communityInfo.currentSubgroupCount) || '0'}
                 </ZulipText>
               </View>
@@ -493,32 +593,32 @@ export default function TandaPayInfoScreen(props: Props): Node {
 
         {/* User Status Card (if user is a member) */}
         {communityInfo?.userMemberInfo && (
-          <Card style={{ marginBottom: 16 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <Card style={styles.card}>
+            <View style={styles.cardHeader}>
               <IconPerson size={24} color={BRAND_COLOR} />
-              <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginLeft: 8 }}>
+              <ZulipText style={styles.cardTitle}>
                 Your Status
               </ZulipText>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <ZulipText style={{ color: HALF_COLOR }}>Member ID:</ZulipText>
-              <ZulipText style={{ fontWeight: 'bold' }}>
+            <View style={styles.infoRow}>
+              <ZulipText style={styles.infoLabel}>Member ID:</ZulipText>
+              <ZulipText style={styles.infoValue}>
                 #
                 {formatBigNumber(communityInfo.userMemberInfo.id) || 'Unknown'}
               </ZulipText>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <ZulipText style={{ color: HALF_COLOR }}>Status:</ZulipText>
-              <ZulipText style={{ fontWeight: 'bold' }}>
+            <View style={styles.infoRow}>
+              <ZulipText style={styles.infoLabel}>Status:</ZulipText>
+              <ZulipText style={styles.infoValue}>
                 {getMemberStatusDisplayName(communityInfo.userMemberInfo?.memberStatus ?? 0)}
               </ZulipText>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <ZulipText style={{ color: HALF_COLOR }}>Subgroup:</ZulipText>
-              <ZulipText style={{ fontWeight: 'bold' }}>
+            <View style={styles.infoRow}>
+              <ZulipText style={styles.infoLabel}>Subgroup:</ZulipText>
+              <ZulipText style={styles.infoValue}>
                 {communityInfo.userSubgroupInfo
                   ? `#${formatBigNumber(communityInfo.userSubgroupInfo.id) || 'Unknown'}`
                   : 'Not assigned'
@@ -526,25 +626,25 @@ export default function TandaPayInfoScreen(props: Props): Node {
               </ZulipText>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <ZulipText style={{ color: HALF_COLOR }}>Premium Paid:</ZulipText>
-              <ZulipText style={{
-                fontWeight: 'bold',
-                color: communityInfo.userMemberInfo?.isPremiumPaidThisPeriod
-                  ? '#4CAF50' : '#f44336'
-              }}
+            <View style={styles.infoRow}>
+              <ZulipText style={styles.infoLabel}>Premium Paid:</ZulipText>
+              <ZulipText style={[
+                styles.statusTextBase,
+                { color: communityInfo.userMemberInfo?.isPremiumPaidThisPeriod
+                  ? '#4CAF50' : '#f44336' }
+              ]}
               >
                 {communityInfo.userMemberInfo?.isPremiumPaidThisPeriod ? 'Yes' : 'No'}
               </ZulipText>
             </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <ZulipText style={{ color: HALF_COLOR }}>Coverage Eligible:</ZulipText>
-              <ZulipText style={{
-                fontWeight: 'bold',
-                color: communityInfo.userMemberInfo?.isEligibleForCoverageThisPeriod
-                  ? '#4CAF50' : '#f44336'
-              }}
+            <View style={styles.infoRow}>
+              <ZulipText style={styles.infoLabel}>Coverage Eligible:</ZulipText>
+              <ZulipText style={[
+                styles.statusTextBase,
+                { color: communityInfo.userMemberInfo?.isEligibleForCoverageThisPeriod
+                  ? '#4CAF50' : '#f44336' }
+              ]}
               >
                 {communityInfo.userMemberInfo?.isEligibleForCoverageThisPeriod ? 'Yes' : 'No'}
               </ZulipText>
@@ -553,7 +653,7 @@ export default function TandaPayInfoScreen(props: Props): Node {
         )}
 
         {/* Action Buttons */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+        <View style={styles.buttonRow}>
           <ZulipButton
             style={TandaPayStyles.button}
             text="Refresh"
@@ -569,13 +669,7 @@ export default function TandaPayInfoScreen(props: Props): Node {
 
         {/* Last updated info */}
         {communityInfo && (
-          <ZulipText style={{
-            fontSize: 12,
-            color: HALF_COLOR,
-            textAlign: 'center',
-            marginTop: 16
-          }}
-          >
+          <ZulipText style={styles.lastUpdatedText}>
             Last updated:
             {' '}
             {new Date(communityInfo.lastUpdated).toLocaleString()}
@@ -585,3 +679,5 @@ export default function TandaPayInfoScreen(props: Props): Node {
     </Screen>
   );
 }
+
+export default TandaPayInfoScreen;

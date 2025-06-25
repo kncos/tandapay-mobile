@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, Alert, ActivityIndicator } from 'react-native';
+import { View, Alert, ActivityIndicator , StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipButton from '../../common/ZulipButton';
@@ -76,7 +76,7 @@ type Props = $ReadOnly<{|
 |}>;
 
 // Custom styles for this component
-const customStyles = {
+const customStyles = StyleSheet.create({
   container: {
     marginTop: 16,
   },
@@ -103,7 +103,7 @@ const customStyles = {
     marginTop: 8,
     textAlign: 'center',
   },
-};
+});
 
 export default function TransactionEstimateAndSend(props: Props): Node {
   const {

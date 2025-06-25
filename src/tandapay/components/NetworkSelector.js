@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator , StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
@@ -25,7 +25,7 @@ type Props = $ReadOnly<{|
 |}>;
 
 // Only custom styles for this component
-const networkStyles = {
+const networkStyles = StyleSheet.create({
   networkOptionLoading: {
     opacity: 0.6,
   },
@@ -39,7 +39,7 @@ const networkStyles = {
     marginLeft: 12,
     marginTop: 2,
   },
-};
+});
 
 export default function NetworkSelector(props: Props): Node {
   const { selectedNetwork, onNetworkSelect, switchingNetwork, disabled, customRpcConfig } = props;

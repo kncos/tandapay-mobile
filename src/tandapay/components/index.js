@@ -1,5 +1,9 @@
 /* @flow strict-local */
 
+// Reusable UI components
+export { default as CloseButton } from './CloseButton';
+export { default as ErrorText } from './ErrorText';
+
 // Address input with QR scanner
 export { default as AddressInput } from './AddressInput';
 

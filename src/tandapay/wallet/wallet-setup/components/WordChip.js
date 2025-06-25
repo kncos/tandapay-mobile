@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View , StyleSheet } from 'react-native';
 
 import ZulipText from '../../../../common/ZulipText';
 import Touchable from '../../../../common/Touchable';
@@ -15,7 +15,7 @@ type Props = $ReadOnly<{|
 |}>;
 
 // Only create styles for the text since chips use centralized styles
-const textStyles = {
+const textStyles = StyleSheet.create({
   normal: {
     fontSize: 14,
   },
@@ -23,7 +23,7 @@ const textStyles = {
     fontSize: 14,
     color: TandaPayColors.white,
   },
-};
+});
 
 export default function WordChip(props: Props): Node {
   const { word, isSelected, onPress } = props;

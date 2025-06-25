@@ -2,7 +2,7 @@
 
 import React, { useContext, useState, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, Modal, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Modal, ScrollView, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipText from '../../common/ZulipText';
@@ -17,6 +17,7 @@ import type { TransactionDetails } from './TransactionDetailsFetcher';
 import { getAlchemyApiKey } from './WalletManager';
 import type { SupportedNetwork } from '../definitions/types';
 import { QUARTER_COLOR } from '../../styles/constants';
+import { CloseButton } from '../components';
 
 type Props = {|
   visible: boolean,
@@ -27,7 +28,7 @@ type Props = {|
   onViewInExplorer: (txHash: string) => void,
 |};
 
-const styles = {
+const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: TandaPayColors.overlay,
@@ -120,7 +121,7 @@ const styles = {
     flex: 1,
     marginHorizontal: 6,
   },
-};
+});
 
 function showToast(message: string) {
   // Simple alert for now - can be replaced with proper toast if available
@@ -209,9 +210,7 @@ export default function TransactionDetailsModal({
             <ZulipText style={{ ...TandaPayTypography.sectionTitle, marginBottom: 0 }}>
               Transaction Details
             </ZulipText>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <ZulipText style={styles.closeButtonText}>×</ZulipText>
-            </TouchableOpacity>
+            <CloseButton onPress={onClose} style={styles.closeButton} />
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>

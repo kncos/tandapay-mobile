@@ -2,12 +2,11 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity, Switch } from 'react-native';
+import { View, TouchableOpacity, Switch, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import { ThemeContext } from '../../styles';
-import Card from './Card';
 import { QUARTER_COLOR } from '../../styles/constants';
 
 type Props = $ReadOnly<{|
@@ -17,9 +16,10 @@ type Props = $ReadOnly<{|
   description?: string,
   disabled?: boolean,
   style?: ?{},
+  backgroundColor?: string,
 |}>;
 
-const customStyles = {
+const customStyles = StyleSheet.create({
   container: {
     marginBottom: 16,
     borderRadius: 16,
@@ -49,7 +49,7 @@ const customStyles = {
   disabledContainer: {
     opacity: 0.6,
   },
-};
+});
 
 export default function BooleanToggle(props: Props): Node {
   const {
@@ -57,8 +57,9 @@ export default function BooleanToggle(props: Props): Node {
     onValueChange,
     label,
     description,
-    backgroundColor = QUARTER_COLOR,
     disabled = false,
+    style,
+    backgroundColor = QUARTER_COLOR,
   } = props;
 
   const themeData = useContext(ThemeContext);
@@ -70,7 +71,7 @@ export default function BooleanToggle(props: Props): Node {
   };
 
   return (
-    <View style={[customStyles.container, { backgroundColor }]}>
+    <View style={[customStyles.container, { backgroundColor }, style]}>
       <TouchableOpacity
         style={customStyles.content}
         onPress={handlePress}

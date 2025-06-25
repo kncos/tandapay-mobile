@@ -2,10 +2,12 @@
 
 import React from 'react';
 import type { Node } from 'react';
-import { View, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, SafeAreaView, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
-import { TandaPayColors, TandaPayTypography } from '../styles';
+import CloseButton from './CloseButton';
+import ModalStyles from '../styles/modals';
+import { TandaPayColors } from '../styles';
 
 type Props = $ReadOnly<{|
   children: Node,
@@ -13,37 +15,26 @@ type Props = $ReadOnly<{|
   title?: string,
 |}>;
 
-const customStyles = {
+const customStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: TandaPayColors.white,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    ...ModalStyles.header,
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: TandaPayColors.subtle,
   },
   title: {
-    ...TandaPayTypography.sectionTitle,
-    flex: 1,
+    ...ModalStyles.title,
     textAlign: 'center',
   },
-  closeButton: {
-    padding: 8,
-  },
-  closeButtonText: {
-    ...TandaPayTypography.body,
-    color: TandaPayColors.primary,
-    fontWeight: 'bold',
-  },
   content: {
-    flex: 1,
+    ...ModalStyles.content,
     padding: 16,
   },
-};
+});
 
 export default function ModalContainer(props: Props): Node {
   const { children, onClose, title } = props;
@@ -57,14 +48,7 @@ export default function ModalContainer(props: Props): Node {
             {title}
           </ZulipText>
         )}
-        <TouchableOpacity
-          style={customStyles.closeButton}
-          onPress={onClose}
-        >
-          <ZulipText style={customStyles.closeButtonText}>
-            Close
-          </ZulipText>
-        </TouchableOpacity>
+        <CloseButton onPress={onClose} />
       </View>
 
       <View style={customStyles.content}>
