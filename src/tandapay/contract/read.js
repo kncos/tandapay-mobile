@@ -3,6 +3,7 @@
 import { ethers } from 'ethers';
 import { TandaPayInfo } from './TandaPay';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
+import { executeTandaPayMulticall } from './multicall';
 import type { TandaPayResult } from '../errors/types';
 
 import type {
@@ -41,6 +42,8 @@ type TandaPayReadActions = {|
   +getVoluntaryHandoverNominee: () => Promise<string>,
   +getEmergencyHandoverNominees: () => Promise<Array<string>>,
   +getMemberInfoFromId: (memberId: number | string, periodId?: number | string) => Promise<MemberInfo>,
+  +batchGetAllMemberInfo: (memberCount: number, periodId?: number | string, maxBatchSize?: number) => Promise<TandaPayResult<Array<MemberInfo>>>,
+  +batchGetAllSubgroupInfo: (subgroupCount: number, maxBatchSize?: number) => Promise<TandaPayResult<Array<SubgroupInfo>>>,
 |};
 
 /**
@@ -217,6 +220,192 @@ export const getMemberInfoFromId = async (contract: EthersContract, memberId: nu
 };
 
 /**
+ * Batch reader utilities for efficiently fetching member and subgroup information using multicall3
+ */
+
+/**
+ * Batch fetch member information for all members by ID using multicall3
+ * @param contractAddress The TandaPay contract address
+ * @param memberCount The total number of members in the community
+ * @param periodId The period ID to query for member information (default: 0 for current period)
+ * @param maxBatchSize Maximum number of calls per multicall batch (default: 16)
+ * @returns A promise resolving to an array of MemberInfo objects for all members
+ */
+export const batchGetAllMemberInfo = async (
+  contractAddress: string,
+  memberCount: number,
+  periodId: number | string = 0,
+  maxBatchSize: number = 16
+): Promise<TandaPayResult<Array<MemberInfo>>> => {
+  try {
+    // Input validation
+    if (!contractAddress || !ethers.utils.isAddress(contractAddress)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid contract address',
+        'Please provide a valid TandaPay contract address.'
+      );
+    }
+
+    if (memberCount <= 0 || !Number.isInteger(memberCount)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid member count',
+        'Member count must be a positive integer.'
+      );
+    }
+
+    if (maxBatchSize <= 0 || !Number.isInteger(maxBatchSize)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid batch size',
+        'Batch size must be a positive integer.'
+      );
+    }
+
+    // Generate all member IDs (1-based, inclusive)
+    const memberIds = Array.from({ length: memberCount }, (_, i) => i + 1);
+    const results: Array<MemberInfo> = [];
+
+    // Process in batches
+    for (let i = 0; i < memberIds.length; i += maxBatchSize) {
+      const batch = memberIds.slice(i, i + maxBatchSize);
+
+      // Create multicall calls for this batch
+      const calls = batch.map(memberId => ({
+        functionName: 'getMemberInfoFromId',
+        args: [ethers.BigNumber.from(memberId), ethers.BigNumber.from(periodId)]
+      }));
+
+      const multicallResult = await executeTandaPayMulticall(
+        contractAddress,
+        TandaPayInfo.abi,
+        calls
+      );
+
+      if (!multicallResult.success) {
+        return multicallResult;
+      }
+
+      // Process results for this batch
+      for (let j = 0; j < multicallResult.data.length; j++) {
+        const memberInfo = multicallResult.data[j];
+        if (memberInfo != null) {
+          // Map raw type to MemberInfo type (same as getMemberInfoFromId)
+          results.push({
+            id: memberInfo.memberId,
+            subgroupId: memberInfo.associatedGroupId,
+            walletAddress: memberInfo.member,
+            communityEscrowAmount: memberInfo.cEscrowAmount,
+            savingsEscrowAmount: memberInfo.ISEscorwAmount,
+            pendingRefundAmount: memberInfo.pendingRefundAmount,
+            availableToWithdrawAmount: memberInfo.availableToWithdraw,
+            isEligibleForCoverageThisPeriod: memberInfo.eligibleForCoverageInPeriod,
+            isPremiumPaidThisPeriod: memberInfo.isPremiumPaid,
+            queuedRefundAmountThisPeriod: memberInfo.idToQuedRefundAmount,
+            memberStatus: memberInfo.status,
+            assignmentStatus: memberInfo.assignment,
+          });
+        }
+      }
+    }
+
+    return { success: true, data: results };
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+    const tandaPayError = TandaPayErrorHandler.createContractError(
+      'Failed to batch fetch member information',
+      'Unable to retrieve member information. Please try again.'
+    );
+    return { success: false, error: tandaPayError };
+  }
+};
+
+/**
+ * Batch fetch subgroup information for all subgroups by ID using multicall3
+ * @param contractAddress The TandaPay contract address
+ * @param subgroupCount The total number of subgroups in the community
+ * @param maxBatchSize Maximum number of calls per multicall batch (default: 16)
+ * @returns A promise resolving to an array of SubgroupInfo objects for all subgroups
+ */
+export const batchGetAllSubgroupInfo = async (
+  contractAddress: string,
+  subgroupCount: number,
+  maxBatchSize: number = 16
+): Promise<TandaPayResult<Array<SubgroupInfo>>> => {
+  try {
+    // Input validation
+    if (!contractAddress || !ethers.utils.isAddress(contractAddress)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid contract address',
+        'Please provide a valid TandaPay contract address.'
+      );
+    }
+
+    if (subgroupCount <= 0 || !Number.isInteger(subgroupCount)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid subgroup count',
+        'Subgroup count must be a positive integer.'
+      );
+    }
+
+    if (maxBatchSize <= 0 || !Number.isInteger(maxBatchSize)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid batch size',
+        'Batch size must be a positive integer.'
+      );
+    }
+
+    // Generate all subgroup IDs (1-based, inclusive)
+    const subgroupIds = Array.from({ length: subgroupCount }, (_, i) => i + 1);
+    const results: Array<SubgroupInfo> = [];
+
+    // Process in batches
+    for (let i = 0; i < subgroupIds.length; i += maxBatchSize) {
+      const batch = subgroupIds.slice(i, i + maxBatchSize);
+
+      // Create multicall calls for this batch
+      const calls = batch.map(subgroupId => ({
+        functionName: 'getSubgroupInfo',
+        args: [ethers.BigNumber.from(subgroupId)]
+      }));
+
+      const multicallResult = await executeTandaPayMulticall(
+        contractAddress,
+        TandaPayInfo.abi,
+        calls
+      );
+
+      if (!multicallResult.success) {
+        return multicallResult;
+      }
+
+      // Process results for this batch (same format as getSubgroupInfo)
+      for (let j = 0; j < multicallResult.data.length; j++) {
+        const subgroupInfo = multicallResult.data[j];
+        if (subgroupInfo != null) {
+          results.push({
+            id: subgroupInfo.id,
+            members: subgroupInfo.members,
+            isValid: subgroupInfo.isValid,
+          });
+        }
+      }
+    }
+
+    return { success: true, data: results };
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+    const tandaPayError = TandaPayErrorHandler.createContractError(
+      'Failed to batch fetch subgroup information',
+      'Unable to retrieve subgroup information. Please try again.'
+    );
+    return { success: false, error: tandaPayError };
+  }
+};
+
+/**
  * Given an ethers provider/signer and smart contract address, it returns an object that has all TandaPay
  * read actions, automatically injecting the contract instance into the actions so that
  * there is no need to create a new contract instance for each call.
@@ -251,6 +440,8 @@ export function getTandaPayReadActions(client: any, contractAddress: string): Ta
     getVoluntaryHandoverNominee: () => getVoluntaryHandoverNominee(contract),
     getEmergencyHandoverNominees: () => getEmergencyHandoverNominees(contract),
     getMemberInfoFromId: (memberId, periodId) => getMemberInfoFromId(contract, memberId, periodId),
+    batchGetAllMemberInfo: (memberCount, periodId, maxBatchSize) => batchGetAllMemberInfo(contractAddress, memberCount, periodId, maxBatchSize),
+    batchGetAllSubgroupInfo: (subgroupCount, maxBatchSize) => batchGetAllSubgroupInfo(contractAddress, subgroupCount, maxBatchSize),
   };
 }
 
