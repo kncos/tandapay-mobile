@@ -157,10 +157,27 @@ export default function TransactionModal(props: Props): Node {
 
       const contract = contractResult.data;
       const paramValues = getParameterValues();
-      const gasEstimateFunction = transaction.estimateGasFunction;
 
+      // FIRST: Simulate the transaction to check if it would succeed
+      // This prevents UNPREDICTABLE_GAS_LIMIT errors by checking transaction validity first
+      const simulationResult = await transaction.simulateFunction(contract, ...paramValues);
+      if (!simulationResult.success) {
+        // If simulation fails, the transaction would revert
+        return {
+          success: false,
+          error: simulationResult.error || 'Transaction would revert - this operation is not valid at this time',
+          originalError: simulationResult.originalError,
+        };
+      }
+
+      // SECOND: Only estimate gas if simulation succeeds
+      const gasEstimateFunction = transaction.estimateGasFunction;
       if (!gasEstimateFunction) {
-        throw new Error('Gas estimation function not available');
+        return {
+          success: false,
+          error: 'Gas estimation not available for this transaction',
+          originalError: 'Gas estimation function not available for this transaction type',
+        };
       }
 
       const gasEstimate = await gasEstimateFunction(contract, ...paramValues);
@@ -177,6 +194,7 @@ export default function TransactionModal(props: Props): Node {
       return {
         success: false,
         error: error.message || 'Failed to estimate gas',
+        originalError: error.message || String(error),
       };
     }
   }, [transaction, getParameterValues, selectedNetwork, reduxState]);
@@ -226,6 +244,7 @@ export default function TransactionModal(props: Props): Node {
         return {
           success: false,
           error: simulationResult.error || 'Transaction simulation failed',
+          originalError: simulationResult.originalError,
         };
       }
 
@@ -240,6 +259,7 @@ export default function TransactionModal(props: Props): Node {
       return {
         success: false,
         error: error.message || 'Transaction failed',
+        originalError: error.message || String(error),
       };
     } finally {
       setIsSubmitting(false);

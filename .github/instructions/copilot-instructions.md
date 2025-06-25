@@ -96,3 +96,251 @@ maintainability, consistency, and reusability.
     ease future style modifications. The only exception is when an inline style
     is truly dynamic and depends on a state value like `themeData`, in which case
     array syntax should be used.
+
+## Architecture and Code Organization
+
+**Directory Structure:**
+- `src/tandapay/components` - Reusable UI components (inputs, cards, modals, buttons)
+- `src/tandapay/contract` - Smart contract interactions and blockchain logic
+- `src/tandapay/wallet` - Wallet functionality and transaction handling
+- `src/tandapay/styles` - Centralized styling modules
+- `src/tandapay/redux` - State management (actions, reducers, selectors)
+- `src/tandapay/errors` - Error handling infrastructure
+- `src/tandapay/providers` - Network provider management
+- `src/tandapay/tokens` - Token configuration and management
+
+**Key Entry Points:**
+- `TandaPayMenuScreen.js` - Main navigation hub for TandaPay features
+- `TandaPaySettingsScreen.js` - Configuration and settings
+- `WalletScreen.js` - Main wallet dashboard and balance display
+- `TandaPayInfoScreen.js` - Community information display
+- `TandaPayNetworkSettingsScreen.js` - Network and contract configuration
+- `TandaPayActionsScreen.js` - Community actions interface
+
+## Common Patterns and Best Practices
+
+**Redux Integration:**
+```javascript
+// Always use these selectors for common data:
+import { 
+  getTandaPaySelectedNetwork,
+  getCurrentTandaPayContractAddress,
+  getTandaPayCustomRpcConfig,
+  getSelectedToken 
+} from '../redux/selectors';
+
+// Use typed dispatch actions:
+import { updateTandaPaySettings } from '../redux/actions';
+```
+
+**Error Handling Pattern:**
+```javascript
+// Wrap all async operations with error handling:
+import { TandaPayErrorHandler } from '../errors';
+
+const result = await TandaPayErrorHandler.withErrorHandling(
+  async () => {
+    // Your async code here
+  },
+  'OPERATION_TYPE' // e.g., 'CONTRACT_ERROR', 'WALLET_ERROR'
+);
+
+if (!result.success) {
+  // Handle error - result.error has typed error information
+}
+```
+
+**Contract Interaction Pattern:**
+```javascript
+// Use the multicall pattern for efficient blockchain reads:
+import { executeTandaPayMulticall } from '../contract/multicall';
+
+// For single calls, use the read actions:
+import { getTandaPayReadActions } from '../contract/read';
+```
+
+**Component Structure:**
+```javascript
+// Standard component template:
+/* @flow strict-local */
+import React from 'react';
+import type { Node } from 'react';
+import { View, StyleSheet } from 'react-native';
+
+type Props = $ReadOnly<{|
+  // Define all props with exact Flow types
+|}>;
+
+const styles = StyleSheet.create({
+  // Define all static styles here
+});
+
+export default function ComponentName(props: Props): Node {
+  // Component logic
+}
+```
+
+## Styling Guidelines
+
+**Use Existing Style Modules:**
+```javascript
+import TandaPayStyles, { 
+  TandaPayColors, 
+  TandaPayLayout, 
+  TandaPayComponents,
+  TandaPayTypography 
+} from '../styles';
+
+// For shared form styles:
+import { FormStyles } from '../styles/forms';
+import { ModalStyles } from '../styles/modals';
+```
+
+**Common UI Components (Available in `src/tandapay/components`):**
+- `<Card>` - Consistent container styling
+- `<CloseButton>` - Modal close buttons
+- `<ErrorText>` - Error message display
+- `<AddressInput>` - Address inputs with QR scanner support
+- `<AmountInput>` - Amount inputs with token validation
+- `<BooleanToggle>` - Toggle switches
+- `<NetworkSelector>` - Network selection dropdown
+- `<TokenPicker>` - Token selection interface
+- `<TransactionEstimateAndSend>` - Transaction gas estimation and sending
+
+**Button Styling Pattern:**
+```javascript
+// Always wrap ZulipButton properly:
+<View style={TandaPayStyles.buttonRow}>
+  <ZulipButton
+    style={TandaPayStyles.button}
+    text="Button Text"
+    onPress={handlePress}
+  />
+</View>
+```
+
+## Navigation and Screen Props
+
+**Screen Component Props:**
+```javascript
+type Props = $ReadOnly<{|
+  navigation: AppNavigationProp<'screen-name'>,
+  route: RouteProp<'screen-name', void>,
+|}>;
+```
+
+**Screen Navigation:**
+```javascript
+// Navigate to another screen:
+navigation.navigate('screen-name', { paramName: value });
+
+// Go back:
+navigation.goBack();
+
+// Check if can go back:
+navigation.canGoBack()
+```
+
+## Web3 and Blockchain Integration
+
+**Provider Management:**
+```javascript
+// Get provider for current network:
+import { getProvider } from '../web3';
+const provider = await getProvider();
+
+// Create provider for specific network:
+import { createProvider } from '../providers/ProviderManager';
+const result = await createProvider(network);
+```
+
+**Wallet Operations:**
+```javascript
+// Get wallet instance:
+import { getWalletInstance } from '../wallet/WalletManager';
+const walletResult = await getWalletInstance();
+```
+
+**Token Handling:**
+```javascript
+// Get available tokens for current network:
+import { getAvailableTokens } from '../tokens/tokenSelectors';
+
+// Token types include predefined (DAI, USDC, USDT) and custom tokens
+```
+
+## State Management
+
+**TandaPay Redux State Structure:**
+```javascript
+{
+  selectedNetwork: 'sepolia' | 'mainnet' | 'arbitrum' | 'polygon' | 'custom',
+  customRpcConfig: { /* network config */ },
+  contractAddresses: {
+    mainnet: '0x...',
+    sepolia: '0x...',
+    // etc.
+  },
+  networkPerformance: { /* performance settings */ },
+  // other settings
+}
+```
+
+## Common Utilities
+
+**Address Validation:**
+```javascript
+import { validateEthereumAddress } from '../components/AddressInput';
+```
+
+**Amount Formatting:**
+```javascript
+// Use ethers for formatting:
+import { ethers } from 'ethers';
+ethers.utils.formatUnits(value, decimals);
+ethers.utils.parseUnits(value, decimals);
+```
+
+**BigNumber Handling:**
+```javascript
+// Always check if value is BigNumber before operations:
+if (value && value._hex) {
+  // It's a BigNumber
+  const formatted = ethers.utils.formatEther(value);
+}
+```
+
+## Flow Type Checking
+
+**Common Flow Patterns:**
+```javascript
+// For mixed types that could be BigNumber:
+// $FlowFixMe[incompatible-use]
+const value = someBigNumberValue.toString();
+
+// For third-party imports:
+// $FlowFixMe[untyped-import]
+import { ethers } from 'ethers';
+```
+
+**Flow Error Handling:**
+- Check the Problems tab in your IDE for Flow errors
+- Use `$FlowFixMe` sparingly and only when necessary
+- Always add proper type annotations for props and return types
+- Never run `npm run flow` - Flow integration is IDE-based only
+
+## Important Context
+
+1. **Multi-Network Support**: The app supports multiple networks simultaneously. Always use the selected network from Redux state.
+
+2. **Contract Address Management**: Each network can have its own TandaPay contract address. Never hardcode addresses.
+
+3. **Secure Storage**: Wallet mnemonics and API keys use `expo-secure-store`. Never store sensitive data in Redux.
+
+4. **Community Context**: TandaPay is a community-based insurance protocol. UI should reflect community operations like periods, claims, and member management.
+
+5. **Existing Components**: Before creating new components, check if similar functionality exists in:
+   - `src/common` (ZulipButton, ZulipText, Screen, etc.)
+   - `src/tandapay/components` (AddressInput, AmountInput, Card, etc.)
+
+6. **StyleSheet Usage**: All static styles must use `StyleSheet.create()`. Dynamic styles (theme-dependent) should use array syntax: `style={[styles.base, { color: themeData.color }]}`

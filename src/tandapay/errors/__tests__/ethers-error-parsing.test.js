@@ -27,8 +27,8 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
       const result = TandaPayErrorHandler.parseEthersError(error);
 
       expect(result.type).toBe('CONTRACT_ERROR');
-      expect(result.userMessage).toContain('Unable to estimate transaction cost');
-      expect(result.message).toBe('Gas estimation failed');
+      expect(result.userMessage).toBe('Transaction would revert');
+      expect(result.message).toBe('Transaction would revert');
     });
 
     test('handles timeout errors', () => {
@@ -110,16 +110,93 @@ describe('TandaPayErrorHandler - Ethers Error Parsing', () => {
     });
 
     it('handles regular gas estimation errors', () => {
-      const gasEstimationErrors = [
+      const revertErrors = [
         'cannot estimate gas; transaction may fail due to invalid recipient',
-        'gas required exceeds allowance',
         'execution reverted: custom error message'
       ];
 
-      gasEstimationErrors.forEach(errorMessage => {
+      revertErrors.forEach(errorMessage => {
         const result = TandaPayErrorHandler.parseEthersError({ message: errorMessage });
         expect(result.type).toBe('CONTRACT_ERROR');
-        expect(result.userMessage).toContain('Unable to estimate transaction cost');
+        expect(result.userMessage).toBe('Transaction would revert');
+      });
+
+      // Test true gas estimation errors (not reverts)
+      const trueGasErrors = [
+        'gas required exceeds allowance'
+      ];
+
+      trueGasErrors.forEach(errorMessage => {
+        const result = TandaPayErrorHandler.parseEthersError({ message: errorMessage });
+        expect(result.type).toBe('CONTRACT_ERROR');
+        expect(result.userMessage).toContain('Smart contract operation failed');
+      });
+    });
+
+    test('handles CALL_EXCEPTION with specific error names', () => {
+      const callExceptionErrors = [
+        {
+          message: 'call revert exception; VM Exception while processing transaction: reverted with reason string "NotValidMember"',
+          expectedUserMessage: 'You are not authorized to perform this action.',
+          expectedErrorName: 'NotValidMember'
+        },
+        {
+          message: 'call revert exception; VM Exception while processing transaction: reverted with reason string "AlreadyAdded"',
+          expectedUserMessage: 'This member has already been added to the community.',
+          expectedErrorName: 'AlreadyAdded'
+        },
+        {
+          message: 'call revert exception; VM Exception while processing transaction: reverted with reason string "InsufficientFunds"',
+          expectedUserMessage: 'Insufficient funds to complete this transaction.',
+          expectedErrorName: 'InsufficientFunds'
+        },
+        {
+          code: 'CALL_EXCEPTION',
+          message: 'call revert exception; VM Exception while processing transaction: reverted with reason string "NotValidMember"',
+          expectedUserMessage: 'You are not authorized to perform this action.',
+          expectedErrorName: 'NotValidMember'
+        },
+        {
+          code: 'CALL_EXCEPTION',
+          message: 'execution reverted: NotValidMember',
+          expectedUserMessage: 'You are not authorized to perform this action.',
+          expectedErrorName: 'NotValidMember'
+        }
+      ];
+
+      callExceptionErrors.forEach((errorCase, index) => {
+        const result = TandaPayErrorHandler.parseEthersError(errorCase);
+
+        expect(result.type).toBe('CONTRACT_ERROR');
+        expect(result.userMessage).toBe(errorCase.expectedUserMessage);
+        expect(result.message).toContain(errorCase.expectedErrorName);
+
+        // The user message should be specific, not generic
+        expect(result.userMessage).not.toBe('Transaction would revert');
+        expect(result.userMessage).not.toContain('Smart contract operation failed');
+      });
+    });
+
+    test('handles CALL_EXCEPTION without specific error names', () => {
+      const genericCallExceptionErrors = [
+        {
+          code: 'CALL_EXCEPTION',
+          message: 'call revert exception; VM Exception while processing transaction: reverted'
+        },
+        {
+          message: 'call revert exception; VM Exception while processing transaction: execution reverted'
+        },
+        {
+          message: 'execution reverted'
+        }
+      ];
+
+      genericCallExceptionErrors.forEach((errorCase) => {
+        const result = TandaPayErrorHandler.parseEthersError(errorCase);
+
+        expect(result.type).toBe('CONTRACT_ERROR');
+        expect(result.userMessage).toBe('Transaction would revert');
+        expect(result.message).toBe('Transaction would revert');
       });
     });
   });

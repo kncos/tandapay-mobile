@@ -150,12 +150,14 @@ export default function WalletSendScreen(props: Props): Node {
         return {
           success: false,
           error: result.error.userMessage ?? result.error.message,
+          originalError: result.error.message,
         };
       }
     } catch (error) {
       return {
         success: false,
         error: error.message ?? 'Unable to estimate gas costs.',
+        originalError: error.message ?? String(error),
       };
     }
   }, [getWallet, selectedToken, selectedNetwork]);
@@ -194,12 +196,14 @@ export default function WalletSendScreen(props: Props): Node {
         return {
           success: false,
           error: result.error.userMessage ?? result.error.message,
+          originalError: result.error.message,
         };
       }
     } catch (error) {
       return {
         success: false,
         error: error.message ?? 'An unexpected error occurred.',
+        originalError: error.message ?? String(error),
       };
     }
   }, [getWallet, selectedToken, selectedNetwork]);

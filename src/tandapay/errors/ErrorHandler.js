@@ -1,6 +1,7 @@
 /* @flow strict-local */
 
 import { Alert } from 'react-native';
+import { getContractErrorMessage } from './contractErrorMapping';
 import type { TandaPayError, ErrorType, TandaPayResult } from './types';
 
 /**
@@ -224,11 +225,15 @@ class TandaPayErrorHandler {
       errorMessage = error;
     }
 
-    // Insufficient funds errors (broader detection)
-    if (errorMessage.includes('insufficient funds')
-        || errorMessage.includes('insufficient balance')
+    // FIRST PRIORITY: Insufficient funds errors (check these first, even if they contain "reverted")
+    if ((errorMessage.includes('insufficient funds') && !errorMessage.includes('reverted with reason string'))
+        || (errorMessage.includes('insufficient balance') && !errorMessage.includes('reverted with reason string'))
         || errorMessage.includes('sender doesn\'t have enough funds')
         || errorMessage.includes('transfer amount exceeds balance')
+        || errorMessage.includes('always failing transaction: insufficient funds')
+        || errorMessage.includes('cannot estimate gas; transaction may fail: insufficient funds')
+        || (errorMessage.includes('execution reverted: insufficient') && (errorMessage.includes('balance') || errorMessage.includes('funds')))
+        || (errorMessage.includes('revert insufficient') && (errorMessage.includes('balance') || errorMessage.includes('funds')))
         || errorCode === 'INSUFFICIENT_FUNDS') {
       return {
         message: 'Insufficient funds for transaction',
@@ -237,7 +242,83 @@ class TandaPayErrorHandler {
       };
     }
 
-    // Network detection errors
+    // SECOND PRIORITY: CALL_EXCEPTION and contract revert detection (with error mapping)
+    if (errorCode === 'CALL_EXCEPTION'
+        || errorMessage.includes('call revert exception')
+        || errorMessage.includes('call exception')
+        || errorMessage.includes('execution reverted')
+        || errorMessage.includes('VM Exception while processing transaction')
+        || errorMessage.includes('transaction reverted')
+        || (errorMessage.includes('revert') && !errorMessage.includes('gas required exceeds'))) {
+      // Try to extract error name from multiple sources
+      let extractedErrorName: ?string = null;
+
+      // First, check if there's an errorName in the error object
+      if (error != null && typeof error === 'object' && typeof error.errorName === 'string') {
+        extractedErrorName = error.errorName;
+      }
+
+      // Try to extract from errorName= format in the message
+      if (extractedErrorName == null || extractedErrorName === '') {
+        const errorNameMatch = errorMessage.match(/errorName=["']([^"']+)["']/i);
+        if (errorNameMatch && errorNameMatch[1]) {
+          extractedErrorName = errorNameMatch[1];
+        }
+      }
+
+      // Try to extract from errorSignature pattern
+      if (extractedErrorName == null || extractedErrorName === '') {
+        const errorSignatureMatch = errorMessage.match(/errorSignature=["']([^"'(]+)\(\)/i);
+        if (errorSignatureMatch && errorSignatureMatch[1]) {
+          extractedErrorName = errorSignatureMatch[1];
+        }
+      }
+
+      // Try to extract from "reverted with reason string" pattern
+      if (extractedErrorName == null || extractedErrorName === '') {
+        const reasonStringMatch = errorMessage.match(/reverted with reason string ["']([^"']+)["']/i);
+        if (reasonStringMatch && reasonStringMatch[1]) {
+          extractedErrorName = reasonStringMatch[1];
+        }
+      }
+
+      // Try to extract from "execution reverted: ErrorName" pattern (only valid error names)
+      if (extractedErrorName == null || extractedErrorName === '') {
+        const executionRevertMatch = errorMessage.match(/execution reverted:\s*([A-Z][A-Za-z0-9_]*)/);
+        if (executionRevertMatch && executionRevertMatch[1]) {
+          // Only extract if it looks like a valid error name (starts with uppercase)
+          extractedErrorName = executionRevertMatch[1];
+        }
+      }
+
+      // Create user message with error name if available
+      let userMessage = 'Transaction would revert';
+      let message = 'Transaction would revert';
+
+      if (extractedErrorName != null && extractedErrorName !== '') {
+        // Get user-friendly message for the error name
+        const friendlyMessage = getContractErrorMessage(extractedErrorName);
+
+        // If we have a known error (not starting with "Contract error:"), return the friendly message directly
+        if (!friendlyMessage.startsWith('Contract error:')) {
+          userMessage = friendlyMessage;
+          message = `Transaction would revert: ${extractedErrorName}`;
+        } else {
+          // For unknown errors, include the "Transaction would revert: " prefix
+          userMessage = `Transaction would revert: ${friendlyMessage}`;
+          message = 'Transaction would revert';
+        }
+      }
+
+      // For CALL_EXCEPTION and explicit reverts, show explicit revert message
+      return {
+        message,
+        userMessage,
+        type: 'CONTRACT_ERROR'
+      };
+    }
+
+    // THIRD PRIORITY: Network detection errors
     if (errorMessage.includes('could not detect network')
         || errorMessage.includes('network is not configured')
         || errorMessage.includes('failed to connect')
@@ -249,15 +330,21 @@ class TandaPayErrorHandler {
       };
     }
 
-    // Gas estimation errors (enhanced detection for insufficient funds during gas estimation)
+    // FOURTH PRIORITY: Parse TandaPay contract-specific errors (legacy patterns)
+    // (including those within CALL_EXCEPTION messages)
+    const tandaPayError = this.parseTandaPayContractError(errorMessage, error);
+    if (tandaPayError != null) {
+      return tandaPayError;
+    }
+
+    // FIFTH PRIORITY: Gas estimation errors (for true gas estimation issues)
     if (errorMessage.includes('cannot estimate gas')
-        || errorMessage.includes('execution reverted')
         || errorMessage.includes('gas required exceeds allowance')
-        || errorMessage.includes('revert')
         || errorMessage.includes('always failing transaction')
-        || errorMessage.includes('transaction may fail or may require manual gas limit')) {
+        || errorMessage.includes('transaction may fail or may require manual gas limit')
+        || errorCode === 'UNPREDICTABLE_GAS_LIMIT'
+        || errorMessage.includes('unpredictable gas limit')) {
       // Check if it's likely an insufficient funds issue during gas estimation
-      // Be more specific to avoid false positives like "gas required exceeds allowance"
       if ((errorMessage.includes('insufficient') && errorMessage.includes('funds'))
           || (errorMessage.includes('insufficient') && errorMessage.includes('balance'))
           || (errorMessage.includes('transfer amount') && errorMessage.includes('exceeds'))
@@ -271,9 +358,31 @@ class TandaPayErrorHandler {
         };
       }
 
+      // For UNPREDICTABLE_GAS_LIMIT, this is usually a revert scenario
+      if (errorCode === 'UNPREDICTABLE_GAS_LIMIT' || errorMessage.includes('unpredictable gas limit')) {
+        return {
+          message: 'Transaction would revert',
+          userMessage: 'Transaction would revert',
+          type: 'CONTRACT_ERROR'
+        };
+      }
+
+      // Check for revert patterns in gas estimation messages
+      if (errorMessage.includes('execution reverted')
+          || errorMessage.includes('revert')
+          || errorMessage.includes('always failing transaction')
+          || errorMessage.includes('transaction may fail')) {
+        return {
+          message: 'Transaction would revert',
+          userMessage: 'Transaction would revert',
+          type: 'CONTRACT_ERROR'
+        };
+      }
+
+      // Fallback for true gas estimation issues (network congestion, etc.)
       return {
         message: 'Gas estimation failed',
-        userMessage: 'Unable to estimate transaction cost. This may be due to insufficient funds or an invalid transaction.',
+        userMessage: 'Smart contract operation failed. This may be due to network congestion or insufficient gas.',
         type: 'CONTRACT_ERROR'
       };
     }
@@ -343,12 +452,193 @@ class TandaPayErrorHandler {
       };
     }
 
+    // Contract revert errors (catch common revert patterns)
+    if (errorMessage.includes('revert')
+        || errorMessage.includes('execution reverted')
+        || errorMessage.includes('transaction failed')) {
+      return {
+        message: 'Transaction would revert',
+        userMessage: 'This transaction cannot be completed at this time. The contract state may not allow this operation right now.',
+        type: 'CONTRACT_ERROR'
+      };
+    }
+
     // Default case - return a generic but friendly message
     return {
       message: errorMessage,
       userMessage: 'An unexpected error occurred. Please try again or contact support if the problem persists.',
       type: 'UNKNOWN_ERROR'
     };
+  }
+
+  /**
+   * Parse TandaPay contract-specific errors to provide user-friendly messages
+   */
+  static parseTandaPayContractError(errorMessage: string, originalError?: mixed): ?{| message: string, userMessage: string, type: ErrorType |} {
+    // Extract error name from complex CALL_EXCEPTION messages
+    // Patterns like: 'call revert exception; VM Exception while processing transaction: reverted with reason string "NotValidMember"'
+    // Or: 'call revert exception (errorName="NotValidMember", errorSignature="NotValidMember()")'
+    let extractedErrorName = errorMessage;
+
+    // Try to extract from errorName field if available
+    if (originalError != null && typeof originalError === 'object' && typeof originalError.errorName === 'string') {
+      extractedErrorName = originalError.errorName;
+    }
+
+    // Try to extract the error name from within quotes (ethers.js format)
+    const reasonStringMatch = errorMessage.match(/reverted with reason string ["']([^"']+)["']/i);
+    if (reasonStringMatch && reasonStringMatch[1]) {
+      extractedErrorName = reasonStringMatch[1];
+    }
+
+    // Try to extract from errorName= format in the message
+    const errorNameMatch = errorMessage.match(/errorName=["']([^"']+)["']/i);
+    if (errorNameMatch && errorNameMatch[1]) {
+      extractedErrorName = errorNameMatch[1];
+    }
+
+    // Try to extract from "execution reverted: ErrorName" format
+    const executionRevertedMatch = errorMessage.match(/execution reverted:?\s*([A-Za-z][A-Za-z0-9_]*)/i);
+    if (executionRevertedMatch && executionRevertedMatch[1]) {
+      extractedErrorName = executionRevertedMatch[1];
+    }
+
+    // Common TandaPay contract errors with user-friendly messages
+    const contractErrors = [
+      {
+        pattern: /AlreadyAdded|already added/i,
+        userMessage: 'This member has already been added to the community.',
+      },
+      {
+        pattern: /AlreadyClaimed|already claimed/i,
+        userMessage: 'This claim has already been processed.',
+      },
+      {
+        pattern: /AlreadySet|already set/i,
+        userMessage: 'This value has already been configured.',
+      },
+      {
+        pattern: /AlreadySubmitted|already submitted/i,
+        userMessage: 'This request has already been submitted.',
+      },
+      {
+        pattern: /AmountZero|amount.*zero/i,
+        userMessage: 'Amount cannot be zero.',
+      },
+      {
+        pattern: /CannotBeZeroAddress|zero address/i,
+        userMessage: 'Address cannot be empty.',
+      },
+      {
+        pattern: /CannotEmergencyRefund|emergency refund/i,
+        userMessage: 'Emergency refund is not available at this time.',
+      },
+      {
+        pattern: /ClaimNoOccured|claim.*not.*occurred/i,
+        userMessage: 'No valid claim was found.',
+      },
+      {
+        pattern: /ClaimantNotValidMember|claimant.*not.*valid/i,
+        userMessage: 'Only valid community members can submit claims.',
+      },
+      {
+        pattern: /CommunityIsCollapsed|community.*collapsed/i,
+        userMessage: 'The community has collapsed and is no longer active.',
+      },
+      {
+        pattern: /CoverageFullfilled|coverage.*fulfilled/i,
+        userMessage: 'The coverage requirement has already been met.',
+      },
+      {
+        pattern: /DFNotMet|defection.*fund.*not.*met/i,
+        userMessage: 'Defection fund requirements are not met.',
+      },
+      {
+        pattern: /DelayInitiated|delay.*initiated/i,
+        userMessage: 'A delay period has been initiated. Please wait.',
+      },
+      {
+        pattern: /EmergencyGracePeriod|emergency.*grace/i,
+        userMessage: 'Currently in emergency grace period.',
+      },
+      {
+        pattern: /InsufficientFunds|insufficient.*funds/i,
+        userMessage: 'Insufficient funds to complete this transaction.',
+      },
+      {
+        pattern: /InvalidInput|invalid.*input/i,
+        userMessage: 'Invalid input provided.',
+      },
+      {
+        pattern: /InvalidMember|invalid.*member/i,
+        userMessage: 'Invalid member for this operation.',
+      },
+      {
+        pattern: /InvalidPeriod|invalid.*period/i,
+        userMessage: 'This operation is not valid for the current period.',
+      },
+      {
+        pattern: /MemberNotFound|member.*not.*found/i,
+        userMessage: 'Member not found in the community.',
+      },
+      {
+        pattern: /NotAuthorized|not.*authorized/i,
+        userMessage: 'You are not authorized to perform this action.',
+      },
+      {
+        pattern: /NotValidMember|not.*valid.*member/i,
+        userMessage: 'You are not authorized to perform this action.',
+      },
+      {
+        pattern: /NotRefundWindow|not.*refund.*window/i,
+        userMessage: 'Refunds are not available at this time.',
+      },
+      {
+        pattern: /NotInSubgroup|not.*in.*subgroup/i,
+        userMessage: 'You must be in a subgroup to perform this action.',
+      },
+      {
+        pattern: /NotSecretary|not.*secretary/i,
+        userMessage: 'This action can only be performed by the secretary.',
+      },
+      {
+        pattern: /PeriodNotActive|period.*not.*active/i,
+        userMessage: 'The current period is not active for this operation.',
+      },
+      {
+        pattern: /PremiumAlreadyPaid|premium.*already.*paid/i,
+        userMessage: 'Premium has already been paid for this period.',
+      },
+      {
+        pattern: /PremiumNotPaid|premium.*not.*paid/i,
+        userMessage: 'Premium must be paid before performing this action.',
+      },
+      {
+        pattern: /SubgroupFull|subgroup.*full/i,
+        userMessage: 'The subgroup is full and cannot accept new members.',
+      },
+      {
+        pattern: /TooEarly|too.*early/i,
+        userMessage: 'This action cannot be performed yet. Please wait.',
+      },
+      {
+        pattern: /TooLate|too.*late/i,
+        userMessage: 'The time window for this action has passed.',
+      },
+    ];
+
+    // Test both the original error message and the extracted error name
+    for (const error of contractErrors) {
+      if (error.pattern.test(errorMessage) || error.pattern.test(extractedErrorName)) {
+        return {
+          message: `TandaPay contract error: ${extractedErrorName}`,
+          userMessage: error.userMessage,
+          type: 'CONTRACT_ERROR',
+        };
+      }
+    }
+
+    return null;
   }
 
   /**

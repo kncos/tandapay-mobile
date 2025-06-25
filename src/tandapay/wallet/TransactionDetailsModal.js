@@ -2,7 +2,7 @@
 
 import React, { useContext, useState, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, Modal, ScrollView, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Modal, ScrollView, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipText from '../../common/ZulipText';

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, Alert, ActivityIndicator , StyleSheet } from 'react-native';
+import { View, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipButton from '../../common/ZulipButton';
@@ -31,12 +31,14 @@ export type EstimateGasCallback = (params: TransactionParams) => Promise<{|
   success: boolean,
   gasEstimate?: GasEstimate,
   error?: string,
+  originalError?: string,
 |}>;
 
 export type SendTransactionCallback = (params: TransactionParams, gasEstimate: GasEstimate) => Promise<{|
   success: boolean,
   txHash?: string,
   error?: string,
+  originalError?: string,
 |}>;
 
 // Encapsulated transaction function type
@@ -44,6 +46,7 @@ export type TransactionFunction = () => Promise<{|
   success: boolean,
   txHash?: string,
   error?: string,
+  originalError?: string,
 |}>;
 
 type Props = $ReadOnly<{|

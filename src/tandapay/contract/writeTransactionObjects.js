@@ -54,6 +54,7 @@ export type WriteTransaction = {|
     result: any,
     gasEstimate: ?string,
     error: ?string,
+    originalError?: string,
   |}>,
   estimateGasFunction?: (contract: any, ...args: any[]) => Promise<any>,
 |};
@@ -69,26 +70,47 @@ export type WriteTransaction = {|
 const createSimulation =
   (contractMethod: string, paramTransform?: (...args: any[]) => any[]) =>
   async (contract: any, ...args: any[]) => {
-    const executionResult = await TandaPayErrorHandler.withErrorHandling(async () => {
+    try {
       const transformedArgs = paramTransform ? paramTransform(...args) : args;
       const callResult = await contract.callStatic[contractMethod](...transformedArgs);
 
-      return callResult;
-    }, 'CONTRACT_ERROR');
-
-    if (executionResult.success) {
       return {
         success: true,
-        result: executionResult.data,
+        result: callResult,
         gasEstimate: null, // Simulation doesn't provide gas estimates
         error: null,
       };
-    } else {
+    } catch (error) {
+      // Handle simulation errors with more specific messaging
+      const parsedError = TandaPayErrorHandler.parseEthersError(error);
+
+      // For simulation failures, be explicit that the transaction would revert
+      let userMessage = parsedError.userMessage;
+
+      // Clean up layered error messages and make them more user-friendly
+      if (parsedError.type === 'CONTRACT_ERROR') {
+        // If it's already a good user message, use it directly
+        if (userMessage.includes('Premium has already been paid')
+            || userMessage.includes('This action can only be performed')
+            || userMessage.includes('community has collapsed')
+            || userMessage.includes('already been added')
+            || userMessage.includes('not valid for the current period')) {
+          // Keep the specific message as-is
+        } else if (userMessage.includes('Smart contract operation failed')
+                   || userMessage.includes('execution reverted')
+                   || userMessage.includes('transaction may fail')) {
+          // Replace generic messages with clearer revert message
+          userMessage = 'This transaction cannot be completed at this time. The contract state may not allow this operation right now.';
+        }
+      }
+
       return {
         success: false,
         result: null,
         gasEstimate: null,
-        error: executionResult.error.userMessage,
+        error: userMessage,
+        // Preserve original error for debugging
+        originalError: error?.message || String(error),
       };
     }
   };
@@ -109,24 +131,25 @@ const transactions: WriteTransaction[] = [
     writeFunction: contract => contract.issueRefund(true),
     // Simplified approach: just call the contract method directly
     simulateFunction: async (contract) => {
-      const executionResult = await TandaPayErrorHandler.withErrorHandling(
-        () => contract.callStatic.issueRefund(true),
-        'CONTRACT_ERROR'
-      );
-
-      if (executionResult.success) {
+      try {
+        const callResult = await contract.callStatic.issueRefund(true);
         return {
           success: true,
-          result: executionResult.data,
+          result: callResult,
           gasEstimate: null,
           error: null,
         };
-      } else {
+      } catch (error) {
+        // Handle simulation errors with more specific messaging
+        const parsedError = TandaPayErrorHandler.parseEthersError(error);
+
+        // Use the clean error message from ErrorHandler without adding prefixes
         return {
           success: false,
           result: null,
           gasEstimate: null,
-          error: executionResult.error.userMessage,
+          error: parsedError.userMessage,
+          originalError: error?.message || String(error),
         };
       }
     },
@@ -144,17 +167,47 @@ const transactions: WriteTransaction[] = [
     writeFunction: contract => contract.joinCommunity(),
     // Direct approach for no-parameter methods
     simulateFunction: async (contract) => {
-      const executionResult = await TandaPayErrorHandler.withErrorHandling(
-        () => contract.callStatic.joinCommunity(),
-        'CONTRACT_ERROR'
-      );
+      try {
+        const callResult = await contract.callStatic.joinCommunity();
+        return {
+          success: true,
+          result: callResult,
+          gasEstimate: null,
+          error: null,
+        };
+      } catch (error) {
+        // Handle simulation errors with more specific messaging
+        const parsedError = TandaPayErrorHandler.parseEthersError(error);
 
-      return {
-        success: executionResult.success,
-        result: executionResult.success ? executionResult.data : null,
-        gasEstimate: null,
-        error: executionResult.success ? null : executionResult.error.userMessage,
-      };
+        // For simulation failures, be explicit that the transaction would revert
+        let userMessage = parsedError.userMessage;
+
+        // Clean up layered error messages and make them more user-friendly
+        if (parsedError.type === 'CONTRACT_ERROR') {
+          // If it's already a good user message, use it directly
+          if (userMessage.includes('Premium has already been paid')
+              || userMessage.includes('This action can only be performed')
+              || userMessage.includes('community has collapsed')
+              || userMessage.includes('already been added')
+              || userMessage.includes('not valid for the current period')) {
+            // Keep the specific message as-is
+          } else if (userMessage.includes('Smart contract operation failed')
+                     || userMessage.includes('execution reverted')
+                     || userMessage.includes('transaction may fail')) {
+            // Replace generic messages with clearer revert message
+            userMessage = 'This transaction cannot be completed at this time. The contract state may not allow this operation right now.';
+          }
+        }
+
+        return {
+          success: false,
+          result: null,
+          gasEstimate: null,
+          error: userMessage,
+          // Preserve original error for debugging
+          originalError: error?.message || String(error),
+        };
+      }
     },
     estimateGasFunction: contract => contract.estimateGas.joinCommunity(),
   },
@@ -396,6 +449,7 @@ const transactions: WriteTransaction[] = [
     icon: IconUsers,
     writeFunction: contract => contract.createSubgroup(),
     simulateFunction: createSimulation('createSubgroup'),
+    estimateGasFunction: contract => contract.estimateGas.createSubgroup(),
   },
 
   {
