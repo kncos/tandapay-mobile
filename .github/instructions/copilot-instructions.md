@@ -53,6 +53,8 @@
     it in `<View style={TandaPayStyles.buttonRow}>` to ensure proper styling.
     Only ever have 1 or 2 `ZulipButton`s in a single row. You can find these
     styles at `src/tandapay/styles`.
+-   Do not make any "example" files or ".md" files to show/explain new code
+    you add unless explicitly asked to do so.
 
 # Styling and Component Best Practices
 
@@ -96,6 +98,9 @@ maintainability, consistency, and reusability.
     ease future style modifications. The only exception is when an inline style
     is truly dynamic and depends on a state value like `themeData`, in which case
     array syntax should be used.
+10. **Do not use hardcoded colors:** Always use colors defined in
+    `src/tandapay/styles/colors.js`, the constants file, or themeData. This ensures consistency
+    across the application and allows for easier theming.
 
 ## Architecture and Code Organization
 

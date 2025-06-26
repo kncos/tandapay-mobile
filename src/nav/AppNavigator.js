@@ -52,7 +52,7 @@ import ReadReceiptsScreen from '../message/ReadReceiptsScreen';
 import { useHaveServerDataGate } from '../withHaveServerDataGate';
 
 import TandaPayMenuScreen from '../tandapay/TandaPayMenuScreen';
-import TandaPayInfoScreen from '../tandapay/TandaPayInfoScreen';
+import TandaPayInfoScreen from '../tandapay/TandaPayInfo/TandaPayInfoScreen';
 import TandaPayActionsScreen from '../tandapay/TandaPayActionsScreen';
 import TandaPaySettingsScreen from '../tandapay/TandaPaySettingsScreen';
 import TandaPayNetworkSettingsScreen from '../tandapay/TandaPayNetworkSettingsScreen';

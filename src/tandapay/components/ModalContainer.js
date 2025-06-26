@@ -13,6 +13,7 @@ type Props = $ReadOnly<{|
   children: Node,
   onClose: () => void,
   title?: string,
+  contentPadding?: number,
 |}>;
 
 const customStyles = StyleSheet.create({
@@ -32,12 +33,12 @@ const customStyles = StyleSheet.create({
   },
   content: {
     ...ModalStyles.content,
-    padding: 16,
+    // padding will be set dynamically based on props
   },
 });
 
 export default function ModalContainer(props: Props): Node {
-  const { children, onClose, title } = props;
+  const { children, onClose, title, contentPadding = 16 } = props;
 
   return (
     <SafeAreaView style={customStyles.container}>
@@ -51,7 +52,7 @@ export default function ModalContainer(props: Props): Node {
         <CloseButton onPress={onClose} />
       </View>
 
-      <View style={customStyles.content}>
+      <View style={[customStyles.content, { padding: contentPadding }]}>
         {children}
       </View>
     </SafeAreaView>

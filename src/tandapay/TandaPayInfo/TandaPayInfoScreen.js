@@ -4,22 +4,22 @@ import React, { useEffect, useState, useCallback } from 'react';
 import type { Node } from 'react';
 import { View, RefreshControl, ScrollView, StyleSheet, Modal } from 'react-native';
 
-import type { AppNavigationProp } from '../nav/AppNavigator';
-import type { RouteProp } from '../react-navigation';
-import Screen from '../common/Screen';
-import ZulipText from '../common/ZulipText';
-import ZulipButton from '../common/ZulipButton';
-import ModalContainer from './components/ModalContainer';
-import { IconAlertTriangle } from '../common/Icons';
-import { useSelector } from '../react-redux';
-import { getCurrentTandaPayContractAddress } from './redux/selectors';
-import { fetchCommunityInfo } from './contract/communityInfo';
-import { batchGetAllMemberInfo, batchGetAllSubgroupInfo } from './contract/read';
-import { HALF_COLOR } from '../styles/constants';
+import type { AppNavigationProp } from '../../nav/AppNavigator';
+import type { RouteProp } from '../../react-navigation';
+import Screen from '../../common/Screen';
+import ZulipText from '../../common/ZulipText';
+import ZulipButton from '../../common/ZulipButton';
+import ModalContainer from '../components/ModalContainer';
+import { IconAlertTriangle } from '../../common/Icons';
+import { useSelector } from '../../react-redux';
+import { getCurrentTandaPayContractAddress } from '../redux/selectors';
+import { fetchCommunityInfo } from '../contract/communityInfo';
+import { batchGetAllMemberInfo, batchGetAllSubgroupInfo } from '../contract/read';
+import { HALF_COLOR } from '../../styles/constants';
 
-import type { CommunityInfo } from './contract/communityInfo';
-import type { MemberInfo, SubgroupInfo } from './contract/types';
-import TandaPayStyles from './styles';
+import type { CommunityInfo } from '../contract/communityInfo';
+import type { MemberInfo, SubgroupInfo } from '../contract/types';
+import TandaPayStyles from '../styles';
 import {
   CommunityOverviewCard,
   PeriodInfoCard,
@@ -27,7 +27,7 @@ import {
   MembersModalContent,
   SubgroupsModalContent,
   bigNumberToNumber,
-} from './TandaPayInfo';
+} from './index';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-info'>,
@@ -440,7 +440,7 @@ function TandaPayInfoScreen(props: Props): Node {
         animationType="slide"
         onRequestClose={handleCloseModals}
       >
-        <ModalContainer onClose={handleCloseModals} title="Community Members">
+        <ModalContainer onClose={handleCloseModals} title="Community Members" contentPadding={0}>
           <MembersModalContent
             membersData={membersData}
             loading={modalLoading}
@@ -456,7 +456,7 @@ function TandaPayInfoScreen(props: Props): Node {
         animationType="slide"
         onRequestClose={handleCloseModals}
       >
-        <ModalContainer onClose={handleCloseModals} title="Community Subgroups">
+        <ModalContainer onClose={handleCloseModals} title="Community Subgroups" contentPadding={0}>
           <SubgroupsModalContent
             subgroupsData={subgroupsData}
             loading={modalLoading}
