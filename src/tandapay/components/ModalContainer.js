@@ -1,13 +1,13 @@
 /* @flow strict-local */
 
-import React from 'react';
+import React, { useContext } from 'react';
 import type { Node } from 'react';
 import { View, SafeAreaView, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import CloseButton from './CloseButton';
 import ModalStyles from '../styles/modals';
-import { TandaPayColors } from '../styles';
+import { ThemeContext } from '../../styles/theme';
 
 type Props = $ReadOnly<{|
   children: Node,
@@ -19,17 +19,19 @@ type Props = $ReadOnly<{|
 const customStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: TandaPayColors.white,
+    // backgroundColor will be set dynamically using theme
   },
   header: {
     ...ModalStyles.header,
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: TandaPayColors.subtle,
+    marginBottom: 0,
+    // borderBottomColor and backgroundColor will be set dynamically
   },
   title: {
     ...ModalStyles.title,
     textAlign: 'center',
+    // color will use ZulipText default (theme-based)
   },
   content: {
     ...ModalStyles.content,
@@ -39,10 +41,19 @@ const customStyles = StyleSheet.create({
 
 export default function ModalContainer(props: Props): Node {
   const { children, onClose, title, contentPadding = 16 } = props;
+  const themeData = useContext(ThemeContext);
 
   return (
-    <SafeAreaView style={customStyles.container}>
-      <View style={customStyles.header}>
+    <SafeAreaView style={[customStyles.container, { backgroundColor: themeData.backgroundColor }]}>
+      <View
+        style={[
+          customStyles.header,
+          {
+            backgroundColor: themeData.backgroundColor,
+            borderBottomColor: themeData.dividerColor,
+          },
+        ]}
+      >
         <View style={{ width: 60 }} />
         {(title != null && title !== '') && (
           <ZulipText style={customStyles.title}>
@@ -52,7 +63,15 @@ export default function ModalContainer(props: Props): Node {
         <CloseButton onPress={onClose} />
       </View>
 
-      <View style={[customStyles.content, { padding: contentPadding }]}>
+      <View
+        style={[
+          customStyles.content,
+          {
+            backgroundColor: themeData.backgroundColor,
+            padding: contentPadding,
+          },
+        ]}
+      >
         {children}
       </View>
     </SafeAreaView>
