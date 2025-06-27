@@ -221,7 +221,6 @@ export default function ApiKeyCard(props: Props): Node {
         <ScrollableTextBox
           text={revealedApiKey}
           label="API Key"
-          onCopy={(text, label) => Alert.alert('Copied', `${label} copied to clipboard`)}
         />
       )}
     </Card>

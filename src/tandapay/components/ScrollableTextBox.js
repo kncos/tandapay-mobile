@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert , StyleSheet } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 import ZulipText from '../../common/ZulipText';
@@ -14,7 +14,8 @@ type Props = {|
   text: string,
   label: string,
   size?: 'small' | 'normal',
-  onCopy?: (text: string, label: string) => void,
+  onCopySuccess?: (text: string, label: string) => void,
+  onCopyError?: (error: Error, text: string, label: string) => void,
 |};
 
 const styles = StyleSheet.create({
@@ -51,15 +52,45 @@ const styles = StyleSheet.create({
   },
 });
 
-function defaultOnCopy(text: string, label: string) {
-  Clipboard.setString(text);
-  Alert.alert('Success', `${label} copied to clipboard`);
+async function handleCopy(
+  text: string,
+  label: string,
+  onCopySuccess?: (text: string, label: string) => void,
+  onCopyError?: (error: Error, text: string, label: string) => void
+): Promise<void> {
+  try {
+    // Ensure we have text to copy
+    if (!text || text.trim() === '') {
+      const error = new Error('No text to copy');
+      if (onCopyError) {
+        onCopyError(error, text, label);
+      } else {
+        Alert.alert('Error', 'No text to copy');
+      }
+      return;
+    }
+
+    await Clipboard.setString(text);
+
+    if (onCopySuccess) {
+      onCopySuccess(text, label);
+    } else {
+      Alert.alert('Success', `${label} copied to clipboard`);
+    }
+  } catch (error) {
+    if (onCopyError) {
+      onCopyError(error, text, label);
+    } else {
+      Alert.alert('Error', 'Failed to copy to clipboard');
+    }
+  }
 }
 
 export default function ScrollableTextBox({
   text,
   label,
-  onCopy = defaultOnCopy,
+  onCopySuccess,
+  onCopyError,
 }: Props): Node {
   const themeData = useContext(ThemeContext);
 
@@ -89,7 +120,7 @@ export default function ScrollableTextBox({
       </ScrollView>
       <TouchableOpacity
         style={styles.overlayButton}
-        onPress={() => onCopy(text, label)}
+        onPress={() => handleCopy(text, label, onCopySuccess, onCopyError)}
       >
         <IconCopy size={14} color={TandaPayColors.white} />
       </TouchableOpacity>

@@ -136,7 +136,6 @@ export default function WalletReceiveScreen(props: Props): Node {
         <ScrollableTextBox
           text={walletAddress}
           label="Wallet Address"
-          onCopy={(text, label) => Alert.alert('Copied', `${label} copied to clipboard`)}
         />
 
         <View style={styles.buttonContainer}>

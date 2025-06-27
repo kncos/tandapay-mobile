@@ -2,7 +2,7 @@
 
 import React, { useState, useContext } from 'react';
 import type { Node } from 'react';
-import { View, Alert , StyleSheet } from 'react-native';
+import { View, Alert, StyleSheet } from 'react-native';
 
 import { useSelector, useDispatch } from '../../react-redux';
 import { ThemeContext } from '../../styles';
@@ -235,7 +235,6 @@ export default function TokenManagementScreen(props: Props): Node {
                   <ScrollableTextBox
                     text={token.address}
                     label={`${token.symbol} Address`}
-                    onCopy={(text, label) => Alert.alert('Copied', `${label} copied to clipboard`)}
                   />
                 </View>
               )}
