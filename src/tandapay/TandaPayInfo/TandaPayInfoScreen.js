@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, RefreshControl, ScrollView, StyleSheet, Modal } from 'react-native';
+import { View, RefreshControl, ScrollView, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import type { RouteProp } from '../../react-navigation';
@@ -12,11 +12,11 @@ import ZulipButton from '../../common/ZulipButton';
 import ModalContainer from '../components/ModalContainer';
 import { IconAlertTriangle } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
-import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading } from '../redux/selectors';
+import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale } from '../redux/selectors';
 import { fetchCommunityInfo } from '../contract/communityInfo';
 import { getWalletAddress } from '../wallet/WalletManager';
 import { batchGetAllMemberInfo, batchGetAllSubgroupInfo } from '../contract/read';
-import { HALF_COLOR } from '../../styles/constants';
+import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
 
 import type { CommunityInfo } from '../contract/communityInfo';
 import type { MemberInfo, SubgroupInfo } from '../contract/types';
@@ -101,10 +101,11 @@ function TandaPayInfoScreen(props: Props): Node {
 
   // State management
   const [localCommunityInfo, setLocalCommunityInfo] = useState<?CommunityInfo>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false, will be set by fetch logic
   const [error, setError] = useState<?string>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [userWalletAddress, setUserWalletAddress] = useState<?string>(null);
+  const [walletAddressLoading, setWalletAddressLoading] = useState(true); // Track wallet address loading
 
   // Modal state
   const [membersModalVisible, setMembersModalVisible] = useState(false);
@@ -118,23 +119,28 @@ function TandaPayInfoScreen(props: Props): Node {
   const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
   const reduxCommunityInfo = useSelector(state => getCommunityInfo(state));
   const reduxLoading = useSelector(state => getCommunityInfoLoading(state));
+  const isDataStale = useSelector(state => isCommunityInfoStale(state, 5 * 60 * 1000)); // 5 minutes
 
   // Use Redux state if available, otherwise fall back to local state
   const communityInfo = reduxCommunityInfo || localCommunityInfo;
 
   // Use Redux loading state if available, otherwise fall back to local loading
-  const isLoading = reduxLoading || loading;
+  // Also include wallet address loading to ensure we wait for all data
+  const isLoading = reduxLoading || loading || walletAddressLoading;
 
   // Get user's wallet address on component mount
   useEffect(() => {
     const loadWalletAddress = async () => {
       try {
+        setWalletAddressLoading(true);
         const addressResult = await getWalletAddress();
         if (addressResult.success && addressResult.data != null && addressResult.data.trim() !== '') {
           setUserWalletAddress(addressResult.data);
         }
       } catch (err) {
         // Silently fail - user might not have a wallet set up yet
+      } finally {
+        setWalletAddressLoading(false);
       }
     };
 
@@ -144,6 +150,13 @@ function TandaPayInfoScreen(props: Props): Node {
   // Fetch community information
   const fetchCommunityData = useCallback(
     async (forceRefresh: boolean = false) => {
+      // Only fetch if data is stale, missing, or force refresh is requested
+      if (!forceRefresh && reduxCommunityInfo && !isDataStale) {
+        // Data is fresh, no need to fetch
+        setLoading(false);
+        return;
+      }
+
       try {
         if (forceRefresh) {
           setRefreshing(true);
@@ -180,13 +193,23 @@ function TandaPayInfoScreen(props: Props): Node {
         setRefreshing(false);
       }
     },
-    [contractAddress, userWalletAddress],
+    [contractAddress, userWalletAddress, reduxCommunityInfo, isDataStale],
   );
 
-  // Initial load
+  // Initial load - check if data exists and is fresh
   useEffect(() => {
-    fetchCommunityData();
-  }, [fetchCommunityData]);
+    // Only proceed if contract address is available and wallet address loading is complete
+    if (contractAddress != null && contractAddress.trim() !== '' && !walletAddressLoading) {
+      // If we don't have data or data is stale, fetch it
+      if (!reduxCommunityInfo || isDataStale) {
+        setLoading(true);
+        fetchCommunityData();
+      } else {
+        // We have fresh data, no need to fetch
+        setLoading(false);
+      }
+    }
+  }, [contractAddress, reduxCommunityInfo, isDataStale, fetchCommunityData, walletAddressLoading]);
 
   // Refresh handler
   const handleRefresh = useCallback(() => {
@@ -363,6 +386,7 @@ function TandaPayInfoScreen(props: Props): Node {
     return (
       <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BRAND_COLOR} style={{ marginBottom: 16 }} />
           <ZulipText style={styles.loadingText}>Loading community information...</ZulipText>
         </View>
       </Screen>
