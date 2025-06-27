@@ -201,6 +201,24 @@ export const getTandaPaySelectedTokenSymbol = (state: PerAccountState): string =
   }
 };
 
+export const getTandaPayDefaultTokens = (state: PerAccountState): $ReadOnlyArray<mixed> => {
+  try {
+    const tandaPayState = getTandaPayState(state);
+    return tandaPayState.tokens.defaultTokens || [];
+  } catch (error) {
+    return [];
+  }
+};
+
+export const getTandaPayCustomTokens = (state: PerAccountState): $ReadOnlyArray<mixed> => {
+  try {
+    const tandaPayState = getTandaPayState(state);
+    return tandaPayState.tokens.customTokens || [];
+  } catch (error) {
+    return [];
+  }
+};
+
 // Community info selectors
 export const getCommunityInfoState = (state: PerAccountState): CommunityInfoState => {
   const tandaPayState = getTandaPayState(state);

@@ -9,16 +9,19 @@ import ZulipTextButton from '../../common/ZulipTextButton';
 import { Card } from '../components';
 import { IconTandaPayInfo } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
-import { getCurrentTandaPayContractAddress, getTandaPaySelectedNetwork } from '../redux/selectors';
+import {
+  getCurrentTandaPayContractAddress,
+  getTandaPaySelectedNetwork,
+  getTandaPayDefaultTokens,
+  getTandaPayCustomTokens,
+} from '../redux/selectors';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
+import { findTokenByAddress, getTokenDisplayText } from '../utils/tokenUtils';
+import type { TokenDisplayInfo } from '../utils/tokenUtils';
+import ScrollableTextBox from '../components/ScrollableTextBox';
 
 import type { CommunityInfo } from '../contract/communityInfo';
-import {
-  formatBigNumber,
-  formatTokenAmount,
-  getCommunityStateDisplayName,
-  bigNumberToNumber
-} from './utils';
+import { formatBigNumber, formatTokenAmount, getCommunityStateDisplayName, bigNumberToNumber } from './utils';
 
 type Props = $ReadOnly<{|
   communityInfo: CommunityInfo,
@@ -72,15 +75,31 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
     marginRight: 16,
   },
+  tokenAddressContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
 });
 
 export default function CommunityOverviewCard(props: Props): Node {
   const { communityInfo, onShowMembers, onShowSubgroups } = props;
   const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
   const selectedNetwork = useSelector(state => getTandaPaySelectedNetwork(state));
+  const defaultTokens = useSelector(state => getTandaPayDefaultTokens(state));
+  const customTokens = useSelector(state => getTandaPayCustomTokens(state));
 
   const memberCount = bigNumberToNumber(communityInfo.currentMemberCount);
   const subgroupCount = bigNumberToNumber(communityInfo.currentSubgroupCount);
+
+  // Find the payment token information
+  const paymentTokenInfo: ?TokenDisplayInfo = findTokenByAddress(
+    communityInfo.paymentTokenAddress,
+    selectedNetwork,
+    defaultTokens,
+    customTokens
+  );
+
+  const tokenSymbol = getTokenDisplayText(paymentTokenInfo);
 
   return (
     <Card>
@@ -117,7 +136,7 @@ export default function CommunityOverviewCard(props: Props): Node {
         <ZulipText style={styles.infoValue}>
           {formatTokenAmount(formatBigNumber(communityInfo.basePremium) || '0')}
           {' '}
-          ETH
+          {tokenSymbol}
         </ZulipText>
       </View>
 
@@ -126,9 +145,21 @@ export default function CommunityOverviewCard(props: Props): Node {
         <ZulipText style={styles.infoValue}>
           {formatTokenAmount(formatBigNumber(communityInfo.totalCoverageAmount) || '0')}
           {' '}
-          ETH
+          {tokenSymbol}
         </ZulipText>
       </View>
+
+      {/* Show payment token address if it's unknown */}
+      {paymentTokenInfo && !paymentTokenInfo.isKnown && (
+        <View style={styles.tokenAddressContainer}>
+          <ZulipText style={styles.infoLabel}>Payment Token Address:</ZulipText>
+          <ScrollableTextBox
+            text={paymentTokenInfo.address}
+            label="Payment Token"
+            size="small"
+          />
+        </View>
+      )}
 
       <View style={styles.countRow}>
         <View style={styles.countContainer}>
