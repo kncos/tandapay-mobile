@@ -92,20 +92,6 @@ const canApproveSugroupAssignment = (params: CustomFilterParameters): CustomFilt
   return { result: true };
 };
 
-const canDefectFromCommunity = (params: CustomFilterParameters): CustomFilterReturnType => {
-  const { communityInfo } = params;
-
-  // Check if user is a member who can defect
-  if (!communityInfo.userMemberInfo) {
-    return {
-      result: false,
-      reason: 'User is not a member of the community'
-    };
-  }
-
-  return { result: true };
-};
-
 const canRequestEmergencySecretaryHandoff = (params: CustomFilterParameters): CustomFilterReturnType => {
   const { userRole } = params;
 
@@ -177,6 +163,97 @@ const canSubmitClaim = (params: CustomFilterParameters): CustomFilterReturnType 
   return { result: true };
 };
 
+const canWithdrawRefund = (params: CustomFilterParameters): CustomFilterReturnType => {
+  const { communityInfo } = params;
+
+  // Check if user is a member with available refunds
+  if (!communityInfo.userMemberInfo) {
+    return {
+      result: false,
+      reason: 'User is not a member of the community'
+    };
+  }
+
+  // $FlowFixMe[incompatible-use] - BigNumber comparison
+  const availableAmount = communityInfo.userMemberInfo.availableToWithdrawAmount;
+  // $FlowFixMe[incompatible-use] - BigNumber toString method
+  if (availableAmount == null || availableAmount.toString() === '0') {
+    return {
+      result: false,
+      reason: 'No refunds available to withdraw'
+    };
+  }
+
+  return { result: true };
+};
+
+const canWithdrawClaimFund = (params: CustomFilterParameters): CustomFilterReturnType => {
+  const { communityInfo, userAddress } = params;
+
+  // Check if user is a member
+  if (!communityInfo.userMemberInfo) {
+    return {
+      result: false,
+      reason: 'User is not a member of the community'
+    };
+  }
+
+  // Check if there are whitelisted claims from the previous period
+  if (!communityInfo.whitelistedClaimsFromPreviousPeriod
+      || communityInfo.whitelistedClaimsFromPreviousPeriod.length === 0) {
+    return {
+      result: false,
+      reason: 'No whitelisted claims from previous period'
+    };
+  }
+
+  // Check if user was a claimant in any of the previous period's whitelisted claims
+  const userHadWhitelistedClaim = communityInfo.whitelistedClaimsFromPreviousPeriod.some(
+    claim => claim.claimantWalletAddress.toLowerCase() === userAddress.toLowerCase()
+  );
+
+  if (!userHadWhitelistedClaim) {
+    return {
+      result: false,
+      reason: 'User did not have any whitelisted claims in the previous period'
+    };
+  }
+
+  return { result: true };
+};
+
+const canDefectFromCommunityUpdated = (params: CustomFilterParameters): CustomFilterReturnType => {
+  const { communityInfo } = params;
+
+  // Check if user is a member who can defect
+  if (!communityInfo.userMemberInfo) {
+    return {
+      result: false,
+      reason: 'User is not a member of the community'
+    };
+  }
+
+  // Defection can only occur in Default or Fractured state
+  if (communityInfo.communityState !== TandaPayState.Default
+      && communityInfo.communityState !== TandaPayState.Fractured) {
+    return {
+      result: false,
+      reason: 'Defection is only allowed in Default or Fractured state'
+    };
+  }
+
+  // Check if there were claims in the previous period
+  if (!communityInfo.whitelistedClaimsFromPreviousPeriod
+      || communityInfo.whitelistedClaimsFromPreviousPeriod.length === 0) {
+    return {
+      result: false,
+      reason: 'No claims occurred in the previous period'
+    };
+  }
+
+  return { result: true };
+};
+
 // Write method filters mapping
 const TandaPayWriteMethodFilters: {[string]: MethodFilter} = {
   advancePeriod: {
@@ -228,7 +305,7 @@ const TandaPayWriteMethodFilters: {[string]: MethodFilter} = {
   },
   defectFromCommunity: {
     allowableRoles: [TandaPayRole.Member, TandaPayRole.Secretary],
-    allowedByCustomProcedure: canDefectFromCommunity,
+    allowedByCustomProcedure: canDefectFromCommunityUpdated,
   },
   defineSecretarySuccessorList: {
     allowableRoles: [TandaPayRole.Secretary],
@@ -298,9 +375,11 @@ const TandaPayWriteMethodFilters: {[string]: MethodFilter} = {
   },
   withdrawClaimFund: {
     allowableRoles: [TandaPayRole.Member, TandaPayRole.Secretary],
+    allowedByCustomProcedure: canWithdrawClaimFund,
   },
   withdrawRefund: {
     allowableRoles: [TandaPayRole.Member, TandaPayRole.Secretary],
+    allowedByCustomProcedure: canWithdrawRefund,
   },
 };
 

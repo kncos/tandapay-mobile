@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType } from './types';
+import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType, ClaimInfo } from './types';
 import { getProvider } from '../web3';
 import { getTandaPayReadActions } from './read';
 import { TandaPayInfo } from './TandaPay';
@@ -34,6 +34,7 @@ export type CommunityInfo = {
   currentPeriodInfo: PeriodInfo,
   claimIdsInCurrentPeriod: Array<BigNumber>,
   whitelistedClaimIdsInCurrentPeriod: Array<BigNumber>,
+  whitelistedClaimsFromPreviousPeriod: ?Array<ClaimInfo>,
   userMemberInfo: ?MemberInfo,
   userSubgroupInfo: ?SubgroupInfo,
   lastUpdated: number,
@@ -240,12 +241,16 @@ class TandaPayCommunityInfo {
     // Fetch user-specific data if applicable
     const userData = await this._fetchUserData();
 
+    // Fetch previous period's whitelisted claims
+    const previousPeriodClaims = await this._fetchPreviousPeriodWhitelistedClaims(basicData.currentPeriodId);
+
     // Build the final community info object
     const communityInfo: CommunityInfo = {
       ...basicData,
       currentPeriodInfo: periodData.periodInfo,
       claimIdsInCurrentPeriod: periodData.claimIdsInPeriod,
       whitelistedClaimIdsInCurrentPeriod: periodData.whitelistedClaimIds,
+      whitelistedClaimsFromPreviousPeriod: previousPeriodClaims,
       userMemberInfo: userData.userMemberInfo,
       userSubgroupInfo: userData.userSubgroupInfo,
       lastUpdated: Date.now(),
@@ -483,6 +488,83 @@ class TandaPayCommunityInfo {
     }
 
     return { userMemberInfo, userSubgroupInfo };
+  }
+
+  /**
+   * Fetch whitelisted claims from the previous period
+   * @private
+   */
+  async _fetchPreviousPeriodWhitelistedClaims(currentPeriodId: BigNumber): Promise<?Array<ClaimInfo>> {
+    // Only fetch if we're in period 2 or later (period 0 is invalid, period 1 is first valid period)
+    // $FlowFixMe[incompatible-use] - BigNumber comparison
+    if (currentPeriodId.lte(1)) {
+      return null;
+    }
+
+    try {
+      // $FlowFixMe[incompatible-use] - BigNumber arithmetic
+      const previousPeriodId = currentPeriodId.sub(1);
+
+      // First, get whitelisted claim IDs from the previous period
+      const whitelistedClaimIds = await this.rateLimitedContractCall(
+        'getWhitelistedClaimIdsInPeriod',
+        [previousPeriodId]
+      );
+
+      if (!whitelistedClaimIds || whitelistedClaimIds.length === 0) {
+        return null;
+      }
+
+      // Prepare multicall to get claim info for all whitelisted claims
+      const claimInfoCalls = whitelistedClaimIds.map(claimId => ({
+        functionName: 'getClaimInfo',
+        args: [claimId, previousPeriodId]
+      }));
+
+      const claimInfoResult = await executeTandaPayMulticall(
+        this._contractAddress || '',
+        TandaPayInfo.abi,
+        claimInfoCalls
+      );
+
+      if (!claimInfoResult.success) {
+        TandaPayErrorHandler.createError(
+          'CONTRACT_ERROR',
+          `Failed to fetch previous period claim info: ${claimInfoResult.error.message || 'Unknown error'}`,
+          {
+            userMessage: 'Unable to load previous period claim information',
+            details: { previousPeriodId: previousPeriodId.toString(), error: claimInfoResult.error }
+          }
+        );
+        return null;
+      }
+
+      // Transform the raw claim data into ClaimInfo objects
+      const claimInfos: Array<ClaimInfo> = claimInfoResult.data
+        .filter(claimData => claimData != null)
+        .map((claimData, index) => ({
+          id: whitelistedClaimIds[index],
+          periodId: previousPeriodId,
+          amount: claimData.amount || 0,
+          isWhitelisted: claimData.isWhitelisted || false,
+          claimantWalletAddress: claimData.claimant || '',
+          claimantSubgroupId: claimData.subgroupId || 0,
+          hasClaimantClaimedFunds: claimData.hasClaimantClaimedFunds || false,
+        }));
+
+      return claimInfos.length > 0 ? claimInfos : null;
+    } catch (error) {
+      TandaPayErrorHandler.createError(
+        'CONTRACT_ERROR',
+        `Failed to fetch previous period whitelisted claims: ${error?.message || 'Unknown error'}`,
+        {
+          userMessage: 'Unable to load previous period claim information',
+          // $FlowFixMe[incompatible-use] - BigNumber toString
+          details: { currentPeriodId: currentPeriodId.toString(), error }
+        }
+      );
+      return null;
+    }
   }
 
   /**
