@@ -10,6 +10,7 @@ import NavRow from '../common/NavRow';
 // $FlowFixMe - importing from untyped module
 import { getAllWriteTransactions } from './contract/writeTransactionObjects';
 import type { WriteTransaction } from './contract/writeTransactionObjects';
+import { getSuggestedMethods } from './contract/suggestedMethods';
 import TransactionModal from './components/TransactionModal';
 import { TandaRibbon } from './components';
 
@@ -26,6 +27,9 @@ export default function TandaPayActionsScreen(props: Props): Node {
   // Note: The TransactionModal now integrates with real contract instances
   // via ContractInstanceManager when transactions are executed
   const writeTransactions = getAllWriteTransactions();
+
+  // Get suggested transactions based on current community state and user context
+  const suggestedTransactions = getSuggestedMethods();
 
   // Helper function to handle transaction button press
   const handleTransactionPress = useCallback((transaction: WriteTransaction) => {
@@ -51,6 +55,21 @@ export default function TandaPayActionsScreen(props: Props): Node {
 
   return (
     <Screen title="TandaPay Actions">
+      {/* Suggested Methods Ribbon */}
+      {suggestedTransactions.length > 0 && (
+        <TandaRibbon label="Suggested Actions" marginTop={0}>
+          {suggestedTransactions.map(transaction => (
+            <NavRow
+              key={transaction.functionName}
+              leftElement={{ type: 'icon', Component: transaction.icon }}
+              title={transaction.displayName}
+              onPress={() => handleTransactionPress(transaction)}
+              subtitle={transaction.description}
+            />
+          ))}
+        </TandaRibbon>
+      )}
+
       <TandaRibbon label="Member Actions" marginTop={0}>
         {writeTransactions
           .filter(transaction => transaction.role !== 'secretary')
