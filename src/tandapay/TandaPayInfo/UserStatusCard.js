@@ -8,10 +8,10 @@ import ZulipText from '../../common/ZulipText';
 import { Card } from '../components';
 import { IconPerson } from '../../common/Icons';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
-import TandaPayColors from '../styles/colors';
+import MemberInfoDisplay from './MemberInfoDisplay';
 
 import type { CommunityInfo } from '../contract/communityInfo';
-import { formatBigNumber, getMemberStatusDisplayName, bigNumberToNumber } from './utils';
+import { bigNumberToNumber } from './utils';
 
 type Props = $ReadOnly<{|
   communityInfo: CommunityInfo,
@@ -40,9 +40,6 @@ const styles = StyleSheet.create({
   infoValue: {
     fontWeight: 'bold',
   },
-  statusTextBase: {
-    fontWeight: 'bold',
-  },
 });
 
 export default function UserStatusCard(props: Props): Node {
@@ -60,63 +57,12 @@ export default function UserStatusCard(props: Props): Node {
       </View>
 
       {isValidMember && userMemberInfo ? (
-        <>
-          <View style={styles.infoRow}>
-            <ZulipText style={styles.infoLabel}>Member ID:</ZulipText>
-            <ZulipText style={styles.infoValue}>
-              #
-              {formatBigNumber(userMemberInfo.id)}
-            </ZulipText>
-          </View>
-
-          <View style={styles.infoRow}>
-            <ZulipText style={styles.infoLabel}>Status:</ZulipText>
-            <ZulipText style={styles.infoValue}>
-              {getMemberStatusDisplayName(userMemberInfo.memberStatus ?? 0)}
-            </ZulipText>
-          </View>
-
-          <View style={styles.infoRow}>
-            <ZulipText style={styles.infoLabel}>Subgroup:</ZulipText>
-            <ZulipText style={styles.infoValue}>
-              {userSubgroupInfo != null && bigNumberToNumber(userSubgroupInfo.id) > 0
-                ? `#${formatBigNumber(userSubgroupInfo.id)}`
-                : 'Not in a Subgroup'}
-            </ZulipText>
-          </View>
-
-          <View style={styles.infoRow}>
-            <ZulipText style={styles.infoLabel}>Premium Paid:</ZulipText>
-            <ZulipText
-              style={[
-                styles.statusTextBase,
-                {
-                  color: userMemberInfo.isPremiumPaidThisPeriod
-                    ? TandaPayColors.success
-                    : TandaPayColors.error,
-                },
-              ]}
-            >
-              {userMemberInfo.isPremiumPaidThisPeriod ? 'Yes' : 'No'}
-            </ZulipText>
-          </View>
-
-          <View style={styles.infoRow}>
-            <ZulipText style={styles.infoLabel}>Coverage Eligible:</ZulipText>
-            <ZulipText
-              style={[
-                styles.statusTextBase,
-                {
-                  color: userMemberInfo.isEligibleForCoverageThisPeriod
-                    ? TandaPayColors.success
-                    : TandaPayColors.error,
-                },
-              ]}
-            >
-              {userMemberInfo.isEligibleForCoverageThisPeriod ? 'Yes' : 'No'}
-            </ZulipText>
-          </View>
-        </>
+        <MemberInfoDisplay
+          member={userMemberInfo}
+          showMemberId
+          showSubgroupId
+          subgroupId={userSubgroupInfo ? bigNumberToNumber(userSubgroupInfo.id) : null}
+        />
       ) : (
         <View style={styles.infoRow}>
           <ZulipText style={styles.infoLabel}>Membership:</ZulipText>

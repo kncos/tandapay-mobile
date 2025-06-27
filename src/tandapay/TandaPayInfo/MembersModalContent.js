@@ -9,14 +9,13 @@ import { TandaRibbon } from '../components';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
 import TandaPayColors from '../styles/colors';
 import { ThemeContext } from '../../styles/theme';
+import MemberInfoDisplay from './MemberInfoDisplay';
 
 import type { ThemeData } from '../../styles/theme';
 
 import type { MemberInfo } from '../contract/types';
 import {
   formatBigNumber,
-  getMemberStatusDisplayName,
-  getAssignmentStatusDisplayName,
   groupMembersBySubgroup
 } from './utils';
 
@@ -45,17 +44,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  infoLabel: {
-    color: HALF_COLOR,
-  },
   infoValue: {
-    fontWeight: 'bold',
-  },
-  infoValueSmall: {
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  statusTextBase: {
     fontWeight: 'bold',
   },
   memberHeader: {
@@ -75,10 +64,6 @@ const styles = StyleSheet.create({
     backgroundColor: TandaPayColors.disabled,
     marginVertical: 8,
   },
-  ribbonContent: {
-    padding: 0,
-    // backgroundColor will be handled dynamically
-  },
 });
 
 // Render member details for a ribbon
@@ -93,52 +78,12 @@ function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, isLast:
       </View>
 
       <View style={styles.memberDetails}>
-        <View style={styles.infoRow}>
-          <ZulipText style={styles.infoLabel}>Address:</ZulipText>
-          <ZulipText style={styles.infoValueSmall}>
-            {member.walletAddress.slice(0, 6)}
-            ...
-            {member.walletAddress.slice(-4)}
-          </ZulipText>
-        </View>
-
-        <View style={styles.infoRow}>
-          <ZulipText style={styles.infoLabel}>Status:</ZulipText>
-          <ZulipText style={styles.infoValue}>
-            {getMemberStatusDisplayName(member.memberStatus || 0)}
-          </ZulipText>
-        </View>
-
-        <View style={styles.infoRow}>
-          <ZulipText style={styles.infoLabel}>Assignment:</ZulipText>
-          <ZulipText style={styles.infoValue}>
-            {getAssignmentStatusDisplayName(member.assignmentStatus || 0)}
-          </ZulipText>
-        </View>
-
-        <View style={styles.infoRow}>
-          <ZulipText style={styles.infoLabel}>Premium Paid:</ZulipText>
-          <ZulipText
-            style={[
-              styles.statusTextBase,
-              { color: member.isPremiumPaidThisPeriod ? TandaPayColors.success : TandaPayColors.error },
-            ]}
-          >
-            {member.isPremiumPaidThisPeriod ? 'Yes' : 'No'}
-          </ZulipText>
-        </View>
-
-        <View style={styles.infoRow}>
-          <ZulipText style={styles.infoLabel}>Coverage Eligible:</ZulipText>
-          <ZulipText
-            style={[
-              styles.statusTextBase,
-              { color: member.isEligibleForCoverageThisPeriod ? TandaPayColors.success : TandaPayColors.error },
-            ]}
-          >
-            {member.isEligibleForCoverageThisPeriod ? 'Yes' : 'No'}
-          </ZulipText>
-        </View>
+        <MemberInfoDisplay
+          member={member}
+          showAddress
+          showAssignmentStatus
+          compact
+        />
       </View>
 
       {!isLast && <View style={styles.memberSeparator} />}
