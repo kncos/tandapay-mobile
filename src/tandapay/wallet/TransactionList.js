@@ -166,7 +166,7 @@ export default function TransactionList({
 
           return (
             <View
-              key={etherscanTransaction.hash || `transfer-${index}`}
+              key={`${etherscanTransaction.hash || `transfer-${index}`}-${etherscanTransaction.direction}`}
               style={{ padding: 12, marginVertical: 2, backgroundColor: themeData.cardColor, borderRadius: 8 }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
