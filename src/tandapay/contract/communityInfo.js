@@ -5,8 +5,8 @@ import { getProvider } from '../web3';
 import { getTandaPayReadActions } from './read';
 import { TandaPayInfo } from './TandaPay';
 import { executeTandaPayMulticall } from './multicall';
-import { getTandaPayNetworkPerformance, getCurrentTandaPayContractAddress } from '../redux/selectors';
-import { updateCommunityInfo } from '../redux/actions';
+import { getTandaPayNetworkPerformance, getCurrentTandaPayContractAddress, getCachedBatchMembers, getCachedBatchSubgroups, isBatchMembersStale, isBatchSubgroupsStale } from '../redux/selectors';
+import { updateCommunityInfo, updateBatchMembers, updateBatchSubgroups, invalidateBatchData } from '../redux/actions';
 import { tryGetActiveAccountState } from '../../selectors';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
@@ -652,9 +652,25 @@ class TandaPayCommunityInfo {
   /**
    * Fetch and cache all members information
    * This will update the cached community info in Redux with the batch data
+   * Only fetches if data is stale (older than 5 minutes) or not cached
    */
   async fetchAndCacheAllMembers(): Promise<TandaPayResult<Array<MemberInfo>>> {
     try {
+      // Check if we have fresh cached data in Redux
+      if (store && store.getState) {
+        const globalState = store.getState();
+        const accountState = tryGetActiveAccountState(globalState);
+        if (accountState) {
+          const cachedMembers = getCachedBatchMembers(accountState);
+          const isStale = isBatchMembersStale(accountState, 300000); // 5 minutes
+
+          if (cachedMembers && !isStale) {
+            // Return cached data if it's fresh
+            return { success: true, data: cachedMembers };
+          }
+        }
+      }
+
       // First get current community info to get member count
       const currentInfo: CommunityInfo = await this.getCommunityInfo();
 
@@ -662,6 +678,10 @@ class TandaPayCommunityInfo {
       const memberCount = parseInt(currentInfo.currentMemberCount.toString(), 10);
 
       if (memberCount === 0) {
+        // Update Redux with empty data
+        if (store && store.dispatch) {
+          store.dispatch(updateBatchMembers([], this._contractAddress, this.config.userAddress));
+        }
         return { success: true, data: [] };
       }
 
@@ -674,8 +694,10 @@ class TandaPayCommunityInfo {
         return result;
       }
 
-      // Update the cached community info with the members data
-      await this._updateCachedCommunityInfoWithBatchData({ allMembersInfo: result.data });
+      // Update Redux with the fresh batch data
+      if (store && store.dispatch) {
+        store.dispatch(updateBatchMembers(result.data, this._contractAddress, this.config.userAddress));
+      }
 
       return { success: true, data: result.data };
     } catch (error) {
@@ -694,9 +716,25 @@ class TandaPayCommunityInfo {
   /**
    * Fetch and cache all subgroups information
    * This will update the cached community info in Redux with the batch data
+   * Only fetches if data is stale (older than 5 minutes) or not cached
    */
   async fetchAndCacheAllSubgroups(): Promise<TandaPayResult<Array<SubgroupInfo>>> {
     try {
+      // Check if we have fresh cached data in Redux
+      if (store && store.getState) {
+        const globalState = store.getState();
+        const accountState = tryGetActiveAccountState(globalState);
+        if (accountState) {
+          const cachedSubgroups = getCachedBatchSubgroups(accountState);
+          const isStale = isBatchSubgroupsStale(accountState, 300000); // 5 minutes
+
+          if (cachedSubgroups && !isStale) {
+            // Return cached data if it's fresh
+            return { success: true, data: cachedSubgroups };
+          }
+        }
+      }
+
       // First get current community info to get subgroup count
       const currentInfo: CommunityInfo = await this.getCommunityInfo();
 
@@ -704,6 +742,10 @@ class TandaPayCommunityInfo {
       const subgroupCount = parseInt(currentInfo.currentSubgroupCount.toString(), 10);
 
       if (subgroupCount === 0) {
+        // Update Redux with empty data
+        if (store && store.dispatch) {
+          store.dispatch(updateBatchSubgroups([], this._contractAddress, this.config.userAddress));
+        }
         return { success: true, data: [] };
       }
 
@@ -716,8 +758,10 @@ class TandaPayCommunityInfo {
         return result;
       }
 
-      // Update the cached community info with the subgroups data
-      await this._updateCachedCommunityInfoWithBatchData({ allSubgroupsInfo: result.data });
+      // Update Redux with the fresh batch data
+      if (store && store.dispatch) {
+        store.dispatch(updateBatchSubgroups(result.data, this._contractAddress, this.config.userAddress));
+      }
 
       return { success: true, data: result.data };
     } catch (error) {
@@ -730,6 +774,16 @@ class TandaPayCommunityInfo {
         }
       );
       return { success: false, error: tandaPayError };
+    }
+  }
+
+  /**
+   * Invalidate cached batch data (members and subgroups)
+   * This forces a fresh fetch the next time batch data is requested
+   */
+  invalidateBatchData(): void {
+    if (store && store.dispatch) {
+      store.dispatch(invalidateBatchData());
     }
   }
 
@@ -892,5 +946,15 @@ export async function fetchAndCacheAllSubgroups(
       }
     );
     return { success: false, error: tandaPayError };
+  }
+}
+
+/**
+ * Convenience function to invalidate cached batch data
+ * This forces a fresh fetch the next time batch data is requested
+ */
+export function invalidateCachedBatchData(): void {
+  if (store && store.dispatch) {
+    store.dispatch(invalidateBatchData());
   }
 }

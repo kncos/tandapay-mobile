@@ -12,12 +12,14 @@ import ZulipButton from '../../common/ZulipButton';
 import ModalContainer from '../components/ModalContainer';
 import { IconAlertTriangle } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
-import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale } from '../redux/selectors';
-import { fetchCommunityInfo, fetchAndCacheAllMembers, fetchAndCacheAllSubgroups } from '../contract/communityInfo';
+import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale, getCachedBatchMembers, getCachedBatchSubgroups } from '../redux/selectors';
+import { fetchCommunityInfo, fetchAndCacheAllMembers, fetchAndCacheAllSubgroups, invalidateCachedBatchData } from '../contract/communityInfo';
 import { getWalletAddress } from '../wallet/WalletManager';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
 import { serializeBigNumbers, deserializeBigNumbers } from '../utils/bigNumberUtils';
+import { tryGetActiveAccountState } from '../../selectors';
+import store from '../../boot/store';
 
 import type { CommunityInfo } from '../contract/communityInfo';
 import type { MemberInfo, SubgroupInfo } from '../contract/types';
@@ -268,6 +270,8 @@ function TandaPayInfoScreen(props: Props): Node {
 
   // Refresh handler
   const handleRefresh = useCallback(() => {
+    // Invalidate cached batch data to force fresh fetch on next modal open
+    invalidateCachedBatchData();
     fetchCommunityData(true);
   }, [fetchCommunityData]);
 
@@ -344,18 +348,26 @@ function TandaPayInfoScreen(props: Props): Node {
       return;
     }
 
-    setModalLoading(true);
     setModalError(null);
 
     try {
-      // First check if we have cached members data
-      if (communityInfo.allMembersInfo) {
-        // Serialize BigNumbers before storing in React state to prevent JSON serialization errors
-        // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
-        setMembersData(serializeBigNumbers(communityInfo.allMembersInfo));
-        setModalLoading(false);
-        return;
+      // Check if we have cached data in Redux first (uses cached selectors)
+      if (store && store.getState) {
+        const reduxState = store.getState();
+        const accountState = tryGetActiveAccountState(reduxState);
+        if (accountState) {
+          const cachedMembers = getCachedBatchMembers(accountState);
+          if (cachedMembers) {
+            // Use cached data from Redux - no loading needed
+            // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
+            setMembersData(serializeBigNumbers(cachedMembers));
+            return;
+          }
+        }
       }
+
+      // No cached data available, show loading and fetch
+      setModalLoading(true);
 
       const memberCount = bigNumberToNumber(communityInfo.currentMemberCount);
 
@@ -404,10 +416,27 @@ function TandaPayInfoScreen(props: Props): Node {
       return;
     }
 
-    setModalLoading(true);
     setModalError(null);
 
     try {
+      // Check if we have cached data in Redux first (uses cached selectors)
+      if (store && store.getState) {
+        const reduxState = store.getState();
+        const accountState = tryGetActiveAccountState(reduxState);
+        if (accountState) {
+          const cachedSubgroups = getCachedBatchSubgroups(accountState);
+          if (cachedSubgroups) {
+            // Use cached data from Redux - no loading needed
+            // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
+            setSubgroupsData(serializeBigNumbers(cachedSubgroups));
+            return;
+          }
+        }
+      }
+
+      // No cached data available, show loading and fetch
+      setModalLoading(true);
+
       const subgroupCount = bigNumberToNumber(communityInfo.currentSubgroupCount);
 
       if (subgroupCount === 0) {

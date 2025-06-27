@@ -19,6 +19,9 @@ import {
   TANDAPAY_COMMUNITY_INFO_LOADING,
   TANDAPAY_COMMUNITY_INFO_ERROR,
   TANDAPAY_COMMUNITY_INFO_CLEAR,
+  TANDAPAY_BATCH_MEMBERS_UPDATE,
+  TANDAPAY_BATCH_SUBGROUPS_UPDATE,
+  TANDAPAY_BATCH_DATA_INVALIDATE,
 } from '../../actionConstants';
 
 // =============================================================================
@@ -249,5 +252,49 @@ export function setCommunityInfoError(error: string): PerAccountAction {
 export function clearCommunityInfo(): PerAccountAction {
   return {
     type: TANDAPAY_COMMUNITY_INFO_CLEAR,
+  };
+}
+
+/**
+ * Action creator for updating batch members data in community info
+ */
+export function updateBatchMembers(
+  allMembersInfo: $FlowFixMe, // Array<MemberInfo>
+  contractAddress: ?string,
+  userAddress: ?string,
+): PerAccountAction {
+  return {
+    type: TANDAPAY_BATCH_MEMBERS_UPDATE,
+    allMembersInfo: serializeBigNumbers(allMembersInfo),
+    contractAddress,
+    userAddress,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * Action creator for updating batch subgroups data in community info
+ */
+export function updateBatchSubgroups(
+  allSubgroupsInfo: $FlowFixMe, // Array<SubgroupInfo>
+  contractAddress: ?string,
+  userAddress: ?string,
+): PerAccountAction {
+  return {
+    type: TANDAPAY_BATCH_SUBGROUPS_UPDATE,
+    allSubgroupsInfo: serializeBigNumbers(allSubgroupsInfo),
+    contractAddress,
+    userAddress,
+    timestamp: Date.now(),
+  };
+}
+
+/**
+ * Action creator for invalidating batch data (members and subgroups)
+ * This will force a refresh the next time the data is requested
+ */
+export function invalidateBatchData(): PerAccountAction {
+  return {
+    type: TANDAPAY_BATCH_DATA_INVALIDATE,
   };
 }
