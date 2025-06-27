@@ -22,6 +22,8 @@ import type { TandaPayError } from '../errors/types';
 import TandaPayStyles, { TandaPayColors } from '../styles';
 import ZulipTextButton from '../../common/ZulipTextButton';
 import type { SupportedNetwork } from '../definitions/types';
+import { useSelector } from '../../react-redux';
+import { getCurrentTandaPayContractAddress } from '../redux/selectors';
 
 type Transfer = mixed;
 
@@ -60,9 +62,12 @@ export default function TransactionList({
   const [modalVisible, setModalVisible] = useState(false);
   const themeData = useContext(ThemeContext);
 
+  // Get TandaPay contract address from Redux for transaction decoding
+  const tandaPayContractAddress = useSelector(getCurrentTandaPayContractAddress);
+
   const showTransactionDetails = (transfer: Transfer) => {
-    // Convert transfer to etherscan format for the modal
-    const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress);
+    // Convert transfer to etherscan format for the modal, including TandaPay decoding
+    const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress);
     setSelectedTransaction(etherscanTransaction);
     setModalVisible(true);
   };
@@ -161,8 +166,27 @@ export default function TransactionList({
       <View style={{ backgroundColor: themeData.backgroundColor }}>
         {/* Transaction List */}
         {transfers.map((transfer, index) => {
-          // Convert transfer for display
-          const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress);
+          // Convert transfer for display, including TandaPay decoding
+          const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress);
+
+          // Determine color and display content based on transaction type
+          let displayColor;
+          let displayTitle;
+          let displayAmount;
+
+          if (etherscanTransaction.isTandaPayTransaction) {
+            // TandaPay transaction - use warning color
+            displayColor = TandaPayColors.warning;
+            displayTitle = 'Sent TandaPay Action';
+            displayAmount = etherscanTransaction.tandaPaySummary != null && etherscanTransaction.tandaPaySummary !== ''
+              ? etherscanTransaction.tandaPaySummary
+              : 'Contract Call';
+          } else {
+            // Regular transaction - use existing logic
+            displayColor = etherscanTransaction.direction === 'IN' ? TandaPayColors.success : TandaPayColors.error;
+            displayTitle = etherscanTransaction.direction === 'IN' ? 'Received' : 'Sent';
+            displayAmount = etherscanTransaction.formattedValue;
+          }
 
           return (
             <View
@@ -171,11 +195,11 @@ export default function TransactionList({
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View style={{ flex: 1 }}>
-                  <ZulipText style={{ fontSize: 16, color: etherscanTransaction.direction === 'IN' ? TandaPayColors.success : TandaPayColors.error }}>
-                    {etherscanTransaction.direction === 'IN' ? 'Received' : 'Sent'}
+                  <ZulipText style={{ fontSize: 16, color: displayColor }}>
+                    {displayTitle}
                   </ZulipText>
                   <ZulipText style={TandaPayStyles.descriptionCompact}>
-                    {etherscanTransaction.formattedValue}
+                    {displayAmount}
                   </ZulipText>
                   <ZulipText style={TandaPayStyles.descriptionCompact}>
                     {formatTimestamp(etherscanTransaction.timeStamp)}

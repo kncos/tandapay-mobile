@@ -8,6 +8,12 @@
 
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
+import {
+  decodeTandaPayTransaction,
+  isTandaPayTransaction,
+  getTandaPayTransactionSummary
+} from './TandaPayTransactionDecoder';
+import type { DecodedTandaPayTransaction } from './TandaPayTransactionDecoder';
 
 type Transfer = mixed;
 
@@ -23,6 +29,10 @@ export type FormattedTransfer = {|
   from: string,
   to: string,
   contractAddress: ?string,
+  // TandaPay specific fields
+  isTandaPayTransaction: boolean,
+  tandaPayDecoded: ?DecodedTandaPayTransaction,
+  tandaPaySummary: ?string,
 |};
 
 /**
@@ -62,7 +72,11 @@ function formatValueForDisplay(value: string, asset: string, category: string): 
 /**
  * Format a transfer for display
  */
-export function formatTransferForDisplay(transfer: Transfer, walletAddress: string): FormattedTransfer {
+export function formatTransferForDisplay(
+  transfer: Transfer,
+  walletAddress: string,
+  tandaPayContractAddress?: ?string
+): FormattedTransfer {
   // $FlowFixMe[unclear-type] - Transfer object structure is dynamic from Alchemy
   const transferObj = (transfer: any);
 
@@ -80,6 +94,20 @@ export function formatTransferForDisplay(transfer: Transfer, walletAddress: stri
   // Format the value for display
   const formattedValue = formatValueForDisplay(value, asset, category);
 
+  // Check if this is a TandaPay transaction
+  const isTPTransaction = isTandaPayTransaction(transferObj, tandaPayContractAddress);
+  let tandaPayDecoded = null;
+  let tandaPaySummary = null;
+
+  if (isTPTransaction) {
+    // Try to decode the transaction data
+    const inputData = transferObj?.input || transferObj?.data || '0x';
+    tandaPayDecoded = decodeTandaPayTransaction(inputData, 'success');
+    if (tandaPayDecoded) {
+      tandaPaySummary = getTandaPayTransactionSummary(tandaPayDecoded);
+    }
+  }
+
   return {
     hash,
     blockNumber,
@@ -92,6 +120,9 @@ export function formatTransferForDisplay(transfer: Transfer, walletAddress: stri
     from,
     to,
     contractAddress,
+    isTandaPayTransaction: isTPTransaction,
+    tandaPayDecoded,
+    tandaPaySummary,
   };
 }
 
@@ -105,8 +136,12 @@ export function getTransferSymbol(direction: 'IN' | 'OUT'): string {
 /**
  * Format transfer for one-line display in lists
  */
-export function formatTransferSummary(transfer: Transfer, walletAddress: string): string {
-  const formatted = formatTransferForDisplay(transfer, walletAddress);
+export function formatTransferSummary(
+  transfer: Transfer,
+  walletAddress: string,
+  tandaPayContractAddress?: ?string
+): string {
+  const formatted = formatTransferForDisplay(transfer, walletAddress, tandaPayContractAddress);
   const symbol = getTransferSymbol(formatted.direction);
 
   return `${symbol} ${formatted.direction} | ${formatted.formattedValue} | Block ${formatted.blockNumber != null ? formatted.blockNumber : 'Unknown'}`;
@@ -115,7 +150,11 @@ export function formatTransferSummary(transfer: Transfer, walletAddress: string)
 /**
  * Convert transfer to EtherscanTransaction format for compatibility
  */
-export function convertTransferToEtherscanFormat(transfer: Transfer, walletAddress: string): {|
+export function convertTransferToEtherscanFormat(
+  transfer: Transfer,
+  walletAddress: string,
+  tandaPayContractAddress?: ?string
+): {|
   hash: string,
   blockNumber: string,
   timeStamp: string,
@@ -136,8 +175,16 @@ export function convertTransferToEtherscanFormat(transfer: Transfer, walletAddre
   direction: 'IN' | 'OUT',
   asset: string,
   formattedValue: string,
+  // TandaPay specific fields
+  isTandaPayTransaction: boolean,
+  tandaPayDecoded: ?DecodedTandaPayTransaction,
+  tandaPaySummary: ?string,
 |} {
-  const formatted = formatTransferForDisplay(transfer, walletAddress);
+  const formatted = formatTransferForDisplay(transfer, walletAddress, tandaPayContractAddress);
+
+  // $FlowFixMe[unclear-type] - Transfer object structure is dynamic from Alchemy
+  const transferObj = (transfer: any);
+  const inputData = transferObj?.input || transferObj?.data || '0x';
 
   return {
     hash: formatted.hash,
@@ -150,7 +197,7 @@ export function convertTransferToEtherscanFormat(transfer: Transfer, walletAddre
     gasPrice: '0',
     gasUsed: '0',
     cumulativeGasUsed: '0',
-    input: '0x',
+    input: inputData,
     confirmations: '0',
     isError: '0',
     txreceipt_status: '1',
@@ -160,5 +207,8 @@ export function convertTransferToEtherscanFormat(transfer: Transfer, walletAddre
     direction: formatted.direction,
     asset: formatted.asset,
     formattedValue: formatted.formattedValue,
+    isTandaPayTransaction: formatted.isTandaPayTransaction,
+    tandaPayDecoded: formatted.tandaPayDecoded,
+    tandaPaySummary: formatted.tandaPaySummary,
   };
 }

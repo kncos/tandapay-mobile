@@ -210,7 +210,10 @@ export default function TransactionDetailsModal({
               <View style={styles.row}>
                 <ZulipText style={styles.label}>Type:</ZulipText>
                 <ZulipText style={styles.value}>
-                  {isTokenTransfer ? 'Token Transfer' : 'ETH Transfer'}
+                  {etherscanTransaction.isTandaPayTransaction
+                    ? 'TandaPay Action'
+                    : (isTokenTransfer ? 'Token Transfer' : 'ETH Transfer')
+                  }
                 </ZulipText>
               </View>
 
@@ -233,6 +236,56 @@ export default function TransactionDetailsModal({
                 <ZulipText style={styles.value}>{fullDate}</ZulipText>
               </View>
             </View>
+
+            {/* TandaPay Action Details */}
+            {etherscanTransaction.isTandaPayTransaction && etherscanTransaction.tandaPayDecoded != null && (
+              <View style={styles.section}>
+                <ZulipText style={styles.sectionTitle}>TandaPay Action</ZulipText>
+
+                <View style={styles.row}>
+                  <ZulipText style={styles.label}>Action:</ZulipText>
+                  <ZulipText style={[styles.value, { color: TandaPayColors.warning, fontWeight: 'bold' }]}>
+                    {etherscanTransaction.tandaPayDecoded.friendlyName}
+                  </ZulipText>
+                </View>
+
+                <View style={styles.row}>
+                  <ZulipText style={styles.label}>Method:</ZulipText>
+                  <ZulipText style={[styles.value, { fontFamily: 'monospace', fontSize: 12 }]}>
+                    {etherscanTransaction.tandaPayDecoded.methodName}
+                  </ZulipText>
+                </View>
+
+                <View style={styles.row}>
+                  <ZulipText style={styles.label}>Status:</ZulipText>
+                  <ZulipText style={etherscanTransaction.tandaPayDecoded.isSuccess ? styles.statusSuccess : styles.statusFailed}>
+                    {etherscanTransaction.tandaPayDecoded.isSuccess ? 'Success' : 'Failed'}
+                  </ZulipText>
+                </View>
+
+                {etherscanTransaction.tandaPayDecoded.parameters != null && etherscanTransaction.tandaPayDecoded.parameters.length > 0 && (
+                  <View>
+                    <ZulipText style={[styles.label, { marginTop: 8, marginBottom: 8 }]}>Parameters:</ZulipText>
+                    {etherscanTransaction.tandaPayDecoded.parameters.map((param) => (
+                      <View key={`param-${param.name}-${param.type}`} style={{ marginLeft: 12, marginBottom: 4 }}>
+                        <View style={styles.row}>
+                          <ZulipText style={[styles.label, { fontSize: 12 }]}>
+                            {param.name}
+                            {' '}
+                            (
+                            {param.type}
+                            ):
+                          </ZulipText>
+                          <ZulipText style={[styles.value, { fontFamily: 'monospace', fontSize: 10 }]}>
+                            {param.displayValue}
+                          </ZulipText>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
 
             <View style={styles.section}>
               <ZulipText style={styles.sectionTitle}>Addresses</ZulipText>
