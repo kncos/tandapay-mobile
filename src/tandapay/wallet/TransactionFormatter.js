@@ -70,13 +70,14 @@ function formatValueForDisplay(value: string, asset: string, category: string): 
 }
 
 /**
- * Format a transfer for display
+ * Enhance transfer with TandaPay transaction data (async)
  */
-export function formatTransferForDisplay(
+export async function enhanceTransferWithTandaPayData(
   transfer: Transfer,
   walletAddress: string,
-  tandaPayContractAddress?: ?string
-): FormattedTransfer {
+  tandaPayContractAddress?: ?string,
+  network?: string
+): Promise<FormattedTransfer> {
   // $FlowFixMe[unclear-type] - Transfer object structure is dynamic from Alchemy
   const transferObj = (transfer: any);
 
@@ -96,15 +97,22 @@ export function formatTransferForDisplay(
 
   // Check if this is a TandaPay transaction
   const isTPTransaction = isTandaPayTransaction(transferObj, tandaPayContractAddress);
-  let tandaPayDecoded = null;
-  let tandaPaySummary = null;
+  let decodedTandaPayData: ?DecodedTandaPayTransaction = null;
+  let tandaPayActionSummary: ?string = null;
 
   if (isTPTransaction) {
-    // Try to decode the transaction data
+    // Try to decode the transaction data, fetching full transaction if needed
     const inputData = transferObj?.input || transferObj?.data || '0x';
-    tandaPayDecoded = decodeTandaPayTransaction(inputData, 'success');
-    if (tandaPayDecoded) {
-      tandaPaySummary = getTandaPayTransactionSummary(tandaPayDecoded);
+    try {
+      const decodedResult = await decodeTandaPayTransaction(inputData, hash, network, 'success');
+      if (decodedResult != null) {
+        decodedTandaPayData = decodedResult;
+        tandaPayActionSummary = getTandaPayTransactionSummary(decodedResult);
+      }
+    } catch (error) {
+      // If decoding fails, leave both as null
+      decodedTandaPayData = null;
+      tandaPayActionSummary = null;
     }
   }
 
@@ -121,8 +129,8 @@ export function formatTransferForDisplay(
     to,
     contractAddress,
     isTandaPayTransaction: isTPTransaction,
-    tandaPayDecoded,
-    tandaPaySummary,
+    tandaPayDecoded: decodedTandaPayData,
+    tandaPaySummary: tandaPayActionSummary,
   };
 }
 
@@ -136,12 +144,13 @@ export function getTransferSymbol(direction: 'IN' | 'OUT'): string {
 /**
  * Format transfer for one-line display in lists
  */
-export function formatTransferSummary(
+export async function formatTransferSummary(
   transfer: Transfer,
   walletAddress: string,
-  tandaPayContractAddress?: ?string
-): string {
-  const formatted = formatTransferForDisplay(transfer, walletAddress, tandaPayContractAddress);
+  tandaPayContractAddress?: ?string,
+  network?: string
+): Promise<string> {
+  const formatted = await enhanceTransferWithTandaPayData(transfer, walletAddress, tandaPayContractAddress, network);
   const symbol = getTransferSymbol(formatted.direction);
 
   return `${symbol} ${formatted.direction} | ${formatted.formattedValue} | Block ${formatted.blockNumber != null ? formatted.blockNumber : 'Unknown'}`;
@@ -150,11 +159,12 @@ export function formatTransferSummary(
 /**
  * Convert transfer to EtherscanTransaction format for compatibility
  */
-export function convertTransferToEtherscanFormat(
+export async function convertTransferToEtherscanFormat(
   transfer: Transfer,
   walletAddress: string,
-  tandaPayContractAddress?: ?string
-): {|
+  tandaPayContractAddress?: ?string,
+  network?: string
+): Promise<{|
   hash: string,
   blockNumber: string,
   timeStamp: string,
@@ -179,8 +189,8 @@ export function convertTransferToEtherscanFormat(
   isTandaPayTransaction: boolean,
   tandaPayDecoded: ?DecodedTandaPayTransaction,
   tandaPaySummary: ?string,
-|} {
-  const formatted = formatTransferForDisplay(transfer, walletAddress, tandaPayContractAddress);
+|}> {
+  const formatted = await enhanceTransferWithTandaPayData(transfer, walletAddress, tandaPayContractAddress, network);
 
   // $FlowFixMe[unclear-type] - Transfer object structure is dynamic from Alchemy
   const transferObj = (transfer: any);

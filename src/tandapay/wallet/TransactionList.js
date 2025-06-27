@@ -7,7 +7,7 @@
  * with the existing UI components.
  */
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import type { Node } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 
@@ -60,16 +60,58 @@ export default function TransactionList({
 }: Props): Node {
   const [selectedTransaction, setSelectedTransaction] = useState<?mixed>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [processedTransactions, setProcessedTransactions] = useState([]);
+  const [isProcessingTransactions, setIsProcessingTransactions] = useState(false);
   const themeData = useContext(ThemeContext);
 
   // Get TandaPay contract address from Redux for transaction decoding
   const tandaPayContractAddress = useSelector(getCurrentTandaPayContractAddress);
 
-  const showTransactionDetails = (transfer: Transfer) => {
-    // Convert transfer to etherscan format for the modal, including TandaPay decoding
-    const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress);
-    setSelectedTransaction(etherscanTransaction);
-    setModalVisible(true);
+  // Process transactions with TandaPay decoding when they change
+  useEffect(() => {
+    if (transactionState.status === 'success' && transactionState.transfers.length > 0) {
+      setIsProcessingTransactions(true);
+      
+      // Process transactions asynchronously
+      const processTransactions = async () => {
+        try {
+          const processed = await Promise.all(
+            transactionState.transfers.map(async (transfer) => {
+              try {
+                return await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
+              } catch (error) {
+                // If processing fails, return the original transfer
+                return transfer;
+              }
+            })
+          );
+          setProcessedTransactions(processed);
+        } catch (error) {
+          // If all processing fails, use original transfers
+          setProcessedTransactions(transactionState.transfers);
+        } finally {
+          setIsProcessingTransactions(false);
+        }
+      };
+
+      processTransactions();
+    } else {
+      setProcessedTransactions([]);
+      setIsProcessingTransactions(false);
+    }
+  }, [transactionState, walletAddress, tandaPayContractAddress, network]);
+
+  const showTransactionDetails = async (transfer: Transfer) => {
+    try {
+      // Convert transfer to etherscan format for the modal, including TandaPay decoding
+      const etherscanTransaction = await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
+      setSelectedTransaction(etherscanTransaction);
+      setModalVisible(true);
+    } catch (error) {
+      // If conversion fails, fall back to basic display
+      setSelectedTransaction(transfer);
+      setModalVisible(true);
+    }
   };
 
   const hideTransactionDetails = () => {
@@ -160,14 +202,31 @@ export default function TransactionList({
 
   // Handle success state with transactions
   if (transactionState.status === 'success') {
-    const { transfers, hasMore } = transactionState;
+    const { hasMore } = transactionState;
 
     return (
       <View style={{ backgroundColor: themeData.backgroundColor }}>
         {/* Transaction List */}
-        {transfers.map((transfer, index) => {
-          // Convert transfer for display, including TandaPay decoding
-          const etherscanTransaction = convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress);
+        {(isProcessingTransactions ? transactionState.transfers : processedTransactions).map((transaction, index) => {
+          // For processed transactions, use them directly. For unprocessed, use basic format
+          let etherscanTransaction;
+          
+          if (isProcessingTransactions) {
+            // $FlowFixMe[unclear-type] - Using basic transfer data while processing
+            etherscanTransaction = (transaction: any);
+            // Create a basic formatted version for display
+            etherscanTransaction = {
+              hash: etherscanTransaction?.hash || '',
+              direction: etherscanTransaction?.direction || 'OUT',
+              formattedValue: '0 ETH',
+              timeStamp: etherscanTransaction?.metadata?.blockTimestamp || '0',
+              isTandaPayTransaction: false,
+              tandaPaySummary: null,
+            };
+          } else {
+            // $FlowFixMe[unclear-type] - Processed transaction data
+            etherscanTransaction = (transaction: any);
+          }
 
           // Determine color and display content based on transaction type
           let displayColor;
@@ -207,7 +266,7 @@ export default function TransactionList({
                 </View>
                 <ZulipTextButton
                   label="View"
-                  onPress={() => showTransactionDetails(transfer)}
+                  onPress={() => showTransactionDetails(isProcessingTransactions ? transactionState.transfers[index] : transaction)}
                 />
               </View>
             </View>

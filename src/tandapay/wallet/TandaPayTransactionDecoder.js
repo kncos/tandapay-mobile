@@ -12,6 +12,7 @@
 import { ethers } from 'ethers';
 // $FlowFixMe[untyped-import] - TandaPay contract import
 import { TandaPayInfo } from '../contract/TandaPay';
+import { getAlchemyApiKey } from './WalletManager';
 
 export type DecodedTandaPayTransaction = {|
   methodName: string,
@@ -33,16 +34,19 @@ const METHOD_DISPLAY_NAMES = {
   // Member actions
   'joinCommunity': 'Join Community',
   'payPremiumToCommunity': 'Pay Premium',
+  'payPremium': 'Pay Premium',
   'leaveCommunity': 'Leave Community',
   'defectFromCommunity': 'Defect from Community',
   'withdrawRefund': 'Withdraw Refund',
   'withdrawClaimFund': 'Withdraw Claim Payment',
+  'updateMemberStatus': 'Update Member Status',
 
   // Subgroup actions
   'createSubgroup': 'Create Subgroup',
   'joinSubgroup': 'Join Subgroup',
   'leaveSubgroup': 'Leave Subgroup',
   'approveNewSubgroupMember': 'Approve Subgroup Member',
+  'approveSubgroupAssignment': 'Approve Subgroup Assignment',
 
   // Claim actions
   'submitClaim': 'Submit Claim',
@@ -52,17 +56,130 @@ const METHOD_DISPLAY_NAMES = {
   // Secretary actions
   'advancePeriod': 'Advance Period',
   'addMemberToCommunity': 'Add Member to Community',
+  'assignMemberToSubgroup': 'Assign Member to Subgroup',
   'emergencyAdvancePeriod': 'Emergency Advance Period',
   'acceptSecretaryRole': 'Accept Secretary Role',
   'initiateVoluntaryHandover': 'Initiate Secretary Handover',
   'cancelVoluntaryHandover': 'Cancel Secretary Handover',
   'acceptVoluntaryHandover': 'Accept Secretary Role',
   'emergencyHandover': 'Emergency Secretary Handover',
+  'defineSecretarySuccessorList': 'Define Secretary Successor List',
+  'handoverSecretaryRoleToSuccessor': 'Handover to Successor',
+  'emergencySecretaryHandoff': 'Emergency Secretary Handoff',
 
-  // Payment actions
+  // Period and timing actions
+  'extendPeriodByOneDay': 'Extend Period by One Day',
+
+  // Emergency actions
+  'beginEmergency': 'Begin Emergency',
+  'endEmergency': 'End Emergency',
+  'emergencyRefund': 'Emergency Refund',
+  'emergencyWithdraw': 'Emergency Withdraw',
+
+  // Financial actions
   'setBasePremium': 'Set Base Premium',
   'setCoverageAmount': 'Set Coverage Amount',
+  'updateCoverageAmount': 'Update Coverage Amount',
+  'divideShortfall': 'Divide Shortfall',
+  'issueRefund': 'Issue Refund',
+  'injectFunds': 'Inject Funds',
+
+  // System initialization and state
+  'initiateDefaultState': 'Initialize Default State',
+
+  // Read-only methods (for completeness)
+  'EmergencyStartTime': 'Emergency Start Time',
+  'getBasePremium': 'Get Base Premium',
+  'getClaimIdsInPeriod': 'Get Claim IDs in Period',
+  'getClaimInfo': 'Get Claim Information',
+  'getCommunityState': 'Get Community State',
+  'getCurrentClaimId': 'Get Current Claim ID',
+  'getCurrentMemberCount': 'Get Current Member Count',
+  'getCurrentPeriodId': 'Get Current Period ID',
+  'getCurrentSubgroupCount': 'Get Current Subgroup Count',
+  'getDefectorMemberIdsInPeriod': 'Get Defector Member IDs in Period',
+  'getEmergencyHandOverStartedPeriod': 'Get Emergency Handover Started Period',
+  'getEmergencyHandoverStartedAt': 'Get Emergency Handover Started Time',
+  'getEmergencySecretaries': 'Get Emergency Secretaries',
+  'getHandoverStartedAt': 'Get Handover Started Time',
+  'getIsAMemberDefectedInPeriod': 'Check if Member Defected in Period',
+  'getIsAllMemberNotPaidInPeriod': 'Check if All Members Paid in Period',
+  'getIsHandingOver': 'Check if Handing Over',
+  'getMemberIdFromAddress': 'Get Member ID from Address',
+  'getMemberInfoFromAddress': 'Get Member Info from Address',
+  'getMemberInfoFromId': 'Get Member Info from ID',
+  'getPaymentTokenAddress': 'Get Payment Token Address',
+  'getPeriodIdToPeriodInfo': 'Get Period Information',
+  'getSecretaryAddress': 'Get Secretary Address',
+  'getSecretarySuccessorList': 'Get Secretary Successor List',
+  'getSubgroupInfo': 'Get Subgroup Information',
+  'getTotalCoverageAmount': 'Get Total Coverage Amount',
+  'getUpcomingSecretary': 'Get Upcoming Secretary',
+  'getWhitelistedClaimIdsInPeriod': 'Get Whitelisted Claim IDs in Period',
 };
+
+/**
+ * Fetch full transaction details including input data using Alchemy API
+ */
+async function fetchTransactionInputData(
+  txHash: string,
+  network: string = 'sepolia'
+): Promise<?string> {
+  try {
+    const apiKeyResult = await getAlchemyApiKey();
+    if (!apiKeyResult.success || apiKeyResult.data == null || apiKeyResult.data === '') {
+      return null;
+    }
+
+    const apiKey = apiKeyResult.data;
+    let alchemyUrl;
+
+    // Map network to Alchemy URL
+    switch (network) {
+      case 'mainnet':
+        alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${apiKey}`;
+        break;
+      case 'sepolia':
+        alchemyUrl = `https://eth-sepolia.g.alchemy.com/v2/${apiKey}`;
+        break;
+      case 'arbitrum':
+        alchemyUrl = `https://arb-mainnet.g.alchemy.com/v2/${apiKey}`;
+        break;
+      case 'polygon':
+        alchemyUrl = `https://polygon-mainnet.g.alchemy.com/v2/${apiKey}`;
+        break;
+      default:
+        return null;
+    }
+
+    const response = await fetch(alchemyUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_getTransactionByHash',
+        params: [txHash],
+        id: 1,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.error) {
+      return null;
+    }
+
+    const transaction = data.result;
+    if (!transaction || !transaction.input) {
+      return null;
+    }
+
+    return transaction.input;
+  } catch (error) {
+    return null;
+  }
+}
 
 /**
  * Format parameter values for display
@@ -118,12 +235,24 @@ function formatParameterValue(param: mixed, type: string): string {
 /**
  * Decode TandaPay transaction data
  */
-export function decodeTandaPayTransaction(
+export async function decodeTandaPayTransaction(
   transactionData: string,
+  transactionHash?: string,
+  network?: string,
   transactionStatus?: 'success' | 'failed' | 'pending'
-): ?DecodedTandaPayTransaction {
+): Promise<?DecodedTandaPayTransaction> {
   try {
-    if (!transactionData || transactionData === '0x') {
+    let inputData = transactionData;
+
+    // If transaction data is empty but we have a hash, try to fetch full transaction details
+    if ((inputData == null || inputData === '' || inputData === '0x') && transactionHash != null && transactionHash !== '') {
+      const fetchedInputData = await fetchTransactionInputData(transactionHash, network);
+      if (fetchedInputData != null && fetchedInputData !== '') {
+        inputData = fetchedInputData;
+      }
+    }
+
+    if (inputData == null || inputData === '' || inputData === '0x') {
       return null;
     }
 
@@ -131,7 +260,7 @@ export function decodeTandaPayTransaction(
     const contractInterface = new ethers.utils.Interface(TandaPayInfo.abi);
 
     // Decode the transaction data
-    const decodedData = contractInterface.parseTransaction({ data: transactionData });
+    const decodedData = contractInterface.parseTransaction({ data: inputData });
 
     if (!decodedData) {
       return null;
