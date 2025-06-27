@@ -16,6 +16,7 @@ import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLo
 import { fetchCommunityInfo } from '../contract/communityInfo';
 import { getWalletAddress } from '../wallet/WalletManager';
 import { batchGetAllMemberInfo, batchGetAllSubgroupInfo } from '../contract/read';
+import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
 
 import type { CommunityInfo } from '../contract/communityInfo';
@@ -138,7 +139,16 @@ function TandaPayInfoScreen(props: Props): Node {
           setUserWalletAddress(addressResult.data);
         }
       } catch (err) {
-        // Silently fail - user might not have a wallet set up yet
+        // Create structured error for debugging but don't show to user
+        // Wallet address is optional - users can still view community info
+        TandaPayErrorHandler.createError(
+          'WALLET_ERROR',
+          `Failed to load wallet address: ${err?.message || 'Unknown error'}`,
+          {
+            details: err
+          }
+        );
+        // Don't set any error state since wallet address is optional
       } finally {
         setWalletAddressLoading(false);
       }
@@ -185,8 +195,34 @@ function TandaPayInfoScreen(props: Props): Node {
           );
         }
       } catch (err) {
-        const errorMessage = (err && err.message) || 'Unknown error occurred';
-        setError(errorMessage);
+        // Create comprehensive error information
+        let errorMessage = 'Unknown error occurred';
+        let userMessage = 'Failed to fetch community information';
+
+        if (err && err.message) {
+          errorMessage = err.message;
+          // Use the error message as user message if it's descriptive
+          if (err.message.includes('contract address') || err.message.includes('network') || err.message.includes('connection')) {
+            userMessage = err.message;
+          }
+        }
+
+        // Create structured error for better debugging
+        TandaPayErrorHandler.createError(
+          'CONTRACT_ERROR',
+          `Community data fetch failed: ${errorMessage}`,
+          {
+            userMessage,
+            details: {
+              contractAddress,
+              userWalletAddress,
+              forceRefresh,
+              error: err
+            }
+          }
+        );
+
+        setError(userMessage);
         setLocalCommunityInfo(null);
       } finally {
         setLoading(false);
@@ -309,7 +345,22 @@ function TandaPayInfoScreen(props: Props): Node {
         throw new Error((result.error.userMessage != null && result.error.userMessage.trim() !== '') ? result.error.userMessage : 'Failed to fetch members');
       }
     } catch (err) {
-      const errorMessage = (err && err.message) || 'Failed to fetch members';
+      // Create structured error for member data fetch failure
+      const errorMessage = err?.message || 'Failed to fetch members';
+
+      TandaPayErrorHandler.createError(
+        'CONTRACT_ERROR',
+        `Failed to fetch member data: ${errorMessage}`,
+        {
+          userMessage: 'Unable to load member information. Please try again.',
+          details: {
+            contractAddress,
+            memberCount: communityInfo ? bigNumberToNumber(communityInfo.currentMemberCount) : 'unknown',
+            error: err
+          }
+        }
+      );
+
       setModalError(errorMessage);
     } finally {
       setModalLoading(false);
@@ -342,7 +393,22 @@ function TandaPayInfoScreen(props: Props): Node {
         throw new Error((result.error.userMessage != null && result.error.userMessage.trim() !== '') ? result.error.userMessage : 'Failed to fetch subgroups');
       }
     } catch (err) {
-      const errorMessage = (err && err.message) || 'Failed to fetch subgroups';
+      // Create structured error for subgroup data fetch failure
+      const errorMessage = err?.message || 'Failed to fetch subgroups';
+
+      TandaPayErrorHandler.createError(
+        'CONTRACT_ERROR',
+        `Failed to fetch subgroup data: ${errorMessage}`,
+        {
+          userMessage: 'Unable to load subgroup information. Please try again.',
+          details: {
+            contractAddress,
+            subgroupCount: communityInfo ? bigNumberToNumber(communityInfo.currentSubgroupCount) : 'unknown',
+            error: err
+          }
+        }
+      );
+
       setModalError(errorMessage);
     } finally {
       setModalLoading(false);

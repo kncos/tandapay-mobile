@@ -129,6 +129,15 @@ class TandaPayCommunityInfo {
         }
       }
     } catch (error) {
+      // Log the error for debugging but continue with fallback
+      // This is not critical - we can still function without Redux state
+      TandaPayErrorHandler.createError(
+        'API_ERROR',
+        `Failed to resolve contract address from Redux store: ${error?.message || 'Unknown error'}`,
+        {
+          details: error
+        }
+      );
       // Continue to check other sources
     }
 
@@ -146,6 +155,14 @@ class TandaPayCommunityInfo {
         return getTandaPayNetworkPerformance(perAccountState);
       }
     } catch (error) {
+      // Log error but fallback to defaults - this is not critical
+      TandaPayErrorHandler.createError(
+        'API_ERROR',
+        `Failed to get network performance settings from Redux store: ${error?.message || 'Unknown error'}`,
+        {
+          details: error
+        }
+      );
       // Fallback to defaults if Redux state is not accessible
     }
 
@@ -250,7 +267,14 @@ class TandaPayCommunityInfo {
         ));
       }
     } catch (error) {
-      // Silently fail if Redux store is not available or has issues
+      // Log Redux dispatch error but don't fail the main operation
+      TandaPayErrorHandler.createError(
+        'API_ERROR',
+        `Failed to update Redux store with community info: ${error?.message || 'Unknown error'}`,
+        {
+          details: error
+        }
+      );
       // This ensures the core functionality still works even if Redux integration fails
     }
 
@@ -431,15 +455,31 @@ class TandaPayCommunityInfo {
               };
             }
           } catch (subgroupError) {
-            // Subgroup fetch failed, but continue with null subgroup info
-            // This is expected if the subgroup doesn't exist or contract call fails
+            // Log subgroup fetch error but continue with null subgroup info
+            // This can happen if subgroup doesn't exist or network issues occur
+            TandaPayErrorHandler.createError(
+              'CONTRACT_ERROR',
+              `Failed to fetch subgroup info for subgroup ID ${subgroupId}: ${subgroupError?.message || 'Unknown error'}`,
+              {
+                userMessage: 'Unable to load subgroup information',
+                details: { subgroupId, error: subgroupError }
+              }
+            );
           }
         }
         // If subgroupId is 0, userSubgroupInfo remains null (step 3)
       }
     } catch (memberError) {
-      // Member info fetch failed, continue with null user info
-      // This is expected if the user is not a member or contract call fails
+      // Log member info fetch error but continue with null user info
+      // This can happen if user is not a member or network issues occur
+      TandaPayErrorHandler.createError(
+        'CONTRACT_ERROR',
+        `Failed to fetch member info for address ${this.config.userAddress || 'unknown'}: ${memberError?.message || 'Unknown error'}`,
+        {
+          userMessage: 'Unable to load member information',
+          details: { userAddress: this.config.userAddress, error: memberError }
+        }
+      );
     }
 
     return { userMemberInfo, userSubgroupInfo };
@@ -505,6 +545,15 @@ class TandaPayCommunityInfo {
         const result = await this.rateLimitedContractCall(call.method, call.args);
         results.push(result);
       } catch (error) {
+        // Log the specific contract call error
+        TandaPayErrorHandler.createError(
+          'CONTRACT_ERROR',
+          `Failed to execute contract call ${call.method}: ${error?.message || 'Unknown error'}`,
+          {
+            userMessage: `Unable to fetch ${call.method} data`,
+            details: { method: call.method, args: call.args, error }
+          }
+        );
         results.push(null);
       }
     }
