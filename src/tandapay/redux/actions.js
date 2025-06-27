@@ -7,6 +7,7 @@ import type {
   TandaPaySettingsUpdateAction,
 } from '../../actionTypes';
 import type { NetworkIdentifier, SupportedNetwork } from '../definitions/types';
+import { serializeBigNumbers } from '../utils/bigNumberUtils';
 import {
   TANDAPAY_SETTINGS_UPDATE,
   TANDAPAY_TOKEN_SELECT,
@@ -226,7 +227,7 @@ export function updateCommunityInfo(
 ): PerAccountAction {
   return {
     type: TANDAPAY_COMMUNITY_INFO_UPDATE,
-    communityInfo,
+    communityInfo: serializeBigNumbers(communityInfo),
     contractAddress,
     userAddress,
   };

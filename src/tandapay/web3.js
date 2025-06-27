@@ -845,3 +845,5 @@ export async function estimateContractTransactionGas(
     'CONTRACT_ERROR',
   );
 }
+
+// =============================================================================

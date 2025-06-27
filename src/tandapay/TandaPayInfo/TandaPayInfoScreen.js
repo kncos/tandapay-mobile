@@ -18,6 +18,7 @@ import { getWalletAddress } from '../wallet/WalletManager';
 import { batchGetAllMemberInfo, batchGetAllSubgroupInfo } from '../contract/read';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
+import { serializeBigNumbers, deserializeBigNumbers } from '../utils/bigNumberUtils';
 
 import type { CommunityInfo } from '../contract/communityInfo';
 import type { MemberInfo, SubgroupInfo } from '../contract/types';
@@ -123,7 +124,24 @@ function TandaPayInfoScreen(props: Props): Node {
   const isDataStale = useSelector(state => isCommunityInfoStale(state, 5 * 60 * 1000)); // 5 minutes
 
   // Use Redux state if available, otherwise fall back to local state
-  const communityInfo = reduxCommunityInfo || localCommunityInfo;
+  // Deserialize local community info when needed
+  const deserializedLocalCommunityInfo = localCommunityInfo
+    // $FlowFixMe[incompatible-cast] - deserializeBigNumbers handles the type conversion
+    ? (deserializeBigNumbers(localCommunityInfo): CommunityInfo)
+    : null;
+
+  // Deserialize modal data when needed
+  const deserializedMembersData = membersData
+    // $FlowFixMe[incompatible-cast] - deserializeBigNumbers handles the type conversion
+    ? (deserializeBigNumbers(membersData): Array<MemberInfo>)
+    : null;
+
+  const deserializedSubgroupsData = subgroupsData
+    // $FlowFixMe[incompatible-cast] - deserializeBigNumbers handles the type conversion
+    ? (deserializeBigNumbers(subgroupsData): Array<SubgroupInfo>)
+    : null;
+
+  const communityInfo = reduxCommunityInfo || deserializedLocalCommunityInfo;
 
   // Use Redux loading state if available, otherwise fall back to local loading
   // Also include wallet address loading to ensure we wait for all data
@@ -184,7 +202,9 @@ function TandaPayInfoScreen(props: Props): Node {
         const result = await fetchCommunityInfo(contractAddress, userWalletAddress);
 
         if (result.success) {
-          setLocalCommunityInfo(result.data);
+          // Serialize BigNumbers before storing in local React state to prevent JSON serialization errors
+          // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
+          setLocalCommunityInfo(serializeBigNumbers(result.data));
         } else {
           throw new Error(
             result.error
@@ -340,7 +360,9 @@ function TandaPayInfoScreen(props: Props): Node {
       const result = await batchGetAllMemberInfo(contractAddress, memberCount);
 
       if (result.success) {
-        setMembersData(result.data);
+        // Serialize BigNumbers before storing in React state to prevent JSON serialization errors
+        // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
+        setMembersData(serializeBigNumbers(result.data));
       } else {
         throw new Error((result.error.userMessage != null && result.error.userMessage.trim() !== '') ? result.error.userMessage : 'Failed to fetch members');
       }
@@ -389,7 +411,9 @@ function TandaPayInfoScreen(props: Props): Node {
       // console.log('subgroup data: ', JSON.stringify(result, null, 2));
 
       if (result.success) {
-        setSubgroupsData(result.data);
+        // Serialize BigNumbers before storing in React state to prevent JSON serialization errors
+        // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
+        setSubgroupsData(serializeBigNumbers(result.data));
       } else {
         throw new Error((result.error.userMessage != null && result.error.userMessage.trim() !== '') ? result.error.userMessage : 'Failed to fetch subgroups');
       }
@@ -562,7 +586,7 @@ function TandaPayInfoScreen(props: Props): Node {
       >
         <ModalContainer onClose={handleCloseModals} title="Community Members" contentPadding={0}>
           <MembersModalContent
-            membersData={membersData}
+            membersData={deserializedMembersData}
             loading={modalLoading}
             error={modalError}
             onRefresh={handleRefreshMembers}
@@ -578,7 +602,7 @@ function TandaPayInfoScreen(props: Props): Node {
       >
         <ModalContainer onClose={handleCloseModals} title="Community Subgroups" contentPadding={0}>
           <SubgroupsModalContent
-            subgroupsData={subgroupsData}
+            subgroupsData={deserializedSubgroupsData}
             loading={modalLoading}
             error={modalError}
             onRefresh={handleRefreshSubgroups}

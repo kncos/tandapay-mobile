@@ -7,6 +7,7 @@ import type { TandaPaySettingsState } from './reducers/settingsReducer';
 import type { CommunityInfoState } from './reducers/communityInfoReducer';
 import type { NetworkIdentifier } from '../definitions/types';
 import type { CommunityInfo } from '../contract/communityInfo';
+import { deserializeBigNumbers } from '../utils/bigNumberUtils';
 
 // Main TandaPay state selector
 export const getTandaPayState = (state: PerAccountState): TandaPayState => {
@@ -227,7 +228,9 @@ export const getCommunityInfoState = (state: PerAccountState): CommunityInfoStat
 
 export const getCommunityInfo = (state: PerAccountState): ?CommunityInfo => {
   try {
-    return getCommunityInfoState(state).communityInfo;
+    const communityInfo = getCommunityInfoState(state).communityInfo;
+    // $FlowFixMe[incompatible-return] - deserializeBigNumbers returns the correct type structure
+    return communityInfo ? deserializeBigNumbers(communityInfo) : null;
   } catch (error) {
     return null;
   }
