@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View , StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 
 import { useSelector, useDispatch } from '../../react-redux';
 import {
@@ -10,7 +10,9 @@ import {
   getTandaPayContractAddressForNetwork,
   getTandaPayContractAddresses
 } from '../redux/selectors';
-import { updateTandaPaySettings } from '../redux/actions';
+import { updateTandaPaySettings, updateCommunityInfo } from '../redux/actions';
+import { fetchCommunityInfo } from '../contract/communityInfo';
+import { getWalletAddress } from '../wallet/WalletManager';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import AddressInput from './AddressInput';
@@ -51,6 +53,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
 
   const [addressInput, setAddressInput] = useState(currentAddress || '');
   const [saving, setSaving] = useState(false);
+  const [fetchingCommunityInfo, setFetchingCommunityInfo] = useState(false);
   const [showDeploymentModal, setShowDeploymentModal] = useState(false);
 
   // Update input when network changes
@@ -58,31 +61,79 @@ export default function ContractAddressConfiguration(props: Props): Node {
     setAddressInput(currentAddress || '');
   }, [currentAddress]);
 
+  // Helper function to attempt fetching community info for a new address
+  const fetchCommunityInfoForAddress = useCallback(async (contractAddress: string) => {
+    if (!contractAddress.trim()) {
+      return;
+    }
+
+    setFetchingCommunityInfo(true);
+    try {
+      // Get user wallet address first
+      const walletResult = await getWalletAddress();
+      const userWalletAddress = walletResult.success ? walletResult.data : null;
+
+      // Attempt to fetch community info
+      const result = await fetchCommunityInfo(contractAddress, userWalletAddress);
+      
+      if (result.success) {
+        // Update Redux store with the fetched community info
+        dispatch(updateCommunityInfo(
+          result.data,
+          contractAddress,
+          userWalletAddress,
+        ));
+      } else {
+        // Show warning alert for failed fetch
+        Alert.alert(
+          'Warning',
+          'WARN: Could not fetch community info! Address may be incorrect or there may be a network configuration issue!',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      // Show warning alert for any error
+      Alert.alert(
+        'Warning',
+        'WARN: Could not fetch community info! Address may be incorrect or there may be a network configuration issue!',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setFetchingCommunityInfo(false);
+    }
+  }, [dispatch]);
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
+      const trimmedAddress = addressInput.trim() || null;
       const newContractAddresses = { ...contractAddresses };
 
       // Use explicit assignment to avoid computed property issues
       if (selectedNetwork === 'mainnet') {
-        newContractAddresses.mainnet = addressInput.trim() || null;
+        newContractAddresses.mainnet = trimmedAddress;
       } else if (selectedNetwork === 'sepolia') {
-        newContractAddresses.sepolia = addressInput.trim() || null;
+        newContractAddresses.sepolia = trimmedAddress;
       } else if (selectedNetwork === 'arbitrum') {
-        newContractAddresses.arbitrum = addressInput.trim() || null;
+        newContractAddresses.arbitrum = trimmedAddress;
       } else if (selectedNetwork === 'polygon') {
-        newContractAddresses.polygon = addressInput.trim() || null;
+        newContractAddresses.polygon = trimmedAddress;
       } else if (selectedNetwork === 'custom') {
-        newContractAddresses.custom = addressInput.trim() || null;
+        newContractAddresses.custom = trimmedAddress;
       }
 
       dispatch(updateTandaPaySettings({
         contractAddresses: newContractAddresses,
       }));
+
+      // If we have a new valid address, attempt to fetch community info
+      if (trimmedAddress && trimmedAddress !== currentAddress) {
+        await fetchCommunityInfoForAddress(trimmedAddress);
+      }
     } finally {
       setSaving(false);
     }
-  }, [dispatch, addressInput, selectedNetwork, contractAddresses]);
+  }, [dispatch, addressInput, selectedNetwork, contractAddresses, currentAddress, fetchCommunityInfoForAddress]);
 
   const handleClear = useCallback(() => {
     setAddressInput('');
@@ -100,31 +151,38 @@ export default function ContractAddressConfiguration(props: Props): Node {
     setAddressInput(contractAddress);
     setShowDeploymentModal(false);
     // Auto-save the deployed address after a short delay
-    setTimeout(() => {
+    setTimeout(async () => {
       setSaving(true);
-      const newContractAddresses = { ...contractAddresses };
+      try {
+        const newContractAddresses = { ...contractAddresses };
 
-      if (selectedNetwork === 'mainnet') {
-        newContractAddresses.mainnet = contractAddress;
-      } else if (selectedNetwork === 'sepolia') {
-        newContractAddresses.sepolia = contractAddress;
-      } else if (selectedNetwork === 'arbitrum') {
-        newContractAddresses.arbitrum = contractAddress;
-      } else if (selectedNetwork === 'polygon') {
-        newContractAddresses.polygon = contractAddress;
-      } else if (selectedNetwork === 'custom') {
-        newContractAddresses.custom = contractAddress;
+        if (selectedNetwork === 'mainnet') {
+          newContractAddresses.mainnet = contractAddress;
+        } else if (selectedNetwork === 'sepolia') {
+          newContractAddresses.sepolia = contractAddress;
+        } else if (selectedNetwork === 'arbitrum') {
+          newContractAddresses.arbitrum = contractAddress;
+        } else if (selectedNetwork === 'polygon') {
+          newContractAddresses.polygon = contractAddress;
+        } else if (selectedNetwork === 'custom') {
+          newContractAddresses.custom = contractAddress;
+        }
+
+        dispatch(updateTandaPaySettings({
+          contractAddresses: newContractAddresses,
+        }));
+
+        // Fetch community info for the newly deployed contract
+        await fetchCommunityInfoForAddress(contractAddress);
+      } finally {
+        setSaving(false);
       }
-
-      dispatch(updateTandaPaySettings({
-        contractAddresses: newContractAddresses,
-      }));
-      setSaving(false);
     }, 100);
-  }, [dispatch, selectedNetwork, contractAddresses]);
+  }, [dispatch, selectedNetwork, contractAddresses, fetchCommunityInfoForAddress]);
 
   const hasChanges = (addressInput.trim() || null) !== currentAddress;
   const isValidAddress = addressInput.trim() === '' || /^0x[a-fA-F0-9]{40}$/.test(addressInput.trim());
+  const isOperationInProgress = saving || fetchingCommunityInfo;
 
   return (
     <Card style={customStyles.card}>
@@ -152,7 +210,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
         onChangeText={setAddressInput}
         placeholder="0x..."
         label="Contract Address"
-        disabled={disabled || saving}
+        disabled={disabled || isOperationInProgress}
         showQRButton
       />
 
@@ -162,15 +220,15 @@ export default function ContractAddressConfiguration(props: Props): Node {
           style={TandaPayStyles.button}
           text="Clear"
           onPress={handleClear}
-          disabled={disabled || saving || addressInput.trim() === ''}
+          disabled={disabled || isOperationInProgress || addressInput.trim() === ''}
         />
 
         <ZulipButton
           style={TandaPayStyles.button}
-          text={saving ? 'Saving...' : 'Save'}
+          text={isOperationInProgress ? (fetchingCommunityInfo ? 'Fetching info...' : 'Saving...') : 'Save'}
           onPress={handleSave}
-          disabled={disabled || saving || !hasChanges || !isValidAddress}
-          progress={saving}
+          disabled={disabled || isOperationInProgress || !hasChanges || !isValidAddress}
+          progress={isOperationInProgress}
         />
       </View>
       <View style={TandaPayStyles.buttonRow}>
@@ -178,7 +236,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
           style={TandaPayStyles.button}
           text="Deploy Contract"
           onPress={handleShowDeploymentModal}
-          disabled={disabled || saving || !isValidAddress}
+          disabled={disabled || isOperationInProgress || !isValidAddress}
         />
       </View>
 
