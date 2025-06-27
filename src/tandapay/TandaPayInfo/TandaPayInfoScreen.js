@@ -13,9 +13,8 @@ import ModalContainer from '../components/ModalContainer';
 import { IconAlertTriangle } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
 import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale } from '../redux/selectors';
-import { fetchCommunityInfo } from '../contract/communityInfo';
+import { fetchCommunityInfo, fetchAndCacheAllMembers, fetchAndCacheAllSubgroups } from '../contract/communityInfo';
 import { getWalletAddress } from '../wallet/WalletManager';
-import { batchGetAllMemberInfo, batchGetAllSubgroupInfo } from '../contract/read';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
 import { serializeBigNumbers, deserializeBigNumbers } from '../utils/bigNumberUtils';
@@ -349,6 +348,15 @@ function TandaPayInfoScreen(props: Props): Node {
     setModalError(null);
 
     try {
+      // First check if we have cached members data
+      if (communityInfo.allMembersInfo) {
+        // Serialize BigNumbers before storing in React state to prevent JSON serialization errors
+        // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
+        setMembersData(serializeBigNumbers(communityInfo.allMembersInfo));
+        setModalLoading(false);
+        return;
+      }
+
       const memberCount = bigNumberToNumber(communityInfo.currentMemberCount);
 
       if (memberCount === 0) {
@@ -357,7 +365,8 @@ function TandaPayInfoScreen(props: Props): Node {
         return;
       }
 
-      const result = await batchGetAllMemberInfo(contractAddress, memberCount);
+      // Fetch and cache members data
+      const result = await fetchAndCacheAllMembers(contractAddress, userWalletAddress);
 
       if (result.success) {
         // Serialize BigNumbers before storing in React state to prevent JSON serialization errors
@@ -387,11 +396,11 @@ function TandaPayInfoScreen(props: Props): Node {
     } finally {
       setModalLoading(false);
     }
-  }, [contractAddress, communityInfo]);
+  }, [contractAddress, communityInfo, userWalletAddress]);
 
   // Fetch subgroups data for modal - ONLY runs when user clicks View
   const fetchSubgroupsData = useCallback(async () => {
-    if (contractAddress == null || contractAddress.trim() === '' || !communityInfo) {
+    if (contractAddress == null || contractAddress.trim() === '' || !communityInfo || userWalletAddress == null) {
       return;
     }
 
@@ -407,7 +416,8 @@ function TandaPayInfoScreen(props: Props): Node {
         return;
       }
 
-      const result = await batchGetAllSubgroupInfo(contractAddress, subgroupCount);
+      // Use the cache-aware fetch function that updates Redux
+      const result = await fetchAndCacheAllSubgroups(contractAddress, userWalletAddress);
       // console.log('subgroup data: ', JSON.stringify(result, null, 2));
 
       if (result.success) {
@@ -438,7 +448,7 @@ function TandaPayInfoScreen(props: Props): Node {
     } finally {
       setModalLoading(false);
     }
-  }, [contractAddress, communityInfo]);
+  }, [contractAddress, communityInfo, userWalletAddress]);
 
   // Handle showing members modal - ONLY triggers when user clicks View
   const handleShowMembers = useCallback(() => {

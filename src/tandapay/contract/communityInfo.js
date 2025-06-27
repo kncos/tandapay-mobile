@@ -37,6 +37,9 @@ export type CommunityInfo = {
   whitelistedClaimsFromPreviousPeriod: ?Array<ClaimInfo>,
   userMemberInfo: ?MemberInfo,
   userSubgroupInfo: ?SubgroupInfo,
+  // Cached batch data - only populated when explicitly requested
+  allMembersInfo: ?Array<MemberInfo>,
+  allSubgroupsInfo: ?Array<SubgroupInfo>,
   lastUpdated: number,
 };
 
@@ -253,6 +256,9 @@ class TandaPayCommunityInfo {
       whitelistedClaimsFromPreviousPeriod: previousPeriodClaims,
       userMemberInfo: userData.userMemberInfo,
       userSubgroupInfo: userData.userSubgroupInfo,
+      // Cached batch data starts as null - populated on demand
+      allMembersInfo: null,
+      allSubgroupsInfo: null,
       lastUpdated: Date.now(),
     };
 
@@ -642,6 +648,141 @@ class TandaPayCommunityInfo {
 
     return results;
   }
+
+  /**
+   * Fetch and cache all members information
+   * This will update the cached community info in Redux with the batch data
+   */
+  async fetchAndCacheAllMembers(): Promise<TandaPayResult<Array<MemberInfo>>> {
+    try {
+      // First get current community info to get member count
+      const currentInfo: CommunityInfo = await this.getCommunityInfo();
+
+      // $FlowFixMe[incompatible-use] - BigNumber conversion
+      const memberCount = parseInt(currentInfo.currentMemberCount.toString(), 10);
+
+      if (memberCount === 0) {
+        return { success: true, data: [] };
+      }
+
+      // Import the batch function here to avoid circular dependencies
+      const { batchGetAllMemberInfo } = await import('./read');
+
+      const result = await batchGetAllMemberInfo(this._contractAddress || '', memberCount);
+
+      if (!result.success) {
+        return result;
+      }
+
+      // Update the cached community info with the members data
+      await this._updateCachedCommunityInfoWithBatchData({ allMembersInfo: result.data });
+
+      return { success: true, data: result.data };
+    } catch (error) {
+      const tandaPayError = TandaPayErrorHandler.createError(
+        'CONTRACT_ERROR',
+        `Failed to fetch and cache all members: ${error?.message || 'Unknown error'}`,
+        {
+          userMessage: 'Unable to load member information. Please try again.',
+          details: { error }
+        }
+      );
+      return { success: false, error: tandaPayError };
+    }
+  }
+
+  /**
+   * Fetch and cache all subgroups information
+   * This will update the cached community info in Redux with the batch data
+   */
+  async fetchAndCacheAllSubgroups(): Promise<TandaPayResult<Array<SubgroupInfo>>> {
+    try {
+      // First get current community info to get subgroup count
+      const currentInfo: CommunityInfo = await this.getCommunityInfo();
+
+      // $FlowFixMe[incompatible-use] - BigNumber conversion
+      const subgroupCount = parseInt(currentInfo.currentSubgroupCount.toString(), 10);
+
+      if (subgroupCount === 0) {
+        return { success: true, data: [] };
+      }
+
+      // Import the batch function here to avoid circular dependencies
+      const { batchGetAllSubgroupInfo } = await import('./read');
+
+      const result = await batchGetAllSubgroupInfo(this._contractAddress || '', subgroupCount);
+
+      if (!result.success) {
+        return result;
+      }
+
+      // Update the cached community info with the subgroups data
+      await this._updateCachedCommunityInfoWithBatchData({ allSubgroupsInfo: result.data });
+
+      return { success: true, data: result.data };
+    } catch (error) {
+      const tandaPayError = TandaPayErrorHandler.createError(
+        'CONTRACT_ERROR',
+        `Failed to fetch and cache all subgroups: ${error?.message || 'Unknown error'}`,
+        {
+          userMessage: 'Unable to load subgroup information. Please try again.',
+          details: { error }
+        }
+      );
+      return { success: false, error: tandaPayError };
+    }
+  }
+
+  /**
+   * Update cached community info with batch data
+   * @private
+   */
+  async _updateCachedCommunityInfoWithBatchData(batchData: {
+    allMembersInfo?: Array<MemberInfo>,
+    allSubgroupsInfo?: Array<SubgroupInfo>,
+  }): Promise<void> {
+    try {
+      // Get current cached community info
+      const cacheKey = `community_${this._contractAddress || 'unknown'}_${this.config.userAddress ?? 'anonymous'}`;
+      const cached = this.cache.get(cacheKey);
+
+      if (!cached) {
+        // No cached data to update
+        return;
+      }
+
+      // Update the cached data with batch info
+      const updatedCommunityInfo: CommunityInfo = {
+        ...cached.data,
+        ...batchData,
+        lastUpdated: Date.now(),
+      };
+
+      // Update cache
+      this.cache.set(cacheKey, {
+        data: updatedCommunityInfo,
+        timestamp: Date.now(),
+      });
+
+      // Update Redux store with the updated community info
+      if (store && store.dispatch) {
+        store.dispatch(updateCommunityInfo(
+          updatedCommunityInfo,
+          this._contractAddress,
+          this.config.userAddress
+        ));
+      }
+    } catch (error) {
+      // Log error but don't fail the main operation
+      TandaPayErrorHandler.createError(
+        'API_ERROR',
+        `Failed to update cached community info with batch data: ${error?.message || 'Unknown error'}`,
+        {
+          details: error
+        }
+      );
+    }
+  }
 }
 
 /**
@@ -683,6 +824,70 @@ export async function fetchCommunityInfo(
       'Failed to fetch community information',
       {
         userMessage: 'Unable to fetch community information. Please check your network connection and contract settings.',
+        details: error
+      }
+    );
+    return { success: false, error: tandaPayError };
+  }
+}
+
+/**
+ * Convenience function to fetch and cache all members information
+ * This will update the community info cache with the batch data
+ */
+export async function fetchAndCacheAllMembers(
+  contractAddress?: ?string,
+  userAddress?: ?string
+): Promise<TandaPayResult<Array<MemberInfo>>> {
+  try {
+    const communityInfo = createCommunityInfo({
+      contractAddress,
+      userAddress,
+    });
+
+    return await communityInfo.fetchAndCacheAllMembers();
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+
+    const tandaPayError = TandaPayErrorHandler.createError(
+      'CONTRACT_ERROR',
+      'Failed to fetch and cache all members',
+      {
+        userMessage: 'Unable to fetch member information. Please check your network connection and contract settings.',
+        details: error
+      }
+    );
+    return { success: false, error: tandaPayError };
+  }
+}
+
+/**
+ * Convenience function to fetch and cache all subgroups information
+ * This will update the community info cache with the batch data
+ */
+export async function fetchAndCacheAllSubgroups(
+  contractAddress?: ?string,
+  userAddress?: ?string
+): Promise<TandaPayResult<Array<SubgroupInfo>>> {
+  try {
+    const communityInfo = createCommunityInfo({
+      contractAddress,
+      userAddress,
+    });
+
+    return await communityInfo.fetchAndCacheAllSubgroups();
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+
+    const tandaPayError = TandaPayErrorHandler.createError(
+      'CONTRACT_ERROR',
+      'Failed to fetch and cache all subgroups',
+      {
+        userMessage: 'Unable to fetch subgroup information. Please check your network connection and contract settings.',
         details: error
       }
     );
