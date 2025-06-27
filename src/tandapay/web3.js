@@ -565,6 +565,185 @@ export async function estimateTransferGas(
 }
 
 /**
+ * Comprehensive gas estimation result type
+ */
+export type GasEstimationResult = {
+  gasLimit: string,
+  maxFeePerGas: string, // in gwei
+  maxPriorityFeePerGas: string, // in gwei
+  baseFeePerGas: string | null, // in gwei, null if not available
+  estimatedTotalCostETH: string, // maximum possible cost in ETH
+  isEIP1559: boolean, // whether EIP-1559 is supported
+  legacyGasPrice?: string, // in gwei, only for legacy networks
+};
+
+/**
+ * Estimates gas for any ethers.js transaction with proper EIP-1559 support.
+ * This function provides accurate gas estimates that account for the actual costs
+ * your transaction will incur, not just the current base fee.
+ *
+ * @param wallet - The ethers wallet instance (must have provider)
+ * @param tx - The transaction request object
+ * @returns TandaPayResult<GasEstimationResult> - Comprehensive gas estimation data
+ */
+// $FlowFixMe[unclear-type] - ethers.js types are complex
+export async function estimateGasForTransaction(
+  // $FlowFixMe[unclear-type] - ethers.Wallet type is complex
+  wallet: any,
+  // $FlowFixMe[unclear-type] - ethers.providers.TransactionRequest type is complex
+  tx: any,
+): Promise<TandaPayResult<GasEstimationResult>> {
+  return TandaPayErrorHandler.withEthersErrorHandling(
+    async () => {
+      const provider = wallet.provider;
+      if (!provider) {
+        throw TandaPayErrorHandler.createError('WALLET_ERROR', 'Wallet provider is not set', {
+          userMessage: 'Unable to access network. Please check your wallet configuration.',
+        });
+      }
+
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(
+            TandaPayErrorHandler.createError('TIMEOUT_ERROR', 'Gas estimation timed out', {
+              userMessage: 'Gas estimation took too long. Please try again.',
+              retryable: true,
+            }),
+          );
+        }, 15000); // 15 second timeout
+      });
+
+      // Get comprehensive fee data
+      const feeDataPromise = provider.getFeeData();
+      const feeData = await Promise.race([feeDataPromise, timeoutPromise]);
+
+      let maxFeePerGas;
+      let maxPriorityFeePerGas;
+      let baseFeePerGas = null;
+      let isEIP1559 = false;
+      let legacyGasPrice;
+
+      if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+        // EIP-1559 supported network
+        isEIP1559 = true;
+        maxFeePerGas = feeData.maxFeePerGas;
+        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+        // In EIP-1559, gasPrice often represents the baseFeePerGas
+        baseFeePerGas = feeData.gasPrice;
+      } else {
+        // Legacy network - use gasPrice with a reasonable buffer
+        isEIP1559 = false;
+        const gasPrice = feeData.gasPrice || (await provider.getGasPrice());
+        legacyGasPrice = gasPrice;
+        // For legacy networks, add a 20% buffer to account for network fluctuations
+        maxFeePerGas = gasPrice.mul(120).div(100);
+        maxPriorityFeePerGas = ethers.BigNumber.from(0); // No priority fee for legacy
+      }
+
+      // Prepare transaction for gas estimation
+      const txForEstimation = { ...tx };
+
+      if (isEIP1559) {
+        txForEstimation.type = 2;
+        txForEstimation.maxFeePerGas = maxFeePerGas;
+        txForEstimation.maxPriorityFeePerGas = maxPriorityFeePerGas;
+        // Remove conflicting legacy gasPrice if using EIP-1559
+        if (tx.gasPrice) {
+          delete txForEstimation.gasPrice;
+        }
+      }
+
+      // Estimate gas limit
+      const gasLimitPromise = wallet.estimateGas(txForEstimation);
+      const gasLimit = await Promise.race([gasLimitPromise, timeoutPromise]);
+
+      // Calculate maximum possible cost (what gets reserved from balance)
+      const estimatedTotalCost = maxFeePerGas.mul(gasLimit);
+
+      // Format results for easy consumption
+      const result: GasEstimationResult = {
+        gasLimit: gasLimit.toString(),
+        maxFeePerGas: ethers.utils.formatUnits(maxFeePerGas, 'gwei'),
+        maxPriorityFeePerGas: ethers.utils.formatUnits(maxPriorityFeePerGas, 'gwei'),
+        baseFeePerGas: baseFeePerGas ? ethers.utils.formatUnits(baseFeePerGas, 'gwei') : null,
+        estimatedTotalCostETH: ethers.utils.formatEther(estimatedTotalCost),
+        isEIP1559,
+        ...(legacyGasPrice && {
+          legacyGasPrice: ethers.utils.formatUnits(legacyGasPrice, 'gwei'),
+        }),
+      };
+
+      return result;
+    },
+    'Unable to estimate gas costs. Please check your network connection and try again.',
+    'GAS_ESTIMATION_FAILED',
+  );
+}
+
+/**
+ * Helper function to estimate gas for ETH transfers
+ */
+export async function estimateETHTransferGas(
+  // $FlowFixMe[unclear-type] - ethers.Wallet type is complex
+  wallet: any,
+  toAddress: string,
+  amount: string,
+): Promise<TandaPayResult<GasEstimationResult>> {
+  try {
+    const tx = {
+      to: ethers.utils.getAddress(toAddress.trim()),
+      value: ethers.utils.parseEther(amount),
+    };
+    return await estimateGasForTransaction(wallet, tx);
+  } catch (error) {
+    return {
+      success: false,
+      error: TandaPayErrorHandler.createValidationError(
+        'Invalid ETH transfer parameters',
+        'Please check the recipient address and amount.',
+      ),
+    };
+  }
+}
+
+/**
+ * Helper function to estimate gas for ERC20 token transfers
+ */
+export async function estimateERC20TransferGas(
+  // $FlowFixMe[unclear-type] - ethers.Wallet type is complex
+  wallet: any,
+  tokenAddress: string,
+  toAddress: string,
+  amount: string,
+  decimals: number,
+): Promise<TandaPayResult<GasEstimationResult>> {
+  try {
+    const erc20Interface = new ethers.utils.Interface(ERC20_ABI);
+    const data = erc20Interface.encodeFunctionData('transfer', [
+      ethers.utils.getAddress(toAddress.trim()),
+      ethers.utils.parseUnits(amount, decimals),
+    ]);
+
+    const tx = {
+      to: ethers.utils.getAddress(tokenAddress.trim()),
+      data,
+      value: 0, // ERC20 transfers don't send ETH
+    };
+
+    return await estimateGasForTransaction(wallet, tx);
+  } catch (error) {
+    return {
+      success: false,
+      error: TandaPayErrorHandler.createValidationError(
+        'Invalid ERC20 transfer parameters',
+        'Please check the token address, recipient address, and amount.',
+      ),
+    };
+  }
+}
+
+/**
  * Get current network gas price
  */
 export async function getGasPrice(network?: NetworkIdentifier): Promise<string> {

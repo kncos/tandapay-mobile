@@ -1,4 +1,42 @@
-# Zulip Mobile
+# TandaPay Mobile
+TandaPay mobile is a mobile application with a rich web3 integration for interacting with the TandaPay smart contract and organizing communities that use the TandaPay protocol.
+
+TandaPay mobile is built on top of Zulip Mobile, a free and open source chat application that uses a federated deployment approach and works similarly to slack. Zulip has excellent features for communication and community organization, and adding a TandaPay integration to it serves to be an ideal application and one-stop-shop for communication, community organization, and web3 interactions.
+
+Features of TandaPay Mobile include:
+- [x] A custom built-in ethereum wallet:
+  - [x] can send/receive ethereum or any ERC-20 token, including a "MAX" button to transfer all funds that is gas-price aware
+  - [x] can estimate gas prices and display the potential transaction fees to the user
+  - [x] supports QR code generation for receiving funds as well as QR code scanning for sending funds
+  - [x] supports any ERC-20 token, with a few default options (USDC, USDT, DAI) + user-defined custom tokens
+  - [x] supports any EVM compatible network, with a few defaults (mainnet, arbitrum, polygon) + user-defined custom rpc networks
+  - [x] supports chronological transaction history including ERC20 token transfers
+  - [x] supports securely generating new wallet mnemonic or importing existing ones
+  - [x] supports detailed transaction information and block explorer integrations
+  - [x] can be configured with Etherscan or Alchemy API keys (these can be gotten for free) for better information display 
+  - [ ] has a built-in integration with TandaPay so that TandaPay contract transactions show up in a user friendly manner
+- [x] Configurable Network Settings:
+  - [x] Can select which network you want to use among the defaults (ethereum, polygon, arbitrum), with sane default RPC providers that allow free use with no API key with rate limits that are generous enough for this use case.
+  - [x] Can create a custom RPC configuration to connect to any provider or use a URL with an api-key for higher rate limits
+  - [x] Can deploy the TandaPay contract or specify the address of it
+  - [x] supports configuration of network performance settings
+    - [x] can set a cache expiration time for cached data
+    - [x] can configure delays to avoid exceeding rate limits
+    - [x] can configure the number of retry attempts for graceful error handling if a network call fails
+  - [x] displays information about the current network configuration
+- [x] Configurable user-defined ERC-20 tokens:
+  - [x] can specify custom token symbols, contract addresses, token names, and decimal counts
+  - [x] shows what tokens are already configured and allows the user to copy their addresses
+- [x] A rich TandaPay information display, with all of the information required to interact with the smart contract
+- [x] A comprehensive dashboard for sending any transaction to the TandaPay smart contract
+- [ ] Heuristic guidance to suggest potentially relevant transactions to users and help them filter transactions for the ones that they are most likely to use to interact with the TandaPay smart contract, given it's current state
+- [ ] Macros to help users send sequences of transactions and reduce tedium when doing multi-step smart contract interactions
+- [ ] a refined user onboarding experience using the existing server infrastructure, but with modifications to make sign-up go more smoothly within TandaPay mobile's application
+
+
+# Original Zulip Readme:
+
+## Zulip Mobile
 
 [![CI](https://github.com/zulip/zulip-mobile/actions/workflows/ci.yml/badge.svg)](https://github.com/zulip/zulip-mobile/actions/workflows/ci.yml?query=branch%3Amain)
 [![Zulip chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://chat.zulip.org/#narrow/stream/mobile)
@@ -8,7 +46,7 @@ Zulip Mobile is the official mobile Zulip client, supporting both iOS
 and Android.
 
 
-## Get the app
+### Get the app
 
 Release versions of the app are available here:
 * [Zulip for iOS](https://itunes.apple.com/app/zulip/id1203036395)
@@ -24,7 +62,7 @@ You can also help out by [running beta versions](#using-the-beta) of
 the app, and reporting bugs!
 
 
-## Maintenance mode
+### Maintenance mode
 
 This codebase built on React Native is a **legacy app, which is in
 maintenance mode** as we [focus on building][zulip-flutter-beta]
@@ -55,7 +93,7 @@ This means:
 [zulip-flutter]: https://github.com/zulip/zulip-flutter
 
 
-## Contributing (old)
+### Contributing (old)
 
 If you're interested in contributing to Zulip's mobile apps,
 see [the new Flutter-based app][zulip-flutter].
@@ -65,7 +103,7 @@ Some details may still be useful, but **bear in mind that this
 app is in maintenance mode** as described above.
 
 
-### Discussion
+#### Discussion
 
 To get involved in Zulip Mobile development, please join us on
 [the Zulip community Zulip server][czo-doc], in the
@@ -81,7 +119,7 @@ that helps a wider set of Zulip contributors see your feedback.
 [czo-doc]: https://zulip.readthedocs.io/en/latest/contributing/chat-zulip-org.html
 
 
-### Using the beta
+#### Using the beta
 
 One important way to contribute is to run beta versions of the app, and report
 bugs!  To get the beta:
@@ -100,7 +138,7 @@ Bug reports are welcome either in [the #mobile stream](#discussion) or
 on this GitHub repo.
 
 
-### Development
+#### Development
 
 Zulip Mobile is written in JavaScript with React Native.  To get
 started with the code, follow this doc:
@@ -113,7 +151,7 @@ hello in [the #mobile-dev-help stream](#discussion).
 For more reading, take a look at our [developer docs](docs/).
 
 
-### History
+#### History
 
 Zulip Mobile supersedes two legacy Zulip apps,
 [zulip-ios](https://github.com/zulip/zulip-ios-legacy) and
@@ -121,7 +159,7 @@ Zulip Mobile supersedes two legacy Zulip apps,
 ([more history](https://github.com/zulip/zulip-android/blob/master/android-strategy.md)).
 
 
-## License
+### License
 
 Copyright (c) 2016-2024 Kandra Labs, Inc., and contributors, and 2016 Dropbox, Inc.
 

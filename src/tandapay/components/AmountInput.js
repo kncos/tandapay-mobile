@@ -2,10 +2,11 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import Input from '../../common/Input';
 import ZulipText from '../../common/ZulipText';
+import ZulipTextButton from '../../common/ZulipTextButton';
 import { TandaPayTypography, TandaPayLayout } from '../styles';
 import ErrorText from './ErrorText';
 
@@ -18,7 +19,27 @@ type Props = $ReadOnly<{|
   placeholder?: string,
   style?: ?{},
   disabled?: boolean,
+  // MAX button functionality
+  availableBalance?: ?string,
+  onMaxPress?: ?() => void,
+  showMaxButton?: boolean,
 |}>;
+
+const styles = StyleSheet.create({
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  inputWrapper: {
+    flex: 1,
+    marginRight: 8,
+  },
+  balanceText: {
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  },
+});
 
 export default function AmountInput(props: Props): Node {
   const {
@@ -30,6 +51,9 @@ export default function AmountInput(props: Props): Node {
     placeholder,
     style,
     disabled = false,
+    availableBalance,
+    onMaxPress,
+    showMaxButton = false,
   } = props;
 
   const [amountError, setAmountError] = useState('');
@@ -82,6 +106,13 @@ export default function AmountInput(props: Props): Node {
     setAmountError(errorMessage);
   }, [onChangeText, tokenDecimals, validateAmount]);
 
+  // Handle MAX button press
+  const handleMaxPress = useCallback(() => {
+    if (onMaxPress) {
+      onMaxPress();
+    }
+  }, [onMaxPress]);
+
   // Generate dynamic placeholder
   const dynamicPlaceholder = placeholder != null ? placeholder : `Amount in ${tokenSymbol} (max ${tokenDecimals} decimal places)`;
 
@@ -89,13 +120,34 @@ export default function AmountInput(props: Props): Node {
     <View style={style ? [TandaPayLayout.inputContainer, style] : TandaPayLayout.inputContainer}>
       {label && <ZulipText style={TandaPayTypography.inputLabel}>{label}</ZulipText>}
 
-      <Input
-        placeholder={dynamicPlaceholder}
-        value={value}
-        onChangeText={handleAmountChange}
-        keyboardType="numeric"
-        editable={!disabled}
-      />
+      <View style={showMaxButton ? styles.inputRow : null}>
+        <View style={showMaxButton ? styles.inputWrapper : null}>
+          <Input
+            placeholder={dynamicPlaceholder}
+            value={value}
+            onChangeText={handleAmountChange}
+            keyboardType="numeric"
+            editable={!disabled}
+          />
+        </View>
+
+        {showMaxButton && availableBalance != null && availableBalance.trim() !== '' && (
+          <ZulipTextButton
+            label="MAX"
+            onPress={handleMaxPress}
+          />
+        )}
+      </View>
+
+      {availableBalance != null && availableBalance.trim() !== '' && (
+        <ZulipText style={styles.balanceText}>
+          Available:
+          {' '}
+          {availableBalance}
+          {' '}
+          {tokenSymbol}
+        </ZulipText>
+      )}
 
       {amountError ? (
         <ErrorText>{amountError}</ErrorText>

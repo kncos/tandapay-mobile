@@ -14,9 +14,9 @@ import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
-import { getSelectedToken } from '../tokens/tokenSelectors';
+import { getSelectedToken, getSelectedTokenBalance } from '../tokens/tokenSelectors';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
-import { transferToken, estimateTransferGas } from '../web3';
+import { transferToken, estimateETHTransferGas, estimateERC20TransferGas, getProvider } from '../web3';
 import { getWalletInstance } from './WalletManager';
 import {
   AddressInput,
@@ -42,6 +42,7 @@ export default function WalletSendScreen(props: Props): Node {
   const { navigation } = props;
   const themeData = useContext(ThemeContext);
   const selectedToken = useSelector(getSelectedToken);
+  const selectedTokenBalance = useSelector(getSelectedTokenBalance);
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const customRpcConfig = useSelector(getTandaPayCustomRpcConfig);
 
@@ -80,6 +81,42 @@ export default function WalletSendScreen(props: Props): Node {
   const [amount, setAmount] = useState('');
   const [walletInstance, setWalletInstance] = useState(null);
 
+  // Helper function to calculate the maximum sendable amount for ETH given gas costs
+  const calculateSendableAmount = useCallback(async (requestedAmount: string, gasEstimate: GasEstimate): Promise<string> => {
+    if (selectedToken?.address != null || selectedTokenBalance == null || selectedTokenBalance.trim() === '') {
+      // For ERC20 tokens or when no balance, return as-is
+      return requestedAmount;
+    }
+
+    try {
+      const requested = ethers.utils.parseEther(requestedAmount);
+      const totalBalance = ethers.utils.parseEther(selectedTokenBalance);
+
+      // Use the estimated cost directly from our comprehensive gas estimation
+      // This already accounts for EIP-1559 maxFeePerGas and proper gas calculations
+      const estimatedGasCost = ethers.utils.parseEther(gasEstimate.estimatedCost);
+
+      // Check if requested amount + gas cost exceeds balance
+      const totalRequired = requested.add(estimatedGasCost);
+
+      if (totalRequired.gt(totalBalance)) {
+        // Return adjusted amount
+        const adjustedAmount = totalBalance.sub(estimatedGasCost);
+        if (adjustedAmount.gt(0)) {
+          return ethers.utils.formatEther(adjustedAmount);
+        } else {
+          throw new Error('Insufficient balance to cover gas costs');
+        }
+      }
+
+      // If no adjustment needed, return original amount
+      return requestedAmount;
+    } catch (error) {
+      // If calculation fails, return original amount
+      return requestedAmount;
+    }
+  }, [selectedToken, selectedTokenBalance]);
+
   // Load wallet instance lazily (only when needed)
   const getWallet = useCallback(async () => {
     if (walletInstance) {
@@ -95,6 +132,52 @@ export default function WalletSendScreen(props: Props): Node {
     }
   }, [walletInstance]);
 
+  // Handle MAX button press
+  const handleMaxPress = useCallback(() => {
+    if (selectedTokenBalance == null || selectedTokenBalance.trim() === '') {
+      return;
+    }
+
+    // For both ETH and ERC20 tokens, just use the full available balance
+    // Gas adjustment will happen during the actual send process
+    let tokenAmount = selectedTokenBalance;
+
+    if (selectedToken?.address == null) {
+      // For ETH, use the exact balance as-is to maintain maximum precision
+      // Only clean up obvious formatting issues but preserve precision
+      try {
+        // Remove any leading/trailing whitespace
+        tokenAmount = tokenAmount.trim();
+
+        // If it's a valid number, use it as-is (preserves all decimal places)
+        const parsed = parseFloat(tokenAmount);
+        if (Number.isNaN(parsed) || parsed <= 0) {
+          tokenAmount = '0';
+        }
+        // Otherwise keep tokenAmount as-is to preserve precision
+      } catch (error) {
+        // Use as-is if parsing fails
+      }
+    } else {
+      // For ERC20 tokens, use appropriate decimal precision with rounding down
+      try {
+        const tokenFloat = parseFloat(tokenAmount);
+        const decimalPlaces = Math.min(8, selectedToken.decimals);
+        // Use Math.floor to round down for ERC20
+        const multiplier = 10 ** decimalPlaces;
+        const roundedDown = Math.floor(tokenFloat * multiplier) / multiplier;
+        tokenAmount = roundedDown.toFixed(decimalPlaces);
+
+        // Remove trailing zeros for cleaner display
+        tokenAmount = parseFloat(tokenAmount).toString();
+      } catch (error) {
+        // Use as-is if parsing fails
+      }
+    }
+
+    setAmount(tokenAmount);
+  }, [selectedToken, selectedTokenBalance]);
+
   // Memoize form validation to prevent unnecessary re-renders
   const isFormValid = useMemo(() =>
     Boolean(toAddress.trim() && amount.trim() && validateEthereumAddress(toAddress.trim())),
@@ -109,8 +192,7 @@ export default function WalletSendScreen(props: Props): Node {
   }), [toAddress, amount, selectedToken, selectedNetwork]);
 
   // Gas estimation callback
-  const handleEstimateGas: EstimateGasCallback = useCallback(async (params: TransactionParams) => {
-    try {
+  const handleEstimateGas: EstimateGasCallback = useCallback(async (params: TransactionParams) => {    try {
       const wallet = await getWallet();
       if (!wallet?.address) {
         throw new Error('Wallet not loaded properly. Please try again.');
@@ -125,32 +207,44 @@ export default function WalletSendScreen(props: Props): Node {
         throw new Error('Invalid transaction parameters');
       }
 
-      const result = await estimateTransferGas(
-        selectedToken,
-        ethers.utils.getAddress(wallet.address.toLowerCase()),
-        ethers.utils.getAddress(to.toLowerCase()),
-        amt,
-        selectedNetwork,
-      );
+      // Get provider for gas estimation
+      const provider = await getProvider();
+      const connectedWallet = wallet.connect(provider);
 
-      if (result.success) {
-        const gasLimitValue = result.data.gasLimit;
-        const gasPriceValue = result.data.gasPrice;
-        const estimatedCost = result.data.estimatedCost;
+      // Use comprehensive gas estimation for accurate EIP-1559 costs
+      let gasEstimationResult;
+      if (selectedToken.address == null) {
+        // ETH transfer - for MAX calculations, use a smaller amount for gas estimation
+        // to avoid "insufficient balance" errors, then calculate the real max amount
+        const estimationAmount = '0.001'; // Use small amount for gas estimation
+        gasEstimationResult = await estimateETHTransferGas(connectedWallet, to, estimationAmount);
+      } else {
+        // ERC20 transfer
+        gasEstimationResult = await estimateERC20TransferGas(
+          connectedWallet,
+          selectedToken.address,
+          to,
+          amt,
+          selectedToken.decimals,
+        );
+      }
+
+      if (gasEstimationResult.success) {
+        const gasData = gasEstimationResult.data;
 
         return {
           success: true,
           gasEstimate: {
-            gasLimit: gasLimitValue,
-            gasPrice: gasPriceValue,
-            estimatedCost,
+            gasLimit: gasData.gasLimit,
+            gasPrice: gasData.maxFeePerGas, // Use maxFeePerGas for display
+            estimatedCost: gasData.estimatedTotalCostETH, // Real maximum cost
           },
         };
       } else {
         return {
           success: false,
-          error: result.error.userMessage ?? result.error.message,
-          originalError: result.error.message,
+          error: gasEstimationResult.error.userMessage ?? gasEstimationResult.error.message,
+          originalError: gasEstimationResult.error.message,
         };
       }
     } catch (error) {
@@ -160,7 +254,7 @@ export default function WalletSendScreen(props: Props): Node {
         originalError: error.message ?? String(error),
       };
     }
-  }, [getWallet, selectedToken, selectedNetwork]);
+  }, [getWallet, selectedToken]);
 
   // Transaction sending callback
   const handleSendTransaction: SendTransactionCallback = useCallback(async (params: TransactionParams, gasEstimate: GasEstimate) => {
@@ -179,11 +273,14 @@ export default function WalletSendScreen(props: Props): Node {
         throw new Error('Invalid transaction parameters');
       }
 
+      // Calculate the actual sendable amount (handles ETH gas adjustment automatically)
+      const finalAmount = await calculateSendableAmount(amt, gasEstimate);
+
       const result = await transferToken(
         selectedToken,
         wallet.privateKey,
         ethers.utils.getAddress(to.toLowerCase()),
-        amt,
+        finalAmount,
         selectedNetwork,
       );
 
@@ -206,7 +303,7 @@ export default function WalletSendScreen(props: Props): Node {
         originalError: error.message ?? String(error),
       };
     }
-  }, [getWallet, selectedToken, selectedNetwork]);
+  }, [getWallet, selectedToken, selectedNetwork, calculateSendableAmount]);
 
   // Custom confirmation message
   const getConfirmationMessage = useCallback((params: TransactionParams, gasEstimate: GasEstimate) => {
@@ -274,6 +371,9 @@ export default function WalletSendScreen(props: Props): Node {
             tokenSymbol={selectedToken.symbol}
             tokenDecimals={selectedToken.decimals}
             label="Amount"
+            availableBalance={selectedTokenBalance}
+            onMaxPress={handleMaxPress}
+            showMaxButton
           />
         </View>
 
