@@ -70,36 +70,43 @@ export default function TransactionList({
   // Process transactions with TandaPay decoding when they change
   useEffect(() => {
     if (transactionState.status === 'success' && transactionState.transfers.length > 0) {
-      setIsProcessingTransactions(true);
-      
-      // Process transactions asynchronously
-      const processTransactions = async () => {
-        try {
-          const processed = await Promise.all(
-            transactionState.transfers.map(async (transfer) => {
-              try {
-                return await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
-              } catch (error) {
-                // If processing fails, return the original transfer
-                return transfer;
-              }
-            })
-          );
-          setProcessedTransactions(processed);
-        } catch (error) {
-          // If all processing fails, use original transfers
-          setProcessedTransactions(transactionState.transfers);
-        } finally {
-          setIsProcessingTransactions(false);
+      // If we don't have processed transactions yet, or we have new transactions, process them
+      if (processedTransactions.length === 0 || transactionState.transfers.length > processedTransactions.length) {
+        // Only show loading state on initial load (when we have no processed transactions)
+        if (processedTransactions.length === 0) {
+          setIsProcessingTransactions(true);
         }
-      };
+        
+        // Process transactions asynchronously
+        const processTransactions = async () => {
+          try {
+            const processed = await Promise.all(
+              transactionState.transfers.map(async (transfer) => {
+                try {
+                  return await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
+                } catch (error) {
+                  // If processing fails, return the original transfer
+                  return transfer;
+                }
+              })
+            );
+            setProcessedTransactions(processed);
+          } catch (error) {
+            // If all processing fails, use original transfers
+            setProcessedTransactions(transactionState.transfers);
+          } finally {
+            setIsProcessingTransactions(false);
+          }
+        };
 
-      processTransactions();
-    } else {
+        processTransactions();
+      }
+    } else if (transactionState.status === 'success' && transactionState.transfers.length === 0) {
+      // Reset when no transactions
       setProcessedTransactions([]);
       setIsProcessingTransactions(false);
     }
-  }, [transactionState, walletAddress, tandaPayContractAddress, network]);
+  }, [transactionState, walletAddress, tandaPayContractAddress, network, processedTransactions.length]);
 
   const showTransactionDetails = async (transfer: Transfer) => {
     try {
@@ -198,20 +205,27 @@ export default function TransactionList({
         </ZulipText>
       </View>
     );
-  }
-
-  // Handle success state with transactions
+  }  // Handle success state with transactions
   if (transactionState.status === 'success') {
     const { hasMore } = transactionState;
+    const usingProcessedData = processedTransactions.length > 0 && !isProcessingTransactions;
 
     return (
       <View style={{ backgroundColor: themeData.backgroundColor }}>
         {/* Transaction List */}
-        {(isProcessingTransactions ? transactionState.transfers : processedTransactions).map((transaction, index) => {
+        {(isProcessingTransactions && processedTransactions.length === 0
+          ? transactionState.transfers
+          : processedTransactions.length > 0
+            ? processedTransactions
+            : transactionState.transfers
+        ).map((transaction, index) => {
           // For processed transactions, use them directly. For unprocessed, use basic format
           let etherscanTransaction;
           
-          if (isProcessingTransactions) {
+          if (usingProcessedData) {
+            // $FlowFixMe[unclear-type] - Processed transaction data
+            etherscanTransaction = (transaction: any);
+          } else {
             // $FlowFixMe[unclear-type] - Using basic transfer data while processing
             etherscanTransaction = (transaction: any);
             // Create a basic formatted version for display
@@ -223,9 +237,6 @@ export default function TransactionList({
               isTandaPayTransaction: false,
               tandaPaySummary: null,
             };
-          } else {
-            // $FlowFixMe[unclear-type] - Processed transaction data
-            etherscanTransaction = (transaction: any);
           }
 
           // Determine color and display content based on transaction type
@@ -266,7 +277,7 @@ export default function TransactionList({
                 </View>
                 <ZulipTextButton
                   label="View"
-                  onPress={() => showTransactionDetails(isProcessingTransactions ? transactionState.transfers[index] : transaction)}
+                  onPress={() => showTransactionDetails(usingProcessedData ? transaction : transactionState.transfers[index])}
                 />
               </View>
             </View>
