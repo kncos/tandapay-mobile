@@ -23,6 +23,7 @@ type Props = $ReadOnly<{|
   membersData: ?Array<MemberInfo>,
   loading: boolean,
   error: ?string,
+  secretaryAddress?: ?string,
   onRefresh: () => void,
 |}>;
 
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
 });
 
 // Render member details for a ribbon
-function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, isLast: boolean = false): Node {
+function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, secretaryAddress: ?string, isLast: boolean = false): Node {
   return (
     <View key={formatBigNumber(member.id)}>
       <View style={[styles.memberHeader, { backgroundColor: themeData.cardColor }]}>
@@ -82,6 +83,8 @@ function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, isLast:
           member={member}
           showAddress
           showAssignmentStatus
+          showRole
+          secretaryAddress={secretaryAddress}
           compact
         />
       </View>
@@ -92,7 +95,7 @@ function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, isLast:
 }
 
 export default function MembersModalContent(props: Props): Node {
-  const { membersData, loading, error, onRefresh } = props;
+  const { membersData, loading, error, secretaryAddress, onRefresh } = props;
   const themeData = useContext(ThemeContext);
 
   // Render members grouped by subgroup using TandaRibbon
@@ -127,7 +130,7 @@ export default function MembersModalContent(props: Props): Node {
               contentBackgroundColor={themeData.cardColor}
             >
               {members.map((member, index) =>
-                renderMemberForRibbon(member, themeData, index === members.length - 1)
+                renderMemberForRibbon(member, themeData, secretaryAddress, index === members.length - 1)
               )}
             </TandaRibbon>
           );

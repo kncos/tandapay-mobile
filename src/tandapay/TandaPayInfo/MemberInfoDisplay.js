@@ -21,6 +21,8 @@ type Props = $ReadOnly<{|
   showAddress?: boolean,
   showAssignmentStatus?: boolean,
   showSubgroupId?: boolean,
+  showRole?: boolean,
+  secretaryAddress?: ?string,
   subgroupId?: ?number,
   compact?: boolean,
 |}>;
@@ -58,11 +60,24 @@ export default function MemberInfoDisplay(props: Props): Node {
     showAddress = false,
     showAssignmentStatus = false,
     showSubgroupId = false,
+    showRole = false,
+    secretaryAddress,
     subgroupId,
     compact = false,
   } = props;
 
   const rowStyle = compact ? styles.infoRowCompact : styles.infoRow;
+
+  // Determine member's role
+  const getMemberRole = () => {
+    if (secretaryAddress != null && secretaryAddress.trim() !== ''
+        && member.walletAddress != null && member.walletAddress.trim() !== '') {
+      if (member.walletAddress.toLowerCase() === secretaryAddress.toLowerCase()) {
+        return 'Secretary';
+      }
+    }
+    return 'Member';
+  };
 
   return (
     <>
@@ -84,6 +99,13 @@ export default function MemberInfoDisplay(props: Props): Node {
             ...
             {member.walletAddress.slice(-4)}
           </ZulipText>
+        </View>
+      )}
+
+      {showRole && (
+        <View style={rowStyle}>
+          <ZulipText style={styles.infoLabel}>Role:</ZulipText>
+          <ZulipText style={styles.infoValue}>{getMemberRole()}</ZulipText>
         </View>
       )}
 

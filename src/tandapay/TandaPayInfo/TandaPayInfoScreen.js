@@ -589,6 +589,7 @@ function TandaPayInfoScreen(props: Props): Node {
             membersData={deserializedMembersData}
             loading={modalLoading}
             error={modalError}
+            secretaryAddress={communityInfo?.secretaryAddress}
             onRefresh={handleRefreshMembers}
           />
         </ModalContainer>

@@ -61,6 +61,8 @@ export default function UserStatusCard(props: Props): Node {
           member={userMemberInfo}
           showMemberId
           showSubgroupId
+          showRole
+          secretaryAddress={communityInfo.secretaryAddress}
           subgroupId={userSubgroupInfo ? bigNumberToNumber(userSubgroupInfo.id) : null}
         />
       ) : (
