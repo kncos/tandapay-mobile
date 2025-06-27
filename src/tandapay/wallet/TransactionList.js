@@ -209,21 +209,26 @@ export default function TransactionList({
         {/* Load More Button */}
         {hasMore && (
           <View style={TandaPayStyles.buttonRow}>
-            {loadMoreState.status === 'loading' ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator size="small" color={QUARTER_COLOR} />
-                <ZulipText style={{ marginLeft: 8, color: themeData.color }}>
-                  Loading more...
-                </ZulipText>
-              </View>
-            ) : (
-              <ZulipButton
-                style={TandaPayStyles.button}
-                text="Load More"
-                onPress={onLoadMore}
-                disabled={loadMoreState.status === 'complete'}
-              />
-            )}
+            <ZulipButton
+              style={TandaPayStyles.button}
+              text="Load More"
+              progress={loadMoreState.status === 'loading'}
+              disabled={loadMoreState.status === 'loading'}
+              onPress={onLoadMore}
+            />
+          </View>
+        )}
+
+        {/* All Caught Up Button */}
+        {!hasMore && transfers.length > 0 && (
+          <View style={TandaPayStyles.buttonRow}>
+            <ZulipButton
+              style={TandaPayStyles.button}
+              text="🎉 All Caught Up!"
+              secondary
+              disabled
+              onPress={() => {}}
+            />
           </View>
         )}
 
