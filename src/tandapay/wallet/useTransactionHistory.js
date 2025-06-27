@@ -16,6 +16,7 @@ import { getAlchemyApiKey } from './WalletManager';
 import { getChainByNetwork, type SupportedNetwork } from '../definitions';
 import type { TandaPayError } from '../errors/types';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
+import { convertTransferToEtherscanFormat } from './TransactionFormatter';
 
 type Transfer = mixed;
 
@@ -54,6 +55,7 @@ type UseTransactionHistoryProps = {|
   walletAddress: ?string,
   apiKeyConfigured: boolean,
   network?: SupportedNetwork,
+  tandaPayContractAddress?: ?string,
 |};
 
 type UseTransactionHistoryReturn = {|
@@ -77,6 +79,7 @@ export default function useTransactionHistory({
   walletAddress,
   apiKeyConfigured,
   network = 'sepolia',
+  tandaPayContractAddress,
 }: UseTransactionHistoryProps): UseTransactionHistoryReturn {
   const [transactionState, setTransactionState] = useState<TransactionState>({ status: 'idle' });
   const [loadMoreState, setLoadMoreState] = useState<LoadMoreState>({ status: 'idle' });
@@ -84,6 +87,30 @@ export default function useTransactionHistory({
   // Use refs to maintain instances across re-renders
   const alchemyFetcherRef = useRef<?AlchemyTransferFetcher>(null);
   const managerRef = useRef<?ChronologicalTransferManager>(null);
+
+  // Helper function to process raw transfers into etherscan format
+  const processTransfers = useCallback(async (rawTransfers: $ReadOnlyArray<Transfer>) => {
+    if (walletAddress == null || walletAddress === '' || tandaPayContractAddress == null || tandaPayContractAddress === '') {
+      return rawTransfers;
+    }
+
+    try {
+      const processedTransfers = await Promise.all(
+        rawTransfers.map(async (transfer) => {
+          try {
+            return await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
+          } catch (error) {
+            // If processing fails, return the original transfer
+            return transfer;
+          }
+        })
+      );
+      return processedTransfers;
+    } catch (error) {
+      // If all processing fails, return original transfers
+      return rawTransfers;
+    }
+  }, [walletAddress, tandaPayContractAddress, network]);
 
   // Initialize Alchemy and managers when needed
   const initializeManagers = useCallback(async () => {
@@ -119,7 +146,7 @@ export default function useTransactionHistory({
     }
   }, [walletAddress, apiKeyConfigured, network]);
 
-  // Reset when wallet, API key, or network changes
+  // Reset when wallet, API key, network, or contract address changes
   useEffect(() => {
     setTransactionState({ status: 'idle' });
     setLoadMoreState({ status: 'idle' });
@@ -127,7 +154,7 @@ export default function useTransactionHistory({
     // Clean up previous instances
     alchemyFetcherRef.current = null;
     managerRef.current = null;
-  }, [walletAddress, apiKeyConfigured, network]);
+  }, [walletAddress, apiKeyConfigured, network, tandaPayContractAddress]);
 
   // Fetch initial transactions
   const fetchInitialTransactions = useCallback(async () => {
@@ -150,10 +177,13 @@ export default function useTransactionHistory({
       }
 
       const result = await manager.getMoreTransactions();
+      
+      // Process the transactions before setting state
+      const processedTransfers = await processTransfers(result.transfers);
 
       setTransactionState({
         status: 'success',
-        transfers: result.transfers,
+        transfers: processedTransfers,
         hasMore: result.metadata.hasMore,
       });
     } catch (error) {
@@ -170,7 +200,7 @@ export default function useTransactionHistory({
         error: tandaPayError,
       });
     }
-  }, [walletAddress, initializeManagers]);
+  }, [walletAddress, initializeManagers, processTransfers]);
 
   // Initial fetch effect
   useEffect(() => {
@@ -206,10 +236,13 @@ export default function useTransactionHistory({
       }
 
       const result = await managerRef.current.getMoreTransactions();
+      
+      // Process the new transactions before adding them
+      const processedNewTransfers = await processTransfers(result.transfers);
 
       setTransactionState({
         status: 'success',
-        transfers: [...transactionState.transfers, ...result.transfers],
+        transfers: [...transactionState.transfers, ...processedNewTransfers],
         hasMore: result.metadata.hasMore,
       });
 
@@ -218,7 +251,7 @@ export default function useTransactionHistory({
       // For load more errors, just mark as complete
       setLoadMoreState({ status: 'complete' });
     }
-  }, [walletAddress, transactionState, loadMoreState.status]);
+  }, [walletAddress, transactionState, loadMoreState.status, processTransfers]);
 
   // Refresh functionality
   const refresh = useCallback(() => {

@@ -17,7 +17,7 @@ import { BRAND_COLOR } from '../../styles';
 import { hasWallet, getWalletAddress, hasEtherscanApiKey } from './WalletManager';
 import { useNavigation } from '../../react-navigation';
 import { useSelector } from '../../react-redux';
-import { getTandaPaySelectedNetwork } from '../redux/selectors';
+import { getTandaPaySelectedNetwork, getCurrentTandaPayContractAddress } from '../redux/selectors';
 import TandaPayStyles from '../styles';
 import { getExplorerAddressUrl, getExplorerTransactionUrl } from './ExplorerUtils';
 import useTransactionHistory from './useTransactionHistory';
@@ -105,6 +105,7 @@ export default function WalletScreen(props: Props): Node {
 
   const navigation = useNavigation();
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
+  const tandaPayContractAddress = useSelector(getCurrentTandaPayContractAddress);
 
   // Filter out custom networks since Alchemy/Etherscan only support specific networks
   const supportedNetwork = selectedNetwork === 'custom' ? 'sepolia' : selectedNetwork;
@@ -114,6 +115,7 @@ export default function WalletScreen(props: Props): Node {
     walletAddress,
     apiKeyConfigured,
     network: supportedNetwork,
+    tandaPayContractAddress,
   });
 
   const checkWallet = useCallback(async () => {
