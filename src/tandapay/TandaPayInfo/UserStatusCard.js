@@ -15,6 +15,7 @@ import { formatBigNumber, getMemberStatusDisplayName, bigNumberToNumber } from '
 
 type Props = $ReadOnly<{|
   communityInfo: CommunityInfo,
+  userWalletAddress?: ?string,
 |}>;
 
 const styles = StyleSheet.create({

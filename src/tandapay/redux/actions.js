@@ -14,6 +14,10 @@ import {
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
   TANDAPAY_TOKEN_INVALIDATE_BALANCE,
+  TANDAPAY_COMMUNITY_INFO_UPDATE,
+  TANDAPAY_COMMUNITY_INFO_LOADING,
+  TANDAPAY_COMMUNITY_INFO_ERROR,
+  TANDAPAY_COMMUNITY_INFO_CLEAR,
 } from '../../actionConstants';
 
 // =============================================================================
@@ -195,5 +199,54 @@ export function updateRetryAttempts(retryAttempts: number): TandaPaySettingsUpda
         retryAttempts,
       },
     },
+  };
+}
+
+// =============================================================================
+// COMMUNITY INFO ACTIONS
+// =============================================================================
+
+/**
+ * Action creator for updating community info loading state
+ */
+export function setCommunityInfoLoading(loading: boolean): PerAccountAction {
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_LOADING,
+    loading,
+  };
+}
+
+/**
+ * Action creator for updating community info data
+ */
+export function updateCommunityInfo(
+  communityInfo: $FlowFixMe, // CommunityInfo type
+  contractAddress: ?string,
+  userAddress: ?string,
+): PerAccountAction {
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_UPDATE,
+    communityInfo,
+    contractAddress,
+    userAddress,
+  };
+}
+
+/**
+ * Action creator for community info error
+ */
+export function setCommunityInfoError(error: string): PerAccountAction {
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_ERROR,
+    error,
+  };
+}
+
+/**
+ * Action creator for clearing community info
+ */
+export function clearCommunityInfo(): PerAccountAction {
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_CLEAR,
   };
 }

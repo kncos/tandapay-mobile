@@ -12,8 +12,9 @@ import ZulipButton from '../../common/ZulipButton';
 import ModalContainer from '../components/ModalContainer';
 import { IconAlertTriangle } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
-import { getCurrentTandaPayContractAddress } from '../redux/selectors';
+import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading } from '../redux/selectors';
 import { fetchCommunityInfo } from '../contract/communityInfo';
+import { getWalletAddress } from '../wallet/WalletManager';
 import { batchGetAllMemberInfo, batchGetAllSubgroupInfo } from '../contract/read';
 import { HALF_COLOR } from '../../styles/constants';
 
@@ -99,10 +100,11 @@ function TandaPayInfoScreen(props: Props): Node {
   const { navigation } = props;
 
   // State management
-  const [communityInfo, setCommunityInfo] = useState<?CommunityInfo>(null);
+  const [localCommunityInfo, setLocalCommunityInfo] = useState<?CommunityInfo>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<?string>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [userWalletAddress, setUserWalletAddress] = useState<?string>(null);
 
   // Modal state
   const [membersModalVisible, setMembersModalVisible] = useState(false);
@@ -114,6 +116,30 @@ function TandaPayInfoScreen(props: Props): Node {
 
   // Redux selectors
   const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
+  const reduxCommunityInfo = useSelector(state => getCommunityInfo(state));
+  const reduxLoading = useSelector(state => getCommunityInfoLoading(state));
+
+  // Use Redux state if available, otherwise fall back to local state
+  const communityInfo = reduxCommunityInfo || localCommunityInfo;
+
+  // Use Redux loading state if available, otherwise fall back to local loading
+  const isLoading = reduxLoading || loading;
+
+  // Get user's wallet address on component mount
+  useEffect(() => {
+    const loadWalletAddress = async () => {
+      try {
+        const addressResult = await getWalletAddress();
+        if (addressResult.success && addressResult.data != null && addressResult.data.trim() !== '') {
+          setUserWalletAddress(addressResult.data);
+        }
+      } catch (err) {
+        // Silently fail - user might not have a wallet set up yet
+      }
+    };
+
+    loadWalletAddress();
+  }, []);
 
   // Fetch community information
   const fetchCommunityData = useCallback(
@@ -132,10 +158,10 @@ function TandaPayInfoScreen(props: Props): Node {
           );
         }
 
-        const result = await fetchCommunityInfo();
+        const result = await fetchCommunityInfo(contractAddress, userWalletAddress);
 
         if (result.success) {
-          setCommunityInfo(result.data);
+          setLocalCommunityInfo(result.data);
         } else {
           throw new Error(
             result.error
@@ -148,13 +174,13 @@ function TandaPayInfoScreen(props: Props): Node {
       } catch (err) {
         const errorMessage = (err && err.message) || 'Unknown error occurred';
         setError(errorMessage);
-        setCommunityInfo(null);
+        setLocalCommunityInfo(null);
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [contractAddress],
+    [contractAddress, userWalletAddress],
   );
 
   // Initial load
@@ -333,7 +359,7 @@ function TandaPayInfoScreen(props: Props): Node {
   }, []);
 
   // Render loading state
-  if (loading && !communityInfo) {
+  if (isLoading && !communityInfo) {
     return (
       <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
         <View style={styles.loadingContainer}>
@@ -405,7 +431,10 @@ function TandaPayInfoScreen(props: Props): Node {
         {/* User Status Card */}
         {communityInfo && (
           <View style={styles.card}>
-            <UserStatusCard communityInfo={communityInfo} />
+            <UserStatusCard
+              communityInfo={communityInfo}
+              userWalletAddress={userWalletAddress}
+            />
           </View>
         )}
 

@@ -69,6 +69,10 @@ import {
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
   TANDAPAY_TOKEN_INVALIDATE_BALANCE,
+  TANDAPAY_COMMUNITY_INFO_UPDATE,
+  TANDAPAY_COMMUNITY_INFO_LOADING,
+  TANDAPAY_COMMUNITY_INFO_ERROR,
+  TANDAPAY_COMMUNITY_INFO_CLEAR,
 } from './actionConstants';
 
 import type { UserMessageFlag } from './api/modelTypes';
@@ -716,13 +720,38 @@ type TandaPayTokenInvalidateBalanceAction = $ReadOnly<{|
   tokenSymbol: string,
 |}>;
 
+type TandaPayCommunityInfoUpdateAction = $ReadOnly<{|
+  type: typeof TANDAPAY_COMMUNITY_INFO_UPDATE,
+  communityInfo: $FlowFixMe, // CommunityInfo type from contract/communityInfo
+  contractAddress: ?string,
+  userAddress: ?string,
+|}>;
+
+type TandaPayCommunityInfoLoadingAction = $ReadOnly<{|
+  type: typeof TANDAPAY_COMMUNITY_INFO_LOADING,
+  loading: boolean,
+|}>;
+
+type TandaPayCommunityInfoErrorAction = $ReadOnly<{|
+  type: typeof TANDAPAY_COMMUNITY_INFO_ERROR,
+  error: string,
+|}>;
+
+type TandaPayCommunityInfoClearAction = $ReadOnly<{|
+  type: typeof TANDAPAY_COMMUNITY_INFO_CLEAR,
+|}>;
+
 type TandaPayAction =
   | TandaPaySettingsUpdateAction
   | TandaPayTokenSelectAction
   | TandaPayTokenAddCustomAction
   | TandaPayTokenRemoveCustomAction
   | TandaPayTokenUpdateBalanceAction
-  | TandaPayTokenInvalidateBalanceAction;
+  | TandaPayTokenInvalidateBalanceAction
+  | TandaPayCommunityInfoUpdateAction
+  | TandaPayCommunityInfoLoadingAction
+  | TandaPayCommunityInfoErrorAction
+  | TandaPayCommunityInfoClearAction;
 
 //
 // Then, the primary subtypes of `Action`.  Each of these should have some
@@ -893,6 +922,10 @@ export function isPerAccountApplicableAction(action: Action): boolean {
     case TANDAPAY_TOKEN_REMOVE_CUSTOM:
     case TANDAPAY_TOKEN_UPDATE_BALANCE:
     case TANDAPAY_TOKEN_INVALIDATE_BALANCE:
+    case TANDAPAY_COMMUNITY_INFO_UPDATE:
+    case TANDAPAY_COMMUNITY_INFO_LOADING:
+    case TANDAPAY_COMMUNITY_INFO_ERROR:
+    case TANDAPAY_COMMUNITY_INFO_CLEAR:
       (action: PerAccountAction);
       (action: PerAccountApplicableAction);
       return true;

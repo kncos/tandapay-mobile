@@ -6,6 +6,7 @@ import { getTandaPayReadActions } from './read';
 import { TandaPayInfo } from './TandaPay';
 import { executeTandaPayMulticall } from './multicall';
 import { getTandaPayNetworkPerformance, getCurrentTandaPayContractAddress } from '../redux/selectors';
+import { updateCommunityInfo } from '../redux/actions';
 import { tryGetActiveAccountState } from '../../selectors';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
@@ -239,6 +240,20 @@ class TandaPayCommunityInfo {
       timestamp: Date.now(),
     });
 
+    // Update Redux store with the new community info
+    try {
+      if (store && store.dispatch) {
+        store.dispatch(updateCommunityInfo(
+          communityInfo,
+          this._contractAddress,
+          this.config.userAddress
+        ));
+      }
+    } catch (error) {
+      // Silently fail if Redux store is not available or has issues
+      // This ensures the core functionality still works even if Redux integration fails
+    }
+
     return communityInfo;
   }
 
@@ -353,7 +368,11 @@ class TandaPayCommunityInfo {
   }
 
   /**
-   * Fetch user-specific data (member and subgroup info) with fallback error handling
+   * Fetch user-specific data (member and subgroup info) with proper logic
+   * Logic: 1. fetch member info from address
+   *        2. if memberId = 0, then memberInfo and subgroupInfo are null
+   *        3. if subgroupId = 0, then subgroupInfo is null even though we are a member
+   *        4. finally, memberId != 0 and subgroupId != 0 so we have both member and subgroup info
    * @private
    */
   async _fetchUserData(): Promise<{
@@ -373,10 +392,20 @@ class TandaPayCommunityInfo {
         0 // current period
       ]);
 
+      // Check if we got valid member info and member ID is non-zero
       if (memberInfo != null && memberInfo !== false && this.config.userAddress != null) {
+        const memberId = memberInfo.id;
+        const subgroupId = memberInfo.subgroupId;
+
+        // Step 2: If memberId = 0, then memberInfo and subgroupInfo are null
+        if (memberId == null || memberId === false || memberId === 0) {
+          return { userMemberInfo: null, userSubgroupInfo: null };
+        }
+
+        // Member ID is non-zero, so we are a member - create member info
         userMemberInfo = {
-          id: memberInfo.id ?? 0,
-          subgroupId: memberInfo.subgroupId ?? 0,
+          id: memberId,
+          subgroupId: subgroupId ?? 0,
           walletAddress: memberInfo.walletAddress ?? this.config.userAddress,
           communityEscrowAmount: memberInfo.communityEscrowAmount ?? 0,
           savingsEscrowAmount: memberInfo.savingsEscrowAmount ?? 0,
@@ -389,25 +418,28 @@ class TandaPayCommunityInfo {
           assignmentStatus: memberInfo.assignmentStatus ?? 0,
         };
 
-        // Fetch subgroup information if user has a subgroup
-        const subgroupIdNum = memberInfo.subgroupId;
-        if (subgroupIdNum != null && subgroupIdNum !== false && subgroupIdNum > 0) {
+        // Step 3: If subgroupId = 0, then subgroupInfo is null even though we are a member
+        if (subgroupId != null && subgroupId !== false && subgroupId > 0) {
+          // Step 4: memberId != 0 and subgroupId != 0, fetch subgroup info
           try {
-            const subgroupInfo = await this.rateLimitedContractCall('getSubgroupInfo', [subgroupIdNum]);
+            const subgroupInfo = await this.rateLimitedContractCall('getSubgroupInfo', [subgroupId]);
             if (subgroupInfo != null && subgroupInfo !== false) {
               userSubgroupInfo = {
-                id: subgroupIdNum,
+                id: subgroupId,
                 members: subgroupInfo.members ?? [],
                 isValid: subgroupInfo.isValid ?? false,
               };
             }
           } catch (subgroupError) {
             // Subgroup fetch failed, but continue with null subgroup info
+            // This is expected if the subgroup doesn't exist or contract call fails
           }
         }
+        // If subgroupId is 0, userSubgroupInfo remains null (step 3)
       }
     } catch (memberError) {
       // Member info fetch failed, continue with null user info
+      // This is expected if the user is not a member or contract call fails
     }
 
     return { userMemberInfo, userSubgroupInfo };

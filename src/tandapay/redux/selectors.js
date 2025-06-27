@@ -4,7 +4,9 @@ import type {
   TandaPayState,
 } from './reducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
+import type { CommunityInfoState } from './reducers/communityInfoReducer';
 import type { NetworkIdentifier } from '../definitions/types';
+import type { CommunityInfo } from '../contract/communityInfo';
 
 // Main TandaPay state selector
 export const getTandaPayState = (state: PerAccountState): TandaPayState => {
@@ -33,6 +35,14 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
         customTokens: [],
         balances: {},
         lastUpdated: {},
+      },
+      communityInfo: {
+        communityInfo: null,
+        loading: false,
+        error: null,
+        lastUpdated: null,
+        contractAddress: null,
+        userAddress: null,
       },
     };
   }
@@ -188,5 +198,55 @@ export const getTandaPaySelectedTokenSymbol = (state: PerAccountState): string =
     return tandaPayState.tokens.selectedTokenSymbol || 'ETH';
   } catch (error) {
     return 'ETH';
+  }
+};
+
+// Community info selectors
+export const getCommunityInfoState = (state: PerAccountState): CommunityInfoState => {
+  const tandaPayState = getTandaPayState(state);
+  return tandaPayState.communityInfo;
+};
+
+export const getCommunityInfo = (state: PerAccountState): ?CommunityInfo => {
+  try {
+    return getCommunityInfoState(state).communityInfo;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const getCommunityInfoLoading = (state: PerAccountState): boolean => {
+  try {
+    return getCommunityInfoState(state).loading;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const getCommunityInfoError = (state: PerAccountState): ?string => {
+  try {
+    return getCommunityInfoState(state).error;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const getCommunityInfoLastUpdated = (state: PerAccountState): ?number => {
+  try {
+    return getCommunityInfoState(state).lastUpdated;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const isCommunityInfoStale = (state: PerAccountState, maxAgeMs: number = 30000): boolean => {
+  try {
+    const lastUpdated = getCommunityInfoLastUpdated(state);
+    if (lastUpdated == null) {
+      return true;
+    }
+    return Date.now() - lastUpdated > maxAgeMs;
+  } catch (error) {
+    return true;
   }
 };
