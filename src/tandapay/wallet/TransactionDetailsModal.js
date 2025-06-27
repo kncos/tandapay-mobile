@@ -2,8 +2,7 @@
 
 import React, { useContext, useState, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, Modal, ScrollView, Alert, ActivityIndicator, StyleSheet } from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
+import { View, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -122,16 +121,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
 });
-
-function showToast(message: string) {
-  // Simple alert for now - can be replaced with proper toast if available
-  Alert.alert('Success', message);
-}
-
-function copyToClipboard(text: string, label: string) {
-  Clipboard.setString(text);
-  showToast(`${label} copied to clipboard`);
-}
 
 export default function TransactionDetailsModal({
   visible,
@@ -253,7 +242,6 @@ export default function TransactionDetailsModal({
                 <ScrollableTextBox
                   text={etherscanTransaction.from}
                   label="From address"
-                  onCopy={copyToClipboard}
                 />
               </View>
 
@@ -262,7 +250,6 @@ export default function TransactionDetailsModal({
                 <ScrollableTextBox
                   text={etherscanTransaction.to}
                   label="To address"
-                  onCopy={copyToClipboard}
                 />
               </View>
 
@@ -272,7 +259,6 @@ export default function TransactionDetailsModal({
                   <ScrollableTextBox
                     text={etherscanTransaction.contractAddress}
                     label="Token contract"
-                    onCopy={copyToClipboard}
                   />
                 </View>
               )}
@@ -286,7 +272,6 @@ export default function TransactionDetailsModal({
                 <ScrollableTextBox
                   text={etherscanTransaction.hash}
                   label="Transaction hash"
-                  onCopy={copyToClipboard}
                 />
               </View>
 

@@ -24,7 +24,7 @@ export function serializeBigNumbers(obj: mixed): mixed {
         [BIGNUMBER_MARKER]: String(obj),
       };
     }
-    
+
     // Method 2: Check for BigNumber-specific properties
     // $FlowFixMe[incompatible-use] - checking for BigNumber methods
     if (typeof obj.toString === 'function' && typeof obj.toHexString === 'function'
