@@ -16,6 +16,7 @@ import {
 } from '../../common/Icons';
 
 import TandaPayErrorHandler from '../errors/ErrorHandler';
+import { estimateContractTransactionGas } from '../web3';
 
 /**
  * Parameter metadata for dynamic form generation
@@ -153,7 +154,7 @@ const transactions: WriteTransaction[] = [
         };
       }
     },
-    estimateGasFunction: contract => contract.estimateGas.issueRefund(true),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'issueRefund', undefined, [true]),
   },
 
   // MEMBER TRANSACTIONS
@@ -209,7 +210,7 @@ const transactions: WriteTransaction[] = [
         };
       }
     },
-    estimateGasFunction: contract => contract.estimateGas.joinCommunity(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'joinCommunity'),
   },
 
   {
@@ -231,7 +232,7 @@ const transactions: WriteTransaction[] = [
     writeFunction: (contract, approve = true) => contract.approveSubgroupAssignment(approve),
     simulateFunction: createSimulation('approveSubgroupAssignment'),
     estimateGasFunction: (contract, approve = true) =>
-      contract.estimateGas.approveSubgroupAssignment(approve),
+      estimateContractTransactionGas(contract, 'approveSubgroupAssignment', undefined, [approve]),
   },
 
   {
@@ -279,11 +280,11 @@ const transactions: WriteTransaction[] = [
       ],
     ),
     estimateGasFunction: (contract, subgroupId, newMemberId, approve = true) =>
-      contract.estimateGas.approveNewSubgroupMember(
+      estimateContractTransactionGas(contract, 'approveNewSubgroupMember', undefined, [
         ethers.BigNumber.from(subgroupId),
         ethers.BigNumber.from(newMemberId),
         approve,
-      ),
+      ]),
   },
 
   {
@@ -295,7 +296,7 @@ const transactions: WriteTransaction[] = [
     icon: IconLogOut,
     writeFunction: contract => contract.leaveSubgroup(),
     simulateFunction: createSimulation('leaveSubgroup'),
-    estimateGasFunction: contract => contract.estimateGas.leaveSubgroup(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'leaveSubgroup'),
   },
 
   {
@@ -307,7 +308,7 @@ const transactions: WriteTransaction[] = [
     icon: IconLogOut,
     writeFunction: contract => contract.defectFromCommunity(),
     simulateFunction: createSimulation('defectFromCommunity'),
-    estimateGasFunction: contract => contract.estimateGas.defectFromCommunity(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'defectFromCommunity'),
   },
 
   {
@@ -330,7 +331,7 @@ const transactions: WriteTransaction[] = [
       contract.payPremium(useAvailableBalance),
     simulateFunction: createSimulation('payPremium'),
     estimateGasFunction: (contract, useAvailableBalance = false) =>
-      contract.estimateGas.payPremium(useAvailableBalance),
+      estimateContractTransactionGas(contract, 'payPremium', undefined, [useAvailableBalance]),
   },
 
   {
@@ -342,7 +343,7 @@ const transactions: WriteTransaction[] = [
     icon: IconUserCheck,
     writeFunction: contract => contract.acceptSecretaryRole(),
     simulateFunction: createSimulation('acceptSecretaryRole'),
-    estimateGasFunction: contract => contract.estimateGas.acceptSecretaryRole(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'acceptSecretaryRole'),
   },
 
   {
@@ -366,7 +367,7 @@ const transactions: WriteTransaction[] = [
       contract.emergencySecretaryHandoff(newSecretaryWalletAddress),
     simulateFunction: createSimulation('emergencySecretaryHandoff'),
     estimateGasFunction: (contract, newSecretaryWalletAddress) =>
-      contract.estimateGas.emergencySecretaryHandoff(newSecretaryWalletAddress),
+      estimateContractTransactionGas(contract, 'emergencySecretaryHandoff', undefined, [newSecretaryWalletAddress]),
   },
 
   {
@@ -378,7 +379,7 @@ const transactions: WriteTransaction[] = [
     icon: IconDollarSign,
     writeFunction: contract => contract.withdrawRefund(),
     simulateFunction: createSimulation('withdrawRefund'),
-    estimateGasFunction: contract => contract.estimateGas.withdrawRefund(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'withdrawRefund'),
   },
 
   {
@@ -390,7 +391,7 @@ const transactions: WriteTransaction[] = [
     icon: IconPlusCircle,
     writeFunction: contract => contract.submitClaim(),
     simulateFunction: createSimulation('submitClaim'),
-    estimateGasFunction: contract => contract.estimateGas.submitClaim(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'submitClaim'),
   },
 
   {
@@ -412,7 +413,7 @@ const transactions: WriteTransaction[] = [
     writeFunction: (contract, forfeit = false) => contract.withdrawClaimFund(forfeit),
     simulateFunction: createSimulation('withdrawClaimFund'),
     estimateGasFunction: (contract, forfeit = false) =>
-      contract.estimateGas.withdrawClaimFund(forfeit),
+      estimateContractTransactionGas(contract, 'withdrawClaimFund', undefined, [forfeit]),
   },
 
   // SECRETARY TRANSACTIONS
@@ -437,7 +438,7 @@ const transactions: WriteTransaction[] = [
       contract.addMemberToCommunity(memberWalletAddress),
     simulateFunction: createSimulation('addMemberToCommunity'),
     estimateGasFunction: (contract, memberWalletAddress) =>
-      contract.estimateGas.addMemberToCommunity(memberWalletAddress),
+      estimateContractTransactionGas(contract, 'addMemberToCommunity', undefined, [memberWalletAddress]),
   },
 
   {
@@ -449,7 +450,7 @@ const transactions: WriteTransaction[] = [
     icon: IconUsers,
     writeFunction: contract => contract.createSubgroup(),
     simulateFunction: createSimulation('createSubgroup'),
-    estimateGasFunction: contract => contract.estimateGas.createSubgroup(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'createSubgroup'),
   },
 
   {
@@ -498,11 +499,11 @@ const transactions: WriteTransaction[] = [
       ],
     ),
     estimateGasFunction: (contract, memberWalletAddress, subgroupId, isReorging = false) =>
-      contract.estimateGas.assignMemberToSubgroup(
+      estimateContractTransactionGas(contract, 'assignMemberToSubgroup', undefined, [
         memberWalletAddress,
         ethers.BigNumber.from(subgroupId),
         isReorging,
-      ),
+      ]),
   },
 
   {
@@ -525,7 +526,7 @@ const transactions: WriteTransaction[] = [
     writeFunction: (contract, totalCoverage) => contract.initiateDefaultState(totalCoverage),
     simulateFunction: createSimulation('initiateDefaultState'),
     estimateGasFunction: (contract, totalCoverage) =>
-      contract.estimateGas.initiateDefaultState(totalCoverage),
+      estimateContractTransactionGas(contract, 'initiateDefaultState', undefined, [totalCoverage]),
   },
 
   {
@@ -549,7 +550,7 @@ const transactions: WriteTransaction[] = [
       ethers.BigNumber.from(claimId),
     ]),
     estimateGasFunction: (contract, claimId) =>
-      contract.estimateGas.whitelistClaim(ethers.BigNumber.from(claimId)),
+      estimateContractTransactionGas(contract, 'whitelistClaim', undefined, [ethers.BigNumber.from(claimId)]),
   },
 
   {
@@ -572,7 +573,7 @@ const transactions: WriteTransaction[] = [
     writeFunction: (contract, totalCoverage) => contract.updateCoverageAmount(totalCoverage),
     simulateFunction: createSimulation('updateCoverageAmount'),
     estimateGasFunction: (contract, totalCoverage) =>
-      contract.estimateGas.updateCoverageAmount(totalCoverage),
+      estimateContractTransactionGas(contract, 'updateCoverageAmount', undefined, [totalCoverage]),
   },
 
   {
@@ -595,7 +596,7 @@ const transactions: WriteTransaction[] = [
       contract.defineSecretarySuccessorList(successorListWalletAddresses),
     simulateFunction: createSimulation('defineSecretarySuccessorList'),
     estimateGasFunction: (contract, successorListWalletAddresses) =>
-      contract.estimateGas.defineSecretarySuccessorList(successorListWalletAddresses),
+      estimateContractTransactionGas(contract, 'defineSecretarySuccessorList', undefined, [successorListWalletAddresses]),
   },
 
   {
@@ -619,7 +620,7 @@ const transactions: WriteTransaction[] = [
       contract.handoverSecretaryRoleToSuccessor(successorWalletAddress),
     simulateFunction: createSimulation('handoverSecretaryRoleToSuccessor'),
     estimateGasFunction: (contract, successorWalletAddress) =>
-      contract.estimateGas.handoverSecretaryRoleToSuccessor(successorWalletAddress),
+      estimateContractTransactionGas(contract, 'handoverSecretaryRoleToSuccessor', undefined, [successorWalletAddress]),
   },
 
   {
@@ -631,7 +632,7 @@ const transactions: WriteTransaction[] = [
     icon: IconDollarSign,
     writeFunction: contract => contract.injectFunds(),
     simulateFunction: createSimulation('injectFunds'),
-    estimateGasFunction: contract => contract.estimateGas.injectFunds(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'injectFunds'),
   },
 
   {
@@ -643,7 +644,7 @@ const transactions: WriteTransaction[] = [
     icon: IconTrendingUp,
     writeFunction: contract => contract.divideShortfall(),
     simulateFunction: createSimulation('divideShortfall'),
-    estimateGasFunction: contract => contract.estimateGas.divideShortfall(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'divideShortfall'),
   },
 
   {
@@ -655,7 +656,7 @@ const transactions: WriteTransaction[] = [
     icon: IconCalendar,
     writeFunction: contract => contract.extendPeriodByOneDay(),
     simulateFunction: createSimulation('extendPeriodByOneDay'),
-    estimateGasFunction: contract => contract.estimateGas.extendPeriodByOneDay(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'extendPeriodByOneDay'),
   },
 
   {
@@ -667,7 +668,7 @@ const transactions: WriteTransaction[] = [
     icon: IconCalendar,
     writeFunction: contract => contract.advancePeriod(),
     simulateFunction: createSimulation('advancePeriod'),
-    estimateGasFunction: contract => contract.estimateGas.advancePeriod(),
+    estimateGasFunction: contract => estimateContractTransactionGas(contract, 'advancePeriod'),
   },
 ];
 

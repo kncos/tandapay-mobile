@@ -97,7 +97,17 @@ export default function TransactionModal(props: Props): Node {
       gasEstimate: null,
       error: 'No transaction'
     }),
-    estimateGasFunction: async () => 21000,
+    estimateGasFunction: async () => ({
+      success: true,
+      data: {
+        gasLimit: '21000',
+        maxFeePerGas: '20',
+        maxPriorityFeePerGas: '1.5',
+        estimatedTotalCostETH: '0.00042',
+        isEIP1559: true,
+        baseFeePerGas: '18.5',
+      },
+    }),
   };
 
   const activeTransaction = transaction || defaultTransaction;
@@ -180,14 +190,23 @@ export default function TransactionModal(props: Props): Node {
         };
       }
 
-      const gasEstimate = await gasEstimateFunction(contract, ...paramValues);
+      const gasEstimateResult = await gasEstimateFunction(contract, ...paramValues);
 
+      if (!gasEstimateResult.success) {
+        return {
+          success: false,
+          error: gasEstimateResult.error?.userMessage || gasEstimateResult.error?.message || 'Failed to estimate gas',
+          originalError: gasEstimateResult.error?.message || String(gasEstimateResult.error),
+        };
+      }
+
+      const gasData = gasEstimateResult.data;
       return {
         success: true,
         gasEstimate: {
-          gasLimit: gasEstimate.toString(),
-          gasPrice: '20', // TODO: Get actual gas price from network
-          estimatedCost: '0.00042', // TODO: Calculate actual cost
+          gasLimit: gasData.gasLimit,
+          gasPrice: gasData.maxFeePerGas, // Use maxFeePerGas for display
+          estimatedCost: gasData.estimatedTotalCostETH, // Real maximum cost
         },
       };
     } catch (error) {

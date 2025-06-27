@@ -386,6 +386,7 @@ function TandaPayInfoScreen(props: Props): Node {
       }
 
       const result = await batchGetAllSubgroupInfo(contractAddress, subgroupCount);
+      // console.log('subgroup data: ', JSON.stringify(result, null, 2));
 
       if (result.success) {
         setSubgroupsData(result.data);

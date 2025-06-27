@@ -75,7 +75,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
 
       // Attempt to fetch community info
       const result = await fetchCommunityInfo(contractAddress, userWalletAddress);
-      
+
       if (result.success) {
         // Update Redux store with the fetched community info
         dispatch(updateCommunityInfo(
