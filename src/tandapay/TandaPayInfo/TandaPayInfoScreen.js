@@ -12,17 +12,16 @@ import ZulipButton from '../../common/ZulipButton';
 import ModalContainer from '../components/ModalContainer';
 import { IconAlertTriangle } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
-import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale, getCachedBatchMembers, getCachedBatchSubgroups } from '../redux/selectors';
-import { fetchCommunityInfo, fetchAndCacheAllMembers, fetchAndCacheAllSubgroups, invalidateCachedBatchData } from '../contract/communityInfo';
+import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale } from '../redux/selectors';
+import { fetchCommunityInfo, invalidateCachedBatchData } from '../contract/communityInfo';
+import { fetchBatchMembersData, fetchBatchSubgroupsData, deserializeMembersData, deserializeSubgroupsData } from '../contract/batchDataManager';
+import type { SerializedMemberInfo, SerializedSubgroupInfo } from '../contract/batchDataManager';
 import { getWalletAddress } from '../wallet/WalletManager';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
 import { serializeBigNumbers, deserializeBigNumbers } from '../utils/bigNumberUtils';
-import { tryGetActiveAccountState } from '../../selectors';
-import store from '../../boot/store';
 
 import type { CommunityInfo } from '../contract/communityInfo';
-import type { MemberInfo, SubgroupInfo } from '../contract/types';
 import TandaPayStyles from '../styles';
 import {
   CommunityOverviewCard,
@@ -113,8 +112,8 @@ function TandaPayInfoScreen(props: Props): Node {
   // Modal state
   const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [subgroupsModalVisible, setSubgroupsModalVisible] = useState(false);
-  const [membersData, setMembersData] = useState<?Array<MemberInfo>>(null);
-  const [subgroupsData, setSubgroupsData] = useState<?Array<SubgroupInfo>>(null);
+  const [membersData, setMembersData] = useState<?SerializedMemberInfo>(null);
+  const [subgroupsData, setSubgroupsData] = useState<?SerializedSubgroupInfo>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<?string>(null);
 
@@ -132,15 +131,8 @@ function TandaPayInfoScreen(props: Props): Node {
     : null;
 
   // Deserialize modal data when needed
-  const deserializedMembersData = membersData
-    // $FlowFixMe[incompatible-cast] - deserializeBigNumbers handles the type conversion
-    ? (deserializeBigNumbers(membersData): Array<MemberInfo>)
-    : null;
-
-  const deserializedSubgroupsData = subgroupsData
-    // $FlowFixMe[incompatible-cast] - deserializeBigNumbers handles the type conversion
-    ? (deserializeBigNumbers(subgroupsData): Array<SubgroupInfo>)
-    : null;
+  const deserializedMembersData = deserializeMembersData(membersData);
+  const deserializedSubgroupsData = deserializeSubgroupsData(subgroupsData);
 
   const communityInfo = reduxCommunityInfo || deserializedLocalCommunityInfo;
 
@@ -349,62 +341,22 @@ function TandaPayInfoScreen(props: Props): Node {
     }
 
     setModalError(null);
+    setModalLoading(true);
 
     try {
-      // Check if we have cached data in Redux first (uses cached selectors)
-      if (store && store.getState) {
-        const reduxState = store.getState();
-        const accountState = tryGetActiveAccountState(reduxState);
-        if (accountState) {
-          const cachedMembers = getCachedBatchMembers(accountState);
-          if (cachedMembers) {
-            // Use cached data from Redux - no loading needed
-            // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
-            setMembersData(serializeBigNumbers(cachedMembers));
-            return;
-          }
-        }
-      }
-
-      // No cached data available, show loading and fetch
-      setModalLoading(true);
-
-      const memberCount = bigNumberToNumber(communityInfo.currentMemberCount);
-
-      if (memberCount === 0) {
-        setMembersData([]);
-        setModalLoading(false);
-        return;
-      }
-
-      // Fetch and cache members data
-      const result = await fetchAndCacheAllMembers(contractAddress, userWalletAddress);
+      const result = await fetchBatchMembersData(contractAddress, userWalletAddress, communityInfo);
 
       if (result.success) {
-        // Serialize BigNumbers before storing in React state to prevent JSON serialization errors
-        // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
-        setMembersData(serializeBigNumbers(result.data));
+        setMembersData(result.data);
+        // Only show loading if we actually had to fetch (not from cache)
+        if (result.fromCache) {
+          setModalLoading(false);
+        }
       } else {
-        throw new Error((result.error.userMessage != null && result.error.userMessage.trim() !== '') ? result.error.userMessage : 'Failed to fetch members');
+        setModalError(result.error);
       }
     } catch (err) {
-      // Create structured error for member data fetch failure
-      const errorMessage = err?.message || 'Failed to fetch members';
-
-      TandaPayErrorHandler.createError(
-        'CONTRACT_ERROR',
-        `Failed to fetch member data: ${errorMessage}`,
-        {
-          userMessage: 'Unable to load member information. Please try again.',
-          details: {
-            contractAddress,
-            memberCount: communityInfo ? bigNumberToNumber(communityInfo.currentMemberCount) : 'unknown',
-            error: err
-          }
-        }
-      );
-
-      setModalError(errorMessage);
+      setModalError('Unable to load member information. Please try again.');
     } finally {
       setModalLoading(false);
     }
@@ -417,63 +369,22 @@ function TandaPayInfoScreen(props: Props): Node {
     }
 
     setModalError(null);
+    setModalLoading(true);
 
     try {
-      // Check if we have cached data in Redux first (uses cached selectors)
-      if (store && store.getState) {
-        const reduxState = store.getState();
-        const accountState = tryGetActiveAccountState(reduxState);
-        if (accountState) {
-          const cachedSubgroups = getCachedBatchSubgroups(accountState);
-          if (cachedSubgroups) {
-            // Use cached data from Redux - no loading needed
-            // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
-            setSubgroupsData(serializeBigNumbers(cachedSubgroups));
-            return;
-          }
-        }
-      }
-
-      // No cached data available, show loading and fetch
-      setModalLoading(true);
-
-      const subgroupCount = bigNumberToNumber(communityInfo.currentSubgroupCount);
-
-      if (subgroupCount === 0) {
-        setSubgroupsData([]);
-        setModalLoading(false);
-        return;
-      }
-
-      // Use the cache-aware fetch function that updates Redux
-      const result = await fetchAndCacheAllSubgroups(contractAddress, userWalletAddress);
-      // console.log('subgroup data: ', JSON.stringify(result, null, 2));
+      const result = await fetchBatchSubgroupsData(contractAddress, userWalletAddress, communityInfo);
 
       if (result.success) {
-        // Serialize BigNumbers before storing in React state to prevent JSON serialization errors
-        // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
-        setSubgroupsData(serializeBigNumbers(result.data));
+        setSubgroupsData(result.data);
+        // Only show loading if we actually had to fetch (not from cache)
+        if (result.fromCache) {
+          setModalLoading(false);
+        }
       } else {
-        throw new Error((result.error.userMessage != null && result.error.userMessage.trim() !== '') ? result.error.userMessage : 'Failed to fetch subgroups');
+        setModalError(result.error);
       }
     } catch (err) {
-      // Create structured error for subgroup data fetch failure
-      const errorMessage = err?.message || 'Failed to fetch subgroups';
-
-      TandaPayErrorHandler.createError(
-        'CONTRACT_ERROR',
-        `Failed to fetch subgroup data: ${errorMessage}`,
-        {
-          userMessage: 'Unable to load subgroup information. Please try again.',
-          details: {
-            contractAddress,
-            subgroupCount: communityInfo ? bigNumberToNumber(communityInfo.currentSubgroupCount) : 'unknown',
-            error: err
-          }
-        }
-      );
-
-      setModalError(errorMessage);
+      setModalError('Unable to load subgroup information. Please try again.');
     } finally {
       setModalLoading(false);
     }
