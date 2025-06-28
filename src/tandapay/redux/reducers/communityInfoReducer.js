@@ -11,7 +11,7 @@ import {
   TANDAPAY_BATCH_DATA_INVALIDATE,
 } from '../../../actionConstants';
 import type { Action } from '../../../types';
-import type { CommunityInfo } from '../../contract/communityInfo';
+import type { CommunityInfo } from '../../contract/tandapay-reader/communityInfoManager';
 import type { MemberInfo, SubgroupInfo } from '../../contract/types';
 
 // Community info reducer state

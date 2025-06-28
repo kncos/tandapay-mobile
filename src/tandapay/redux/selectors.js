@@ -6,7 +6,7 @@ import type {
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
 import type { CommunityInfoState } from './reducers/communityInfoReducer';
 import type { NetworkIdentifier } from '../definitions/types';
-import type { CommunityInfo } from '../contract/communityInfo';
+import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
 import type { MemberInfo, SubgroupInfo } from '../contract/types';
 import { deserializeBigNumbers } from '../utils/bigNumberUtils';
 

@@ -8,15 +8,15 @@ import type { RouteProp } from '../react-navigation';
 import Screen from '../common/Screen';
 import NavRow from '../common/NavRow';
 // $FlowFixMe - importing from untyped module
-import { getAllWriteTransactions } from './contract/writeTransactionObjects';
-import type { WriteTransaction } from './contract/writeTransactionObjects';
+import { getAllWriteTransactions } from './contract/tandapay-writer/writeTransactionObjects';
+import type { WriteTransaction } from './contract/tandapay-writer/writeTransactionObjects';
 import { getSuggestedMethods } from './contract/suggestedMethods';
 import TransactionModal from './components/TransactionModal';
 import MacroIntroModal from './components/MacroIntroModal';
 import { TandaRibbon } from './components';
 import { AUTO_REORG_MACRO } from './contract/macros/auto-reorg';
 import { IconRefreshCw } from '../common/Icons';
-import { invalidateCachedBatchData } from './contract/communityInfo';
+import { invalidateCachedBatchData } from './contract/tandapay-reader/communityInfoManager';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-actions'>,

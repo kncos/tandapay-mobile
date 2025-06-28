@@ -20,7 +20,7 @@ import { findTokenByAddress, getTokenDisplayText } from '../utils/tokenUtils';
 import type { TokenDisplayInfo } from '../utils/tokenUtils';
 import ScrollableTextBox from '../components/ScrollableTextBox';
 
-import type { CommunityInfo } from '../contract/communityInfo';
+import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
 import { formatBigNumber, formatTokenAmount, getCommunityStateDisplayName, bigNumberToNumber } from './utils';
 
 type Props = $ReadOnly<{|

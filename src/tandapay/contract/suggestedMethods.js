@@ -1,10 +1,10 @@
 // @flow strict-local
 
-import type { WriteTransaction } from './writeTransactionObjects';
-import { getAllWriteTransactions } from './writeTransactionObjects';
+import type { WriteTransaction } from './tandapay-writer/writeTransactionObjects';
+import { getAllWriteTransactions } from './tandapay-writer/writeTransactionObjects';
 import { TandaPayState, TandaPayRole } from './types';
 import type { TandaPayStateType, TandaPayRoleType } from './types';
-import type { CommunityInfo } from './communityInfo';
+import type { CommunityInfo } from './tandapay-reader/communityInfoManager';
 import { getCommunityInfo } from '../redux/selectors';
 import { tryGetActiveAccountState } from '../../selectors';
 import store from '../../boot/store';

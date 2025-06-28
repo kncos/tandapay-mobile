@@ -13,10 +13,10 @@ import {
   IconUserPlus,
   IconCalendar,
   IconTrendingUp,
-} from '../../common/Icons';
+} from '../../../common/Icons';
 
-import TandaPayErrorHandler from '../errors/ErrorHandler';
-import { estimateContractTransactionGas } from '../web3';
+import TandaPayErrorHandler from '../../errors/ErrorHandler';
+import { estimateContractTransactionGas } from '../../web3';
 
 /**
  * Parameter metadata for dynamic form generation

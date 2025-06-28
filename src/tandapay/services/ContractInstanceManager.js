@@ -11,7 +11,7 @@
 import { ethers } from 'ethers';
 
 // $FlowFixMe[untyped-import] - TandaPayInfo module doesn't have Flow types
-import { TandaPayInfo } from '../contract/TandaPay';
+import { TandaPayInfo } from '../contract/utils/TandaPay';
 import { getTandaPayContractAddressForNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { getWalletInstance } from '../wallet/WalletManager';
 import { createProvider } from '../providers/ProviderManager';

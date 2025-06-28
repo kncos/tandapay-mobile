@@ -3,7 +3,7 @@
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-import type { WriteTransaction, WriteTransactionParameter } from '../contract/writeTransactionObjects';
+import type { WriteTransaction, WriteTransactionParameter } from '../contract/tandapay-writer/writeTransactionObjects';
 import type { TransactionFormState } from '../hooks/useTransactionForm';
 
 import AddressInput from './AddressInput';

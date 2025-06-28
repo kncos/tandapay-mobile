@@ -11,7 +11,7 @@
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
 // $FlowFixMe[untyped-import] - TandaPay contract import
-import { TandaPayInfo } from '../contract/TandaPay';
+import { TandaPayInfo } from '../contract/utils/TandaPay';
 import { getAlchemyApiKey } from './WalletManager';
 
 export type DecodedTandaPayTransaction = {|

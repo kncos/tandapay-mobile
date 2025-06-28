@@ -1,7 +1,7 @@
 /* flow */
 
 import { ethers } from 'ethers';
-import { TandaPayInfo } from './TandaPay';
+import { TandaPayInfo } from '../utils/TandaPay';
 import { getAllWriteTransactions } from './writeTransactionObjects';
 
 /**

@@ -19,15 +19,15 @@
  * - Loading state optimization (distinguishes cache vs network requests)
  */
 
-import { fetchAndCacheAllMembers, fetchAndCacheAllSubgroups, invalidateCachedBatchData } from './communityInfo';
-import type { CommunityInfo } from './communityInfo';
-import { getCachedBatchMembers, getCachedBatchSubgroups } from '../redux/selectors';
-import { tryGetActiveAccountState } from '../../selectors';
-import { serializeBigNumbers, deserializeBigNumbers } from '../utils/bigNumberUtils';
-import TandaPayErrorHandler from '../errors/ErrorHandler';
-import type { MemberInfo, SubgroupInfo } from './types';
-import { bigNumberToNumber } from '../TandaPayInfo';
-import store from '../../boot/store';
+import { fetchAndCacheAllMembers, fetchAndCacheAllSubgroups, invalidateCachedBatchData } from './communityInfoManager';
+import type { CommunityInfo } from './communityInfoManager';
+import { getCachedBatchMembers, getCachedBatchSubgroups } from '../../redux/selectors';
+import { tryGetActiveAccountState } from '../../../selectors';
+import { serializeBigNumbers, deserializeBigNumbers } from '../../utils/bigNumberUtils';
+import TandaPayErrorHandler from '../../errors/ErrorHandler';
+import type { MemberInfo, SubgroupInfo } from '../types';
+import { bigNumberToNumber } from '../../TandaPayInfo';
+import store from '../../../boot/store';
 
 // Result types for batch data operations
 export type BatchDataResult<T> =

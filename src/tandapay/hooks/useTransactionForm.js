@@ -1,7 +1,7 @@
 // @flow
 
 import { useState, useCallback, useMemo } from 'react';
-import type { WriteTransaction, WriteTransactionParameter } from '../contract/writeTransactionObjects';
+import type { WriteTransaction, WriteTransactionParameter } from '../contract/tandapay-writer/writeTransactionObjects';
 
 export type TransactionFormState = {|
   parameters: {| [paramName: string]: any |},

@@ -1,10 +1,10 @@
 // @flow
 
 import { ethers } from 'ethers';
-import { TandaPayInfo } from './TandaPay';
-import TandaPayErrorHandler from '../errors/ErrorHandler';
-import { executeTandaPayMulticall } from './multicall';
-import type { TandaPayResult } from '../errors/types';
+import { TandaPayInfo } from '../utils/TandaPay';
+import TandaPayErrorHandler from '../../errors/ErrorHandler';
+import { executeTandaPayMulticall } from '../utils/multicall';
+import type { TandaPayResult } from '../../errors/types';
 
 import type {
   SubgroupInfo,
@@ -12,7 +12,7 @@ import type {
   MemberInfo,
   PeriodInfo,
   TandaPayStateType,
-} from './types';
+} from '../types';
 
 // Flow type for ethers BigNumber - using mixed since ethers is not Flow-typed
 type BigNumber = mixed;

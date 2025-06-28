@@ -4,7 +4,7 @@ import React, { useCallback, useState, useContext, useMemo } from 'react';
 import { View, Text, Modal, ScrollView, StyleSheet } from 'react-native';
 import type { Node } from 'react';
 
-import type { WriteTransaction } from '../contract/writeTransactionObjects';
+import type { WriteTransaction } from '../contract/tandapay-writer/writeTransactionObjects';
 import TransactionParameterForm from './TransactionParameterForm';
 import TransactionEstimateAndSend from './TransactionEstimateAndSend';
 import { useTransactionForm } from '../hooks/useTransactionForm';

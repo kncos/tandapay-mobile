@@ -1,16 +1,16 @@
 /* @flow */
 
-import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType, ClaimInfo } from './types';
-import { getProvider } from '../web3';
+import type { BigNumber, PeriodInfo, MemberInfo, SubgroupInfo, TandaPayStateType, ClaimInfo } from '../types';
+import { getProvider } from '../../web3';
 import { getTandaPayReadActions } from './read';
-import { TandaPayInfo } from './TandaPay';
-import { executeTandaPayMulticall } from './multicall';
-import { getTandaPayNetworkPerformance, getCurrentTandaPayContractAddress, getCachedBatchMembers, getCachedBatchSubgroups, isBatchMembersStale, isBatchSubgroupsStale } from '../redux/selectors';
-import { updateCommunityInfo, updateBatchMembers, updateBatchSubgroups, invalidateBatchData } from '../redux/actions';
-import { tryGetActiveAccountState } from '../../selectors';
-import TandaPayErrorHandler from '../errors/ErrorHandler';
-import type { TandaPayResult } from '../errors/types';
-import store from '../../boot/store';
+import { TandaPayInfo } from '../utils/TandaPay';
+import { executeTandaPayMulticall } from '../utils/multicall';
+import { getTandaPayNetworkPerformance, getCurrentTandaPayContractAddress, getCachedBatchMembers, getCachedBatchSubgroups, isBatchMembersStale, isBatchSubgroupsStale } from '../../redux/selectors';
+import { updateCommunityInfo, updateBatchMembers, updateBatchSubgroups, invalidateBatchData } from '../../redux/actions';
+import { tryGetActiveAccountState } from '../../../selectors';
+import TandaPayErrorHandler from '../../errors/ErrorHandler';
+import type { TandaPayResult } from '../../errors/types';
+import store from '../../../boot/store';
 
 // Configuration type for the community info class
 type CommunityInfoConfig = {

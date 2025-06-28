@@ -48,7 +48,7 @@ export type AutoReorgResult = {|
 export async function executeAutoReorg(memberInfoArray: MemberInfo[]): Promise<AutoReorgResult> {
   try {
     // Step 1: Preprocess member data to extract subgroup assignments
-    // $FlowFixMe[incompatible-call] $FlowFixMe[unclear-type] - preprocessor accepts MemberInfo or MemberInfoMinimal
+    // $FlowFixMe[unclear-type] - preprocessor accepts MemberInfo or MemberInfoMinimal
     const preprocessorResult = preprocessMembersForAutoReorg((memberInfoArray: any));
 
     if (!preprocessorResult.success) {
@@ -136,7 +136,7 @@ export function validateAutoReorg(memberInfoArray: MemberInfo[]): {|
 
   // Use preprocessor to validate data structure
   try {
-    // $FlowFixMe[incompatible-call] $FlowFixMe[unclear-type] - preprocessor accepts MemberInfo or MemberInfoMinimal
+    // $FlowFixMe[unclear-type] - preprocessor accepts MemberInfo or MemberInfoMinimal
     const result = preprocessMembersForAutoReorg((memberInfoArray: any));
     if (!result.success) {
       return {

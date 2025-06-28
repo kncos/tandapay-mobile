@@ -20,13 +20,13 @@
 import '@ethersproject/shims';
 // $FlowFixMe[untyped-import] - ethers is a third-party library
 import { ethers } from 'ethers';
-import { getProvider } from '../web3';
-import { getChainByNetwork } from '../definitions';
-import { getTandaPaySelectedNetwork } from '../redux/selectors';
-import { tryGetActiveAccountState } from '../../selectors';
-import TandaPayErrorHandler from '../errors/ErrorHandler';
-import type { TandaPayResult } from '../errors/types';
-import store from '../../boot/store';
+import { getProvider } from '../../web3';
+import { getChainByNetwork } from '../../definitions';
+import { getTandaPaySelectedNetwork } from '../../redux/selectors';
+import { tryGetActiveAccountState } from '../../../selectors';
+import TandaPayErrorHandler from '../../errors/ErrorHandler';
+import type { TandaPayResult } from '../../errors/types';
+import store from '../../../boot/store';
 
 // Multicall3 ABI - only the functions we need
 const MULTICALL3_ABI = [

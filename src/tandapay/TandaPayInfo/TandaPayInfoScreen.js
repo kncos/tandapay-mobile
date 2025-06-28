@@ -13,15 +13,15 @@ import ModalContainer from '../components/ModalContainer';
 import { IconAlertTriangle } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
 import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale } from '../redux/selectors';
-import { fetchCommunityInfo, invalidateCachedBatchData } from '../contract/communityInfo';
-import { fetchBatchMembersData, fetchBatchSubgroupsData, deserializeMembersData, deserializeSubgroupsData } from '../contract/batchDataManager';
-import type { SerializedMemberInfo, SerializedSubgroupInfo } from '../contract/batchDataManager';
+import { fetchCommunityInfo, invalidateCachedBatchData } from '../contract/tandapay-reader/communityInfoManager';
+import { fetchBatchMembersData, fetchBatchSubgroupsData, deserializeMembersData, deserializeSubgroupsData } from '../contract/tandapay-reader/batchDataManager';
+import type { SerializedMemberInfo, SerializedSubgroupInfo } from '../contract/tandapay-reader/batchDataManager';
 import { getWalletAddress } from '../wallet/WalletManager';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
 import { serializeBigNumbers, deserializeBigNumbers } from '../utils/bigNumberUtils';
 
-import type { CommunityInfo } from '../contract/communityInfo';
+import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
 import TandaPayStyles from '../styles';
 import {
   CommunityOverviewCard,

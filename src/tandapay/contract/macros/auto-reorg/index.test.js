@@ -45,7 +45,7 @@ describe('Auto-reorg Index API', () => {
       createMockMemberInfo('0x1', 1),
       createMockMemberInfo('0x2', 1),
     ];
-    
+
     const result1 = validateAutoReorg(fewMembers);
     expect(result1.canExecute).toBe(false);
     expect(result1.reason).toContain('4 members');
@@ -55,7 +55,7 @@ describe('Auto-reorg Index API', () => {
     for (let i = 1; i <= 15; i++) {
       manyMembers.push(createMockMemberInfo(`0x${i}`, i <= 4 ? 1 : i <= 8 ? 2 : 0));
     }
-    
+
     const result2 = validateAutoReorg(manyMembers);
     expect(result2.canExecute).toBe(true);
     expect(result2.reason).toBeUndefined();
@@ -70,7 +70,7 @@ describe('Auto-reorg Index API', () => {
     }
 
     const result = await executeAutoReorg(members);
-    
+
     expect(result.success).toBe(true);
     expect(result.error).toBeUndefined();
     expect(result.newSubgroups).toBeDefined();
@@ -79,7 +79,7 @@ describe('Auto-reorg Index API', () => {
 
     // Verify that all members are assigned to valid subgroups
     expect(result.newSubgroups).toBeDefined();
-    
+
     const newSubgroups = result.newSubgroups || new Map();
     let allMembersValid = true;
     for (const [, membersList] of newSubgroups) {
@@ -98,7 +98,7 @@ describe('Auto-reorg Index API', () => {
     ];
 
     const result = await executeAutoReorg(fewMembers);
-    
+
     expect(result.success).toBe(false);
     expect(result.error).toBeDefined();
     expect(result.error).toContain('Insufficient members');

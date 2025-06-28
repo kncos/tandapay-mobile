@@ -13,7 +13,7 @@ import { updateTandaPaySettings } from '../redux/actions';
 import { createProvider } from '../providers/ProviderManager';
 import { getWalletInstance } from '../wallet/WalletManager';
 // $FlowFixMe[untyped-import] - TandaPay contract import
-import { TandaPayInfo } from '../contract/TandaPay';
+import { TandaPayInfo } from '../contract/utils/TandaPay';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import AddressInput from './AddressInput';
 import TokenPicker from './TokenPicker';

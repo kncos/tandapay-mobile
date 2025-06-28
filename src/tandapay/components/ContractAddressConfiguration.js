@@ -11,7 +11,7 @@ import {
   getTandaPayContractAddresses
 } from '../redux/selectors';
 import { updateTandaPaySettings, updateCommunityInfo } from '../redux/actions';
-import { fetchCommunityInfo } from '../contract/communityInfo';
+import { fetchCommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
 import { getWalletAddress } from '../wallet/WalletManager';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
