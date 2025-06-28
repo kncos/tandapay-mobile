@@ -26,6 +26,7 @@ export type { GasEstimate, TransactionParams, EstimateGasCallback, SendTransacti
 export { default as Card } from './Card';
 export { default as TandaRibbon } from './TandaRibbon';
 export { default as TandaPayBanner } from './TandaPayBanner';
+export { default as MacroIntroModal } from './MacroIntroModal';
 
 // Reusable UI components
 export { default as ScrollableTextBox } from './ScrollableTextBox';

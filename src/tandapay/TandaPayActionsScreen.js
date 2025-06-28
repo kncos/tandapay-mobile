@@ -12,7 +12,11 @@ import { getAllWriteTransactions } from './contract/writeTransactionObjects';
 import type { WriteTransaction } from './contract/writeTransactionObjects';
 import { getSuggestedMethods } from './contract/suggestedMethods';
 import TransactionModal from './components/TransactionModal';
+import MacroIntroModal from './components/MacroIntroModal';
 import { TandaRibbon } from './components';
+import { AUTO_REORG_MACRO } from './contract/macros/auto-reorg';
+import { IconRefreshCw } from '../common/Icons';
+import { invalidateCachedBatchData } from './contract/communityInfo';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-actions'>,
@@ -22,6 +26,7 @@ type Props = $ReadOnly<{|
 export default function TandaPayActionsScreen(props: Props): Node {
   const [selectedTransaction, setSelectedTransaction] = useState<?WriteTransaction>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [macroIntroVisible, setMacroIntroVisible] = useState(false);
 
   // Get all write transactions with metadata
   // Note: The TransactionModal now integrates with real contract instances
@@ -53,8 +58,38 @@ export default function TandaPayActionsScreen(props: Props): Node {
     [handleModalClose],
   );
 
+  // Macro-related handlers
+  const handleAutoReorgPress = useCallback(() => {
+    setMacroIntroVisible(true);
+  }, []);
+
+  const handleMacroIntroClose = useCallback(() => {
+    setMacroIntroVisible(false);
+  }, []);
+
+  const handleMacroRefresh = useCallback(() => {
+    // Drop all cached data to force fresh fetch
+    invalidateCachedBatchData();
+  }, []);
+
+  const handleMacroContinue = useCallback(() => {
+    // For now, just close the modal - we'll implement the actual macro execution later
+    setMacroIntroVisible(false);
+    // TODO: Implement macro execution flow
+  }, []);
+
   return (
     <Screen title="TandaPay Actions">
+      {/* Macros Ribbon */}
+      <TandaRibbon label="Macros" marginTop={0}>
+        <NavRow
+          leftElement={{ type: 'icon', Component: IconRefreshCw }}
+          title={AUTO_REORG_MACRO.name}
+          subtitle={AUTO_REORG_MACRO.description}
+          onPress={handleAutoReorgPress}
+        />
+      </TandaRibbon>
+
       {/* Suggested Methods Ribbon */}
       {suggestedTransactions.length > 0 && (
         <TandaRibbon label="Suggested Actions" marginTop={0}>
@@ -103,6 +138,15 @@ export default function TandaPayActionsScreen(props: Props): Node {
         transaction={selectedTransaction}
         onClose={handleModalClose}
         onTransactionComplete={handleTransactionComplete}
+      />
+
+      {/* Macro Intro Modal */}
+      <MacroIntroModal
+        visible={macroIntroVisible}
+        macroInfo={AUTO_REORG_MACRO}
+        onClose={handleMacroIntroClose}
+        onRefresh={handleMacroRefresh}
+        onContinue={handleMacroContinue}
       />
     </Screen>
   );
