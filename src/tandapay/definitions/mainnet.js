@@ -8,6 +8,9 @@ export const mainnet = Object.freeze({
     default: {
       http: ['https://eth.merkle.io'],
     },
+    alchemy: {
+      http: ['https://eth-mainnet.g.alchemy.com/v2'],
+    },
   },
   blockExplorers: {
     default: {

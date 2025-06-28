@@ -8,6 +8,9 @@ export const polygon = Object.freeze({
     default: {
       http: ['https://polygon-rpc.com'],
     },
+    alchemy: {
+      http: ['https://polygon-mainnet.g.alchemy.com/v2'],
+    },
   },
   blockExplorers: {
     default: {

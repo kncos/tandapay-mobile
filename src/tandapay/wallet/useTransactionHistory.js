@@ -8,37 +8,16 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-// $FlowFixMe[untyped-import] - alchemy-sdk is untyped
-import { Alchemy, Network } from 'alchemy-sdk';
+
 import { AlchemyTransferFetcher } from './AlchemyTransferFetcher';
 import { ChronologicalTransferManager } from './ChronologicalTransferManager';
-import { getAlchemyApiKey } from './WalletManager';
-import { getChainByNetwork, type SupportedNetwork } from '../definitions';
+import { hasAlchemyApiKey } from './AlchemyApiHelper';
+import type { SupportedNetwork } from '../definitions';
 import type { TandaPayError } from '../errors/types';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { convertTransferToEtherscanFormat } from './TransactionFormatter';
 
 type Transfer = mixed;
-
-/**
- * Map network name to Alchemy network constant using chain definitions
- */
-function getAlchemyNetwork(networkName: SupportedNetwork): typeof Network.ETH_MAINNET {
-  const chainConfig = getChainByNetwork(networkName);
-
-  switch (chainConfig.id) {
-    case 1:
-      return Network.ETH_MAINNET;
-    case 11155111:
-      return Network.ETH_SEPOLIA;
-    case 42161:
-      return Network.ARB_MAINNET;
-    case 137:
-      return Network.MATIC_MAINNET;
-    default:
-      return Network.ETH_SEPOLIA; // Default to Sepolia
-  }
-}
 
 export type TransactionState =
   | {| status: 'idle' |}
@@ -120,22 +99,13 @@ export default function useTransactionHistory({
     }
 
     try {
-      const apiKeyResult = await getAlchemyApiKey();
-      if (!apiKeyResult.success || apiKeyResult.data == null || apiKeyResult.data === '') {
+      // Check if API key is available using our helper
+      if (!await hasAlchemyApiKey()) {
         return null;
       }
 
-      const apiKey = apiKeyResult.data;
-
-      // Use our centralized chain definitions to get the Alchemy network
-      const alchemyNetwork = getAlchemyNetwork(network);
-
-      const alchemy = new Alchemy({
-        apiKey,
-        network: alchemyNetwork,
-      });
-
-      const alchemyFetcher = new AlchemyTransferFetcher(alchemy);
+      // Create fetcher with the current network
+      const alchemyFetcher = new AlchemyTransferFetcher(network);
       const manager = new ChronologicalTransferManager(alchemyFetcher, walletAddress, 10, 5);
 
       alchemyFetcherRef.current = alchemyFetcher;

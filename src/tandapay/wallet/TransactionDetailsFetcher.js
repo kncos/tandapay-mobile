@@ -1,16 +1,16 @@
 // @flow strict-local
 
 /**
- * Transaction details fetcher using Alchemy SDK
+ * Transaction details fetcher using clean Alchemy API helper
  *
  * Fetches detailed transaction information including gas and fee data
  */
 
-// $FlowFixMe[untyped-import] - alchemy-sdk is a third-party library
-import { Alchemy, Network } from 'alchemy-sdk';
-// $FlowFixMe[untyped-import] - ethers is a third-party library
+// $FlowFixMe[untyped-import] - ethers is not typed for Flow
 import { ethers } from 'ethers';
-import { getChainByNetwork, type SupportedNetwork } from '../definitions';
+
+import { getTransactionDetails } from './AlchemyApiHelper';
+import type { SupportedNetwork } from '../definitions';
 
 export type TransactionDetails = {|
   gasPrice: ?string,
@@ -42,26 +42,6 @@ function bigNumberToString(value: mixed): ?string {
     return String(value);
   } catch (error) {
     return null;
-  }
-}
-
-/**
- * Map network name to Alchemy network constant
- */
-function getAlchemyNetwork(networkName: SupportedNetwork): typeof Network.ETH_MAINNET {
-  const chainConfig = getChainByNetwork(networkName);
-
-  switch (chainConfig.id) {
-    case 1:
-      return Network.ETH_MAINNET;
-    case 11155111:
-      return Network.ETH_SEPOLIA;
-    case 42161:
-      return Network.ARB_MAINNET;
-    case 137:
-      return Network.MATIC_MAINNET;
-    default:
-      return Network.ETH_SEPOLIA; // Default to Sepolia
   }
 }
 
@@ -108,48 +88,42 @@ function calculateTransactionFee(gasAmount: ?string, gasPrice: ?string, effectiv
 }
 
 /**
- * Fetch detailed transaction information
+ * Fetch detailed transaction information using clean Alchemy API
  */
 export async function fetchTransactionDetails(txHash: string, apiKey: string, network: SupportedNetwork = 'mainnet'): Promise<TransactionDetails | null> {
   try {
-    // Use our centralized chain definitions to get the Alchemy network
-    const alchemyNetwork = getAlchemyNetwork(network);
+    // Use the new Alchemy API helper
+    const result = await getTransactionDetails(network, txHash);
 
-    const config = {
-      apiKey,
-      network: alchemyNetwork,
-    };
-
-    const alchemy = new Alchemy(config);
-
-    // Fetch transaction receipt - this contains all the information we need for confirmed transactions
-    const receipt = await alchemy.core.getTransactionReceipt(txHash);
-
-    if (!receipt) {
+    if (!result.receipt) {
       return null;
     }
 
-    // Extract gas information from receipt
+    const receipt = result.receipt;
+    const transaction = result.transaction;
+
+    // Extract gas information from receipt and transaction
     const gasUsed = bigNumberToString(receipt.gasUsed);
     const effectiveGasPrice = bigNumberToString(receipt.effectiveGasPrice);
+    const gasPrice = transaction ? bigNumberToString(transaction.gasPrice) : effectiveGasPrice;
+    const gasLimit = transaction ? bigNumberToString(transaction.gas) : null;
 
     // Calculate transaction fee using actual gas used and effective gas price
-    const transactionFee = calculateTransactionFee(gasUsed, effectiveGasPrice, null);
+    const transactionFee = calculateTransactionFee(gasUsed, effectiveGasPrice);
 
     return {
-      gasPrice: effectiveGasPrice, // Use effective gas price as the main gas price
-      gasLimit: null, // Not available in receipt
+      gasPrice,
+      gasLimit,
       gasUsed,
       effectiveGasPrice,
       transactionFee,
-      confirmations: receipt.confirmations || null,
-      status: receipt.status || null,
-      type: receipt.type || null,
-      nonce: null, // Not available in receipt
+      confirmations: null, // Not available in our response format
+      status: receipt.status != null && receipt.status !== '' ? parseInt(receipt.status, 16) : null,
+      type: receipt.type != null && receipt.type !== '' ? parseInt(receipt.type, 16) : null,
+      nonce: transaction ? parseInt(transaction.nonce, 16) : null,
       blockHash: receipt.blockHash || null,
     };
   } catch (error) {
-    // eslint-disable-next-line no-console
     return null;
   }
 }

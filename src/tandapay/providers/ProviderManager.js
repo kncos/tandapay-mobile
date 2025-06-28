@@ -12,16 +12,22 @@ import { getChainByNetwork, getSupportedNetworks as getSupportedNetworksFromDefi
 const FALLBACK_ALCHEMY_API = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
 
 /**
- * Dynamically get Alchemy RPC URL with user's API key
+ * Dynamically get Alchemy RPC URL for any supported network with user's API key
  */
-async function getAlchemySepoliaUrl(): Promise<string> {
+async function getAlchemyRpcUrl(network: SupportedNetwork): Promise<?string> {
   const result = await getAlchemyApiKey();
   const apiKey = (result.success && result.data != null && result.data.trim() !== '') ? result.data : FALLBACK_ALCHEMY_API;
-  return `https://eth-sepolia.g.alchemy.com/v2/${apiKey}`;
-}
 
-// Export for backward compatibility (will use fallback key)
-export const alchemy_sepolia_url = `https://eth-sepolia.g.alchemy.com/v2/${FALLBACK_ALCHEMY_API}`;
+  const chain = getChainByNetwork(network);
+  // $FlowFixMe[prop-missing] - alchemy property may not exist
+  const alchemyEndpoint = chain.rpcUrls.alchemy?.http[0];
+
+  if (alchemyEndpoint) {
+    return `${alchemyEndpoint}/${apiKey}`;
+  }
+
+  return null;
+}
 
 /**
  * Network configuration for providers
@@ -37,21 +43,15 @@ type NetworkConfig = {|
  * Get network configuration dynamically (for networks that need API keys)
  */
 async function getNetworkConfig(network: SupportedNetwork): Promise<NetworkConfig> {
-  if (network === 'sepolia') {
-    const sepoliaUrl = await getAlchemySepoliaUrl();
-    const chain = getChainByNetwork('sepolia');
-    return {
-      name: chain.name,
-      rpcUrl: sepoliaUrl,
-      chainId: chain.id,
-      blockExplorerUrl: chain.blockExplorers.default.url,
-    };
-  }
-
   const chain = getChainByNetwork(network);
+  
+  // Try to get Alchemy URL first (for better performance), fall back to default
+  const alchemyUrl = await getAlchemyRpcUrl(network);
+  const rpcUrl = (alchemyUrl != null && alchemyUrl !== '') ? alchemyUrl : chain.rpcUrls.default.http[0];
+
   return {
     name: chain.name,
-    rpcUrl: chain.rpcUrls.default.http[0],
+    rpcUrl,
     chainId: chain.id,
     blockExplorerUrl: chain.blockExplorers.default.url,
   };
@@ -228,6 +228,9 @@ export function validateCustomRpcConfig(config: {
     return { success: false, error: tandaPayError };
   }
 }
+
+// Export the Alchemy RPC URL helper for use in transaction fetching
+export { getAlchemyRpcUrl };
 
 /**
  * Get basic network configuration synchronously (for UI display purposes)

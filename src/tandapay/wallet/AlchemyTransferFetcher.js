@@ -3,16 +3,21 @@
 /**
  * Robust, reusable Alchemy API fetcher for asset transfers
  *
+ * Uses clean Alchemy API helper with ethers.js provider instead of Alchemy SDK
+ * to avoid cold start network issues.
+ *
  * Features:
+ * - Uses the same network stack as wallet balance fetches (always reliable)
  * - Encapsulated pagination state
  * - Configurable and reusable
  * - Debuggable with state inspection
  * - Memory management with cleanup
  * - Error handling and retry logic
- * - Thread-safe operations
  */
 
 import TandaPayErrorHandler from '../errors/ErrorHandler';
+import { getAssetTransfers, createAssetTransferParams, hasAlchemyApiKey } from './AlchemyApiHelper';
+import type { SupportedNetwork } from '../definitions';
 
 /**
  * Session class to manage state for a specific address
@@ -120,8 +125,7 @@ class AddressSession {
 }
 
 export class AlchemyTransferFetcher {
-  // $FlowFixMe[unclear-type] - Alchemy instance type is complex
-  alchemy: any;
+  network: SupportedNetwork;
   options: {|
     category: Array<string>,
     withMetadata: boolean,
@@ -132,8 +136,7 @@ export class AlchemyTransferFetcher {
   |};
   sessions: Map<string, AddressSession>;
 
-  // $FlowFixMe[unclear-type] - Alchemy instance type is complex
-  constructor(alchemy: any, options?: {|
+  constructor(network: SupportedNetwork, options?: {|
     category?: Array<string>,
     withMetadata?: boolean,
     excludeZeroValue?: boolean,
@@ -141,7 +144,7 @@ export class AlchemyTransferFetcher {
     maxRetries?: number,
     retryDelay?: number,
   |}) {
-    this.alchemy = alchemy;
+    this.network = network;
     this.options = {
       category: ['external', 'internal', 'erc20'], // Removed NFT categories
       withMetadata: true,
@@ -186,32 +189,49 @@ export class AlchemyTransferFetcher {
     const session = this.getSession(address);
 
     try {
-      const queryOptions = {
-        ...this.options,
-        maxCount
-      };
+      // Check if Alchemy API key is available
+      if (!await hasAlchemyApiKey()) {
+        throw TandaPayErrorHandler.createError(
+          'VALIDATION_ERROR',
+          'Alchemy API key not configured',
+          {
+            userMessage: 'Please configure an Alchemy API key in wallet settings to view transaction history.',
+            details: { address, direction, page }
+          }
+        );
+      }
 
       // Get pagination state for this direction
       const pageKey = session.getPageKey(direction, page - 1);
-      if (pageKey != null && pageKey !== '') {
-        // $FlowFixMe[prop-missing] - Add pageKey to options
-        queryOptions.pageKey = pageKey;
+
+      // Create API parameters using helper
+      const apiParams = {
+        category: this.options.category,
+        withMetadata: this.options.withMetadata,
+        excludeZeroValue: this.options.excludeZeroValue,
+        order: this.options.order,
+        maxCount,
+      };
+
+      if (direction === 'outgoing') {
+        // $FlowFixMe[prop-missing] - Add fromAddress property
+        apiParams.fromAddress = address;
+      } else {
+        // $FlowFixMe[prop-missing] - Add toAddress property
+        apiParams.toAddress = address;
       }
 
+      if (pageKey != null && pageKey !== '') {
+        // $FlowFixMe[prop-missing] - Add pageKey property
+        apiParams.pageKey = pageKey;
+      }
+
+      const params = createAssetTransferParams(apiParams);
+
       // Execute API call with retry logic
-      const result = await this.executeWithRetry(async () => {
-        if (direction === 'outgoing') {
-          return this.alchemy.core.getAssetTransfers({
-            fromAddress: address,
-            ...queryOptions,
-          });
-        } else {
-          return this.alchemy.core.getAssetTransfers({
-            toAddress: address,
-            ...queryOptions,
-          });
-        }
-      });
+      const result = await this.executeWithRetry(() =>
+        getAssetTransfers(this.network, params)
+      );
 
       // Update pagination state
       if (result.pageKey) {
@@ -223,7 +243,7 @@ export class AlchemyTransferFetcher {
       // Update statistics
       session.updateStats(direction, result.transfers?.length || 0);
 
-      return {
+      const finalResult = {
         transfers: result.transfers || [],
         hasMore: result.pageKey != null,
         pageKey: result.pageKey,
@@ -231,8 +251,14 @@ export class AlchemyTransferFetcher {
         direction,
         address
       };
+
+      return finalResult;
     } catch (error) {
       session.recordError(direction, error);
+      if (error?.type) {
+        // Already a TandaPayError, re-throw as is
+        throw error;
+      }
       throw TandaPayErrorHandler.createError(
         'API_ERROR',
         `Failed to fetch ${direction} transfers for ${address}`,

@@ -8,6 +8,9 @@ export const sepolia = Object.freeze({
     default: {
       http: ['https://sepolia.drpc.org'],
     },
+    alchemy: {
+      http: ['https://eth-sepolia.g.alchemy.com/v2'],
+    },
   },
   blockExplorers: {
     default: {

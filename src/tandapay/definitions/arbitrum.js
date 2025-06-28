@@ -8,6 +8,9 @@ export const arbitrum = Object.freeze({
     default: {
       http: ['https://arb1.arbitrum.io/rpc'],
     },
+    alchemy: {
+      http: ['https://arb-mainnet.g.alchemy.com/v2'],
+    },
   },
   blockExplorers: {
     default: {
