@@ -149,7 +149,9 @@ export default function TransactionList({
         </ZulipText>
       </View>
     );
-  }  // Handle success state with transactions
+  }
+
+  // Handle success state with transactions
   if (transactionState.status === 'success') {
     const { hasMore, transfers } = transactionState;
 
@@ -161,28 +163,38 @@ export default function TransactionList({
           // $FlowFixMe[unclear-type] - Processed transaction data
           const etherscanTransaction = (transaction: any);
 
+          // Handle case where transaction might not be fully processed
+          const safeTransaction = {
+            hash: etherscanTransaction?.hash || `transfer-${index}`,
+            direction: etherscanTransaction?.direction || 'OUT',
+            formattedValue: etherscanTransaction?.formattedValue || '0 ETH',
+            timeStamp: etherscanTransaction?.timeStamp || etherscanTransaction?.metadata?.blockTimestamp || '0',
+            isTandaPayTransaction: etherscanTransaction?.isTandaPayTransaction || false,
+            tandaPaySummary: etherscanTransaction?.tandaPaySummary || null,
+          };
+
           // Determine color and display content based on transaction type
           let displayColor;
           let displayTitle;
           let displayAmount;
 
-          if (etherscanTransaction.isTandaPayTransaction) {
+          if (safeTransaction.isTandaPayTransaction) {
             // TandaPay transaction - use warning color
             displayColor = TandaPayColors.warning;
             displayTitle = 'Sent TandaPay Action';
-            displayAmount = etherscanTransaction.tandaPaySummary != null && etherscanTransaction.tandaPaySummary !== ''
-              ? etherscanTransaction.tandaPaySummary
+            displayAmount = safeTransaction.tandaPaySummary != null && safeTransaction.tandaPaySummary !== ''
+              ? safeTransaction.tandaPaySummary
               : 'Contract Call';
           } else {
             // Regular transaction - use existing logic
-            displayColor = etherscanTransaction.direction === 'IN' ? TandaPayColors.success : TandaPayColors.error;
-            displayTitle = etherscanTransaction.direction === 'IN' ? 'Received' : 'Sent';
-            displayAmount = etherscanTransaction.formattedValue;
+            displayColor = safeTransaction.direction === 'IN' ? TandaPayColors.success : TandaPayColors.error;
+            displayTitle = safeTransaction.direction === 'IN' ? 'Received' : 'Sent';
+            displayAmount = safeTransaction.formattedValue;
           }
 
           return (
             <View
-              key={`${etherscanTransaction.hash || `transfer-${index}`}-${etherscanTransaction.direction}`}
+              key={`${safeTransaction.hash}-${safeTransaction.direction}`}
               style={{ padding: 12, marginVertical: 2, backgroundColor: themeData.cardColor, borderRadius: 8 }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -194,7 +206,7 @@ export default function TransactionList({
                     {displayAmount}
                   </ZulipText>
                   <ZulipText style={TandaPayStyles.descriptionCompact}>
-                    {formatTimestamp(etherscanTransaction.timeStamp)}
+                    {formatTimestamp(safeTransaction.timeStamp)}
                   </ZulipText>
                 </View>
                 <ZulipTextButton

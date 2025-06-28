@@ -90,7 +90,7 @@ export default function useTransactionHistory({
 
   // Helper function to process raw transfers into etherscan format
   const processTransfers = useCallback(async (rawTransfers: $ReadOnlyArray<Transfer>) => {
-    if (walletAddress == null || walletAddress === '' || tandaPayContractAddress == null || tandaPayContractAddress === '') {
+    if (walletAddress == null || walletAddress === '') {
       return rawTransfers;
     }
 
@@ -98,7 +98,8 @@ export default function useTransactionHistory({
       const processedTransfers = await Promise.all(
         rawTransfers.map(async (transfer) => {
           try {
-            return await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
+            const result = await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
+            return result;
           } catch (error) {
             // If processing fails, return the original transfer
             return transfer;
@@ -177,7 +178,7 @@ export default function useTransactionHistory({
       }
 
       const result = await manager.getMoreTransactions();
-      
+
       // Process the transactions before setting state
       const processedTransfers = await processTransfers(result.transfers);
 
@@ -236,7 +237,7 @@ export default function useTransactionHistory({
       }
 
       const result = await managerRef.current.getMoreTransactions();
-      
+
       // Process the new transactions before adding them
       const processedNewTransfers = await processTransfers(result.transfers);
 
