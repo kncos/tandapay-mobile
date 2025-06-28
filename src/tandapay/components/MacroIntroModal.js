@@ -21,9 +21,11 @@ type MacroInfo = {|
 type Props = $ReadOnly<{|
   visible: boolean,
   macroInfo: ?MacroInfo,
+  transactionCount?: number,
+  isRefreshing?: boolean,
   onClose: () => void,
-  onRefresh: () => void,
-  onContinue: () => void,
+  onRefresh: () => void | Promise<void>,
+  onContinue: () => void | Promise<void>,
 |}>;
 
 const styles = StyleSheet.create({
@@ -56,13 +58,25 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 24,
   },
+  transactionInfo: {
+    fontSize: 12,
+    color: QUARTER_COLOR,
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
+  loadingText: {
+    fontSize: 12,
+    color: QUARTER_COLOR,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
   buttonContainer: {
     marginTop: 16,
   },
 });
 
 export default function MacroIntroModal(props: Props): Node {
-  const { visible, macroInfo, onClose, onRefresh, onContinue } = props;
+  const { visible, macroInfo, transactionCount, isRefreshing, onClose, onRefresh, onContinue } = props;
 
   const handleRefresh = useCallback(() => {
     onRefresh();
@@ -94,6 +108,20 @@ export default function MacroIntroModal(props: Props): Node {
             style={styles.description}
             text={macroInfo.description}
           />
+
+          {transactionCount !== undefined && transactionCount > 0 && (
+            <ZulipText
+              style={styles.transactionInfo}
+              text={`This macro will execute ${transactionCount} transaction${transactionCount === 1 ? '' : 's'}.`}
+            />
+          )}
+
+          {isRefreshing === true && (
+            <ZulipText
+              style={styles.loadingText}
+              text="Loading macro data..."
+            />
+          )}
 
           <View style={styles.buttonContainer}>
             <View style={TandaPayStyles.buttonRow}>

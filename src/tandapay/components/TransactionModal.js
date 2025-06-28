@@ -28,6 +28,11 @@ type Props = $ReadOnly<{|
   transaction: ?WriteTransaction,
   onClose: () => void,
   onTransactionComplete?: (result: any) => void,
+  workflowProgress?: ?{|
+    current: number,
+    total: number,
+    macroName: string,
+  |},
 |}>;
 
 const styles = StyleSheet.create({
@@ -61,6 +66,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     lineHeight: 20,
   },
+  workflowProgress: {
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  workflowText: {
+    fontSize: 12,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   noParamsMessage: {
     padding: 16,
     borderRadius: 12,
@@ -75,7 +91,7 @@ const styles = StyleSheet.create({
 });
 
 export default function TransactionModal(props: Props): Node {
-  const { visible, transaction, onClose, onTransactionComplete } = props;
+  const { visible, transaction, onClose, onTransactionComplete, workflowProgress } = props;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const themeData = useContext(ThemeContext);
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
@@ -334,6 +350,14 @@ export default function TransactionModal(props: Props): Node {
             </ZulipText>
             <CloseButton onPress={onClose} />
           </View>
+
+          {workflowProgress && (
+            <View style={styles.workflowProgress}>
+              <ZulipText style={[styles.workflowText, { color: themeData.color }]}>
+                {`${workflowProgress.macroName} - Step ${workflowProgress.current} of ${workflowProgress.total}`}
+              </ZulipText>
+            </View>
+          )}
 
           <Text style={[styles.description, { color: themeData.color }]}>{transaction.description}</Text>
 

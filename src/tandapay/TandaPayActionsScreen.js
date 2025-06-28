@@ -12,11 +12,11 @@ import { getAllWriteTransactions } from './contract/tandapay-writer/writeTransac
 import type { WriteTransaction } from './contract/tandapay-writer/writeTransactionObjects';
 import { getSuggestedMethods } from './contract/suggestedMethods';
 import TransactionModal from './components/TransactionModal';
-import MacroIntroModal from './components/MacroIntroModal';
+import MacroWorkflow from './components/MacroWorkflow';
+import type { MacroDefinition } from './components/MacroWorkflow';
 import { TandaRibbon } from './components';
 import { AUTO_REORG_MACRO } from './contract/macros/auto-reorg';
 import { IconRefreshCw } from '../common/Icons';
-import { invalidateCachedBatchData } from './contract/tandapay-reader/communityInfoManager';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-actions'>,
@@ -26,7 +26,7 @@ type Props = $ReadOnly<{|
 export default function TandaPayActionsScreen(props: Props): Node {
   const [selectedTransaction, setSelectedTransaction] = useState<?WriteTransaction>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [macroIntroVisible, setMacroIntroVisible] = useState(false);
+  const [macroWorkflowVisible, setMacroWorkflowVisible] = useState(false);
 
   // Get all write transactions with metadata
   // Note: The TransactionModal now integrates with real contract instances
@@ -60,23 +60,37 @@ export default function TandaPayActionsScreen(props: Props): Node {
 
   // Macro-related handlers
   const handleAutoReorgPress = useCallback(() => {
-    setMacroIntroVisible(true);
+    setMacroWorkflowVisible(true);
   }, []);
 
-  const handleMacroIntroClose = useCallback(() => {
-    setMacroIntroVisible(false);
+  const handleMacroWorkflowClose = useCallback(() => {
+    setMacroWorkflowVisible(false);
   }, []);
 
-  const handleMacroRefresh = useCallback(() => {
-    // Drop all cached data to force fresh fetch
-    invalidateCachedBatchData();
+  const handleMacroComplete = useCallback(() => {
+    // Macro completed successfully
+    setMacroWorkflowVisible(false);
   }, []);
 
-  const handleMacroContinue = useCallback(() => {
-    // For now, just close the modal - we'll implement the actual macro execution later
-    setMacroIntroVisible(false);
-    // TODO: Implement macro execution flow
-  }, []);
+  // Create macro definition for auto-reorg
+  // For now, we'll use a simple mock data fetcher
+  const autoReorgMacro: MacroDefinition = {
+    id: AUTO_REORG_MACRO.id,
+    name: AUTO_REORG_MACRO.name,
+    description: AUTO_REORG_MACRO.description,
+    
+    dataFetcher: async () => [],
+    
+    validateFunction: (data: mixed) => ({
+      canExecute: Array.isArray(data),
+      reason: Array.isArray(data) ? undefined : 'Invalid data format',
+    }),
+    
+    executeFunction: async (data: mixed) => ({
+      success: true,
+      transactions: [],
+    }),
+  };
 
   return (
     <Screen title="TandaPay Actions">
@@ -140,13 +154,12 @@ export default function TandaPayActionsScreen(props: Props): Node {
         onTransactionComplete={handleTransactionComplete}
       />
 
-      {/* Macro Intro Modal */}
-      <MacroIntroModal
-        visible={macroIntroVisible}
-        macroInfo={AUTO_REORG_MACRO}
-        onClose={handleMacroIntroClose}
-        onRefresh={handleMacroRefresh}
-        onContinue={handleMacroContinue}
+      {/* Macro Workflow */}
+      <MacroWorkflow
+        visible={macroWorkflowVisible}
+        macro={autoReorgMacro}
+        onClose={handleMacroWorkflowClose}
+        onComplete={handleMacroComplete}
       />
     </Screen>
   );
