@@ -3,8 +3,9 @@
 import { useState, useCallback } from 'react';
 import CommunityInfoManager from '../../data-managers/CommunityInfoManager';
 import { bigNumberToNumber } from '../../../TandaPayInfo/utils';
+import { InitializationStateConstants, CommunityStates } from '../../constants';
 
-const MINIMUM_MEMBERS = 12;
+const MINIMUM_MEMBERS = InitializationStateConstants.minCommunitySizeToExit;
 
 /**
  * Add required members result types
@@ -74,7 +75,7 @@ export function useAddRequiredMembers(): {|
       // $FlowFixMe[unclear-type] - mixed data from contract
       const currentMemberCount = bigNumberToNumber(((typedCommunityData: any).currentMemberCount: mixed)) || 0;
       // $FlowFixMe[unclear-type] - mixed data from contract
-      const isInInitializationState = ((typedCommunityData: any).currentState: string) === 'initialization';
+      const isInInitializationState = ((typedCommunityData: any).currentState: string) === CommunityStates.initialization;
 
       // Check if we're in the right state to add members
       if (!isInInitializationState) {

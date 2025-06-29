@@ -9,6 +9,7 @@
 
 import { useAddRequiredMembers } from './useAddRequiredMembers';
 import { getWriteTransactionByName } from '../../tandapay-writer/writeTransactionObjects';
+import { InitializationStateConstants } from '../../constants';
 
 import type { MacroDefinition } from '../../../components/MacroWorkflow';
 import type { WriteTransaction } from '../../tandapay-writer/writeTransactionObjects';
@@ -26,7 +27,7 @@ export function useAddRequiredMembersMacro(): {|
   const macro = {
     id: 'add-required-members',
     name: 'Add Required Members',
-    description: 'Add members to reach the minimum of 12 members required for community initialization.',
+    description: `Add members to reach the minimum of ${InitializationStateConstants.minCommunitySizeToExit} members required for community initialization.`,
 
     dataFetcher: async () => ({}),
 

@@ -10,6 +10,7 @@
 
 import { autoReorg } from './autoReorgAlgorithm';
 import { preprocessMembersForAutoReorg } from './autoReorgPreprocessor';
+import { SubgroupConstants } from '../../constants';
 import type { MemberInfo } from '../../types';
 import type { AutoReorgParameters } from './autoReorgAlgorithm';
 
@@ -19,7 +20,7 @@ import type { AutoReorgParameters } from './autoReorgAlgorithm';
 export const AUTO_REORG_MACRO = {
   id: 'auto-reorg',
   name: 'Auto Reorganization',
-  description: 'Automatically reorganize subgroups to ensure all members are assigned to valid subgroups (4-7 members each).',
+  description: `Automatically reorganize subgroups to ensure all members are assigned to valid subgroups (${SubgroupConstants.minSize}-${SubgroupConstants.maxSize} members each).`,
   icon: 'refresh', // Using a generic refresh icon
 };
 
@@ -127,10 +128,10 @@ export function validateAutoReorg(memberInfoArray: MemberInfo[]): {|
   }
 
   // Check if we have minimum required members for at least one subgroup
-  if (memberInfoArray.length < 4) {
+  if (memberInfoArray.length < SubgroupConstants.minSize) {
     return {
       canExecute: false,
-      reason: 'At least 4 members are required to form a subgroup',
+      reason: `At least ${SubgroupConstants.minSize} members are required to form a subgroup`,
     };
   }
 

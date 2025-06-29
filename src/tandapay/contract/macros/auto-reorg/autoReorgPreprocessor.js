@@ -8,6 +8,7 @@
 
 // $FlowFixMe[untyped-import]
 import { ethers } from 'ethers';
+import { SubgroupConstants, InitializationStateConstants } from '../../constants';
 import type { MemberInfo } from '../../types';
 import type { AutoReorgParameters } from './autoReorgAlgorithm';
 
@@ -52,10 +53,10 @@ export function preprocessMembersForAutoReorg(
   members: Array<MemberInfo | MemberInfoMinimal>
 ): PreprocessorResult {
   // Step 1: Ensure minimum member count
-  if (members.length < 12) {
+  if (members.length < InitializationStateConstants.minCommunitySizeToExit) {
     return {
       success: false,
-      error: `Insufficient members for auto-reorg. Need at least 12 members, got ${members.length}.`
+      error: `Insufficient members for auto-reorg. Need at least ${InitializationStateConstants.minCommunitySizeToExit} members, got ${members.length}.`
     };
   }
 
@@ -85,7 +86,7 @@ export function preprocessMembersForAutoReorg(
 
   // Step 4: Move members from invalid subgroups to needsAssigned
   for (const [, membersList] of subgroups.entries()) {
-    if (membersList.length < 4) {
+    if (membersList.length < SubgroupConstants.minSize) {
       // Invalid subgroup - move all members to needsAssigned
       needsAssigned.push(...membersList);
       // Keep the subgroup but with the same members also in needsAssigned

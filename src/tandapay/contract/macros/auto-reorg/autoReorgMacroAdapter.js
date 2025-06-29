@@ -9,6 +9,7 @@
 
 import { useAutoReorg } from './useAutoReorg';
 import { getAllWriteTransactions } from '../../tandapay-writer/writeTransactionObjects';
+import { SubgroupConstants } from '../../constants';
 
 import type { MacroDefinition } from '../../../components/MacroWorkflow';
 import type { WriteTransaction } from '../../tandapay-writer/writeTransactionObjects';
@@ -26,7 +27,7 @@ export function useAutoReorgMacro(): {|
   const macro = {
     id: 'auto-reorg',
     name: 'Auto Reorganization',
-    description: 'Automatically reorganize subgroups to ensure all members are assigned to valid subgroups (4-7 members each).',
+    description: `Automatically reorganize subgroups to ensure all members are assigned to valid subgroups (${SubgroupConstants.minSize}-${SubgroupConstants.maxSize} members each).`,
 
     dataFetcher: async () => ({}),
 
