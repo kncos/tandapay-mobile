@@ -18,10 +18,11 @@ import {
   TANDAPAY_COMMUNITY_INFO_UPDATE,
   TANDAPAY_COMMUNITY_INFO_LOADING,
   TANDAPAY_COMMUNITY_INFO_ERROR,
-  TANDAPAY_COMMUNITY_INFO_CLEAR,
-  TANDAPAY_BATCH_MEMBERS_UPDATE,
-  TANDAPAY_BATCH_SUBGROUPS_UPDATE,
-  TANDAPAY_BATCH_DATA_INVALIDATE,
+  TANDAPAY_COMMUNITY_INFO_INVALIDATE,
+  TANDAPAY_MEMBER_DATA_UPDATE,
+  TANDAPAY_MEMBER_DATA_INVALIDATE,
+  TANDAPAY_SUBGROUP_DATA_UPDATE,
+  TANDAPAY_SUBGROUP_DATA_INVALIDATE,
 } from '../../actionConstants';
 
 // =============================================================================
@@ -41,6 +42,7 @@ export const updateTandaPaySettings = (settings: $Shape<TandaPaySettingsState>):
  * Action to select a different token in the wallet
  */
 export function selectToken(tokenSymbol: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_SELECT,
     tokenSymbol,
@@ -56,6 +58,7 @@ export function addCustomToken(token: {|
   name: string,
   decimals?: number,
 |}): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_ADD_CUSTOM,
     token,
@@ -66,6 +69,7 @@ export function addCustomToken(token: {|
  * Action to remove a custom token from the user's wallet
  */
 export function removeCustomToken(tokenSymbol: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_REMOVE_CUSTOM,
     tokenSymbol,
@@ -76,6 +80,7 @@ export function removeCustomToken(tokenSymbol: string): PerAccountAction {
  * Action to update the cached balance for a token
  */
 export function updateTokenBalance(tokenSymbol: string, balance: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_UPDATE_BALANCE,
     tokenSymbol,
@@ -87,6 +92,7 @@ export function updateTokenBalance(tokenSymbol: string, balance: string): PerAcc
  * Action to invalidate the cached balance for a token, forcing a refresh
  */
 export function invalidateTokenBalance(tokenSymbol: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_INVALIDATE_BALANCE,
     tokenSymbol,
@@ -214,6 +220,7 @@ export function updateRetryAttempts(retryAttempts: number): TandaPaySettingsUpda
  * Action creator for updating community info loading state
  */
 export function setCommunityInfoLoading(loading: boolean): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_LOADING,
     loading,
@@ -225,14 +232,11 @@ export function setCommunityInfoLoading(loading: boolean): PerAccountAction {
  */
 export function updateCommunityInfo(
   communityInfo: $FlowFixMe, // CommunityInfo type
-  contractAddress: ?string,
-  userAddress: ?string,
 ): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_UPDATE,
     communityInfo: serializeBigNumbers(communityInfo),
-    contractAddress,
-    userAddress,
   };
 }
 
@@ -240,61 +244,93 @@ export function updateCommunityInfo(
  * Action creator for community info error
  */
 export function setCommunityInfoError(error: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_ERROR,
     error,
   };
 }
 
-/**
- * Action creator for clearing community info
- */
-export function clearCommunityInfo(): PerAccountAction {
-  return {
-    type: TANDAPAY_COMMUNITY_INFO_CLEAR,
-  };
-}
+// Legacy actions removed - use new decoupled data actions instead
+
+// =============================================================================
+// MEMBER DATA ACTIONS
+// =============================================================================
 
 /**
- * Action creator for updating batch members data in community info
+ * Action creator for updating member data
  */
-export function updateBatchMembers(
-  allMembersInfo: $FlowFixMe, // Array<MemberInfo>
-  contractAddress: ?string,
-  userAddress: ?string,
+export function updateMemberData(
+  memberBatchInfo: $FlowFixMe,
+  isLoading: boolean = false,
+  error: ?string = null,
 ): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
-    type: TANDAPAY_BATCH_MEMBERS_UPDATE,
-    allMembersInfo: serializeBigNumbers(allMembersInfo),
-    contractAddress,
-    userAddress,
-    timestamp: Date.now(),
+    type: TANDAPAY_MEMBER_DATA_UPDATE,
+    memberBatchInfo: serializeBigNumbers(memberBatchInfo),
+    isLoading,
+    error,
   };
 }
 
 /**
- * Action creator for updating batch subgroups data in community info
+ * Action creator for invalidating member data
  */
-export function updateBatchSubgroups(
-  allSubgroupsInfo: $FlowFixMe, // Array<SubgroupInfo>
-  contractAddress: ?string,
-  userAddress: ?string,
+export function invalidateMemberData(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_MEMBER_DATA_INVALIDATE,
+  };
+}
+
+// =============================================================================
+// SUBGROUP DATA ACTIONS
+// =============================================================================
+
+/**
+ * Action creator for updating subgroup data
+ */
+export function updateSubgroupData(
+  subgroupBatchInfo: $FlowFixMe,
+  isLoading: boolean = false,
+  error: ?string = null,
 ): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
-    type: TANDAPAY_BATCH_SUBGROUPS_UPDATE,
-    allSubgroupsInfo: serializeBigNumbers(allSubgroupsInfo),
-    contractAddress,
-    userAddress,
-    timestamp: Date.now(),
+    type: TANDAPAY_SUBGROUP_DATA_UPDATE,
+    subgroupBatchInfo: serializeBigNumbers(subgroupBatchInfo),
+    isLoading,
+    error,
   };
 }
 
 /**
- * Action creator for invalidating batch data (members and subgroups)
- * This will force a refresh the next time the data is requested
+ * Action creator for invalidating subgroup data
  */
-export function invalidateBatchData(): PerAccountAction {
+export function invalidateSubgroupData(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
-    type: TANDAPAY_BATCH_DATA_INVALIDATE,
+    type: TANDAPAY_SUBGROUP_DATA_INVALIDATE,
+  };
+}
+
+/**
+ * Action creator for invalidating community info
+ */
+export function invalidateCommunityInfo(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_INVALIDATE,
+  };
+}
+
+/**
+ * Action creator for invalidating community info data
+ */
+export function invalidateCommunityInfoData(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_INVALIDATE,
   };
 }

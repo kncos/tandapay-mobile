@@ -46,6 +46,7 @@ export type WriteTransaction = {|
   requiresParams: boolean,
   icon: React$ComponentType<any>,
   parameters?: WriteTransactionParameter[],
+  prefilledParams?: {| [paramName: string]: string | boolean |},
   writeFunction: (contract: any, ...args: any[]) => Promise<any>,
   simulateFunction: (
     contract: any,

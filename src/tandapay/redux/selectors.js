@@ -4,10 +4,9 @@ import type {
   TandaPayState,
 } from './reducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
-import type { CommunityInfoState } from './reducers/communityInfoReducer';
+import type { CommunityInfoDataState } from './reducers/communityInfoDataReducer';
 import type { NetworkIdentifier } from '../definitions/types';
-import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
-import type { MemberInfo, SubgroupInfo } from '../contract/types';
+import type { CommunityInfo } from '../contract/types/index';
 import { deserializeBigNumbers } from '../utils/bigNumberUtils';
 
 // Main TandaPay state selector
@@ -38,17 +37,26 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
         balances: {},
         lastUpdated: {},
       },
-      communityInfo: {
-        communityInfo: null,
+      // New decoupled data structures
+      communityInfoData: {
+        data: null,
         loading: false,
         error: null,
         lastUpdated: null,
         contractAddress: null,
         userAddress: null,
-        cachedBatchMembers: null,
-        cachedBatchSubgroups: null,
-        batchMembersLastUpdated: null,
-        batchSubgroupsLastUpdated: null,
+      },
+      memberData: {
+        memberBatchInfo: null,
+        isLoading: false,
+        error: null,
+        lastUpdated: null,
+      },
+      subgroupData: {
+        subgroupBatchInfo: null,
+        isLoading: false,
+        error: null,
+        lastUpdated: null,
       },
     };
   }
@@ -207,15 +215,6 @@ export const getTandaPaySelectedTokenSymbol = (state: PerAccountState): string =
   }
 };
 
-export const getTandaPayDefaultTokens = (state: PerAccountState): $ReadOnlyArray<mixed> => {
-  try {
-    const tandaPayState = getTandaPayState(state);
-    return tandaPayState.tokens.defaultTokens || [];
-  } catch (error) {
-    return [];
-  }
-};
-
 export const getTandaPayCustomTokens = (state: PerAccountState): $ReadOnlyArray<mixed> => {
   try {
     const tandaPayState = getTandaPayState(state);
@@ -225,17 +224,17 @@ export const getTandaPayCustomTokens = (state: PerAccountState): $ReadOnlyArray<
   }
 };
 
-// Community info selectors
-export const getCommunityInfoState = (state: PerAccountState): CommunityInfoState => {
+// Community info selectors - using new decoupled data structure
+export const getCommunityInfoDataState = (state: PerAccountState): CommunityInfoDataState => {
   const tandaPayState = getTandaPayState(state);
-  return tandaPayState.communityInfo;
+  return tandaPayState.communityInfoData;
 };
 
 export const getCommunityInfo = (state: PerAccountState): ?CommunityInfo => {
   try {
-    const communityInfo = getCommunityInfoState(state).communityInfo;
+    const communityInfoData = getCommunityInfoDataState(state).data;
     // $FlowFixMe[incompatible-return] - deserializeBigNumbers returns the correct type structure
-    return communityInfo ? deserializeBigNumbers(communityInfo) : null;
+    return communityInfoData ? deserializeBigNumbers(communityInfoData) : null;
   } catch (error) {
     return null;
   }
@@ -243,7 +242,7 @@ export const getCommunityInfo = (state: PerAccountState): ?CommunityInfo => {
 
 export const getCommunityInfoLoading = (state: PerAccountState): boolean => {
   try {
-    return getCommunityInfoState(state).loading;
+    return getCommunityInfoDataState(state).loading;
   } catch (error) {
     return false;
   }
@@ -251,7 +250,7 @@ export const getCommunityInfoLoading = (state: PerAccountState): boolean => {
 
 export const getCommunityInfoError = (state: PerAccountState): ?string => {
   try {
-    return getCommunityInfoState(state).error;
+    return getCommunityInfoDataState(state).error;
   } catch (error) {
     return null;
   }
@@ -259,7 +258,7 @@ export const getCommunityInfoError = (state: PerAccountState): ?string => {
 
 export const getCommunityInfoLastUpdated = (state: PerAccountState): ?number => {
   try {
-    return getCommunityInfoState(state).lastUpdated;
+    return getCommunityInfoDataState(state).lastUpdated;
   } catch (error) {
     return null;
   }
@@ -268,83 +267,6 @@ export const getCommunityInfoLastUpdated = (state: PerAccountState): ?number => 
 export const isCommunityInfoStale = (state: PerAccountState, maxAgeMs: number = 30000): boolean => {
   try {
     const lastUpdated = getCommunityInfoLastUpdated(state);
-    if (lastUpdated == null) {
-      return true;
-    }
-    return Date.now() - lastUpdated > maxAgeMs;
-  } catch (error) {
-    return true;
-  }
-};
-
-/**
- * Get cached batch members data from separate cache field
- */
-export const getCachedBatchMembers = (state: PerAccountState): ?Array<MemberInfo> => {
-  try {
-    const communityInfoState = getCommunityInfoState(state);
-    return communityInfoState.cachedBatchMembers;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Get cached batch subgroups data from separate cache field
- */
-export const getCachedBatchSubgroups = (state: PerAccountState): ?Array<SubgroupInfo> => {
-  try {
-    const communityInfoState = getCommunityInfoState(state);
-    return communityInfoState.cachedBatchSubgroups;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Get timestamp of last batch members update
- */
-export const getBatchMembersLastUpdated = (state: PerAccountState): ?number => {
-  try {
-    return getCommunityInfoState(state).batchMembersLastUpdated;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Get timestamp of last batch subgroups update
- */
-export const getBatchSubgroupsLastUpdated = (state: PerAccountState): ?number => {
-  try {
-    return getCommunityInfoState(state).batchSubgroupsLastUpdated;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Check if cached batch members data is stale (default 5 minutes)
- */
-export const isBatchMembersStale = (state: PerAccountState, maxAgeMs: number = 300000): boolean => {
-  try {
-    const lastUpdated = getBatchMembersLastUpdated(state);
-    if (lastUpdated == null) {
-      return true;
-    }
-    const age = Date.now() - lastUpdated;
-    return age > maxAgeMs;
-  } catch (error) {
-    return true;
-  }
-};
-
-/**
- * Check if cached batch subgroups data is stale (default 5 minutes)
- */
-export const isBatchSubgroupsStale = (state: PerAccountState, maxAgeMs: number = 300000): boolean => {
-  try {
-    const lastUpdated = getBatchSubgroupsLastUpdated(state);
     if (lastUpdated == null) {
       return true;
     }

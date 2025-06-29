@@ -12,11 +12,11 @@ import { getAllWriteTransactions } from './contract/tandapay-writer/writeTransac
 import type { WriteTransaction } from './contract/tandapay-writer/writeTransactionObjects';
 import { getSuggestedMethods } from './contract/suggestedMethods';
 import TransactionModal from './components/TransactionModal';
-import MacroIntroModal from './components/MacroIntroModal';
 import { TandaRibbon } from './components';
 import { AUTO_REORG_MACRO } from './contract/macros/auto-reorg';
 import { IconRefreshCw } from '../common/Icons';
-import { invalidateCachedBatchData } from './contract/tandapay-reader/communityInfoManager';
+import { useAutoReorgMacro } from './contract/macros/auto-reorg/autoReorgMacroAdapter';
+import MacroWorkflow from './components/MacroWorkflow';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-actions'>,
@@ -26,7 +26,10 @@ type Props = $ReadOnly<{|
 export default function TandaPayActionsScreen(props: Props): Node {
   const [selectedTransaction, setSelectedTransaction] = useState<?WriteTransaction>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [macroIntroVisible, setMacroIntroVisible] = useState(false);
+  const [macroWorkflowVisible, setMacroWorkflowVisible] = useState(false);
+
+  // Initialize auto-reorg macro hook
+  const { macro: autoReorgMacro } = useAutoReorgMacro();
 
   // Get all write transactions with metadata
   // Note: The TransactionModal now integrates with real contract instances
@@ -58,24 +61,20 @@ export default function TandaPayActionsScreen(props: Props): Node {
     [handleModalClose],
   );
 
-  // Macro-related handlers
+  // Auto-reorg handler - launches macro workflow
   const handleAutoReorgPress = useCallback(() => {
-    setMacroIntroVisible(true);
+    setMacroWorkflowVisible(true);
   }, []);
 
-  const handleMacroIntroClose = useCallback(() => {
-    setMacroIntroVisible(false);
+  // Handle macro workflow completion
+  const handleMacroWorkflowComplete = useCallback(() => {
+    // The MacroWorkflow component will handle closing itself
+    // We could add additional logic here if needed
   }, []);
 
-  const handleMacroRefresh = useCallback(() => {
-    // Drop all cached data to force fresh fetch
-    invalidateCachedBatchData();
-  }, []);
-
-  const handleMacroContinue = useCallback(() => {
-    // For now, just close the modal - we'll implement the actual macro execution later
-    setMacroIntroVisible(false);
-    // TODO: Implement macro execution flow
+  // Handle macro workflow close
+  const handleMacroWorkflowClose = useCallback(() => {
+    setMacroWorkflowVisible(false);
   }, []);
 
   return (
@@ -118,6 +117,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
             />
           ))}
       </TandaRibbon>
+
       <TandaRibbon label="Secretary Actions" marginTop={0}>
         {writeTransactions
           .filter(transaction => transaction.role === 'secretary')
@@ -132,7 +132,6 @@ export default function TandaPayActionsScreen(props: Props): Node {
           ))}
       </TandaRibbon>
 
-      {/* Dynamic Transaction Modal */}
       <TransactionModal
         visible={modalVisible}
         transaction={selectedTransaction}
@@ -140,13 +139,11 @@ export default function TandaPayActionsScreen(props: Props): Node {
         onTransactionComplete={handleTransactionComplete}
       />
 
-      {/* Macro Intro Modal */}
-      <MacroIntroModal
-        visible={macroIntroVisible}
-        macroInfo={AUTO_REORG_MACRO}
-        onClose={handleMacroIntroClose}
-        onRefresh={handleMacroRefresh}
-        onContinue={handleMacroContinue}
+      <MacroWorkflow
+        macro={autoReorgMacro}
+        visible={macroWorkflowVisible}
+        onClose={handleMacroWorkflowClose}
+        onComplete={handleMacroWorkflowComplete}
       />
     </Screen>
   );

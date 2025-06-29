@@ -10,7 +10,7 @@ import { IconPerson } from '../../common/Icons';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
 import MemberInfoDisplay from './MemberInfoDisplay';
 
-import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
+import type { CommunityInfo } from '../contract/types/index';
 import { bigNumberToNumber } from './utils';
 
 type Props = $ReadOnly<{|
@@ -46,7 +46,6 @@ export default function UserStatusCard(props: Props): Node {
   const { communityInfo } = props;
 
   const userMemberInfo = communityInfo.userMemberInfo;
-  const userSubgroupInfo = communityInfo.userSubgroupInfo;
   const isValidMember = userMemberInfo != null && bigNumberToNumber(userMemberInfo.id) > 0;
 
   return (
@@ -63,7 +62,7 @@ export default function UserStatusCard(props: Props): Node {
           showSubgroupId
           showRole
           secretaryAddress={communityInfo.secretaryAddress}
-          subgroupId={userSubgroupInfo ? bigNumberToNumber(userSubgroupInfo.id) : null}
+          subgroupId={userMemberInfo.subgroupId != null ? bigNumberToNumber(userMemberInfo.subgroupId) : null}
         />
       ) : (
         <View style={styles.infoRow}>

@@ -72,10 +72,11 @@ import {
   TANDAPAY_COMMUNITY_INFO_UPDATE,
   TANDAPAY_COMMUNITY_INFO_LOADING,
   TANDAPAY_COMMUNITY_INFO_ERROR,
-  TANDAPAY_COMMUNITY_INFO_CLEAR,
-  TANDAPAY_BATCH_MEMBERS_UPDATE,
-  TANDAPAY_BATCH_SUBGROUPS_UPDATE,
-  TANDAPAY_BATCH_DATA_INVALIDATE,
+  TANDAPAY_COMMUNITY_INFO_INVALIDATE,
+  TANDAPAY_MEMBER_DATA_UPDATE,
+  TANDAPAY_MEMBER_DATA_INVALIDATE,
+  TANDAPAY_SUBGROUP_DATA_UPDATE,
+  TANDAPAY_SUBGROUP_DATA_INVALIDATE,
 } from './actionConstants';
 
 import type { UserMessageFlag } from './api/modelTypes';
@@ -740,30 +741,6 @@ type TandaPayCommunityInfoErrorAction = $ReadOnly<{|
   error: string,
 |}>;
 
-type TandaPayCommunityInfoClearAction = $ReadOnly<{|
-  type: typeof TANDAPAY_COMMUNITY_INFO_CLEAR,
-|}>;
-
-type TandaPayBatchMembersUpdateAction = $ReadOnly<{|
-  type: typeof TANDAPAY_BATCH_MEMBERS_UPDATE,
-  allMembersInfo: $FlowFixMe, // Array<MemberInfo>
-  contractAddress: ?string,
-  userAddress: ?string,
-  timestamp: number,
-|}>;
-
-type TandaPayBatchSubgroupsUpdateAction = $ReadOnly<{|
-  type: typeof TANDAPAY_BATCH_SUBGROUPS_UPDATE,
-  allSubgroupsInfo: $FlowFixMe, // Array<SubgroupInfo>
-  contractAddress: ?string,
-  userAddress: ?string,
-  timestamp: number,
-|}>;
-
-type TandaPayBatchDataInvalidateAction = $ReadOnly<{|
-  type: typeof TANDAPAY_BATCH_DATA_INVALIDATE,
-|}>;
-
 type TandaPayAction =
   | TandaPaySettingsUpdateAction
   | TandaPayTokenSelectAction
@@ -773,11 +750,7 @@ type TandaPayAction =
   | TandaPayTokenInvalidateBalanceAction
   | TandaPayCommunityInfoUpdateAction
   | TandaPayCommunityInfoLoadingAction
-  | TandaPayCommunityInfoErrorAction
-  | TandaPayCommunityInfoClearAction
-  | TandaPayBatchMembersUpdateAction
-  | TandaPayBatchSubgroupsUpdateAction
-  | TandaPayBatchDataInvalidateAction;
+  | TandaPayCommunityInfoErrorAction;
 
 //
 // Then, the primary subtypes of `Action`.  Each of these should have some
@@ -951,10 +924,6 @@ export function isPerAccountApplicableAction(action: Action): boolean {
     case TANDAPAY_COMMUNITY_INFO_UPDATE:
     case TANDAPAY_COMMUNITY_INFO_LOADING:
     case TANDAPAY_COMMUNITY_INFO_ERROR:
-    case TANDAPAY_COMMUNITY_INFO_CLEAR:
-    case TANDAPAY_BATCH_MEMBERS_UPDATE:
-    case TANDAPAY_BATCH_SUBGROUPS_UPDATE:
-    case TANDAPAY_BATCH_DATA_INVALIDATE:
       (action: PerAccountAction);
       (action: PerAccountApplicableAction);
       return true;

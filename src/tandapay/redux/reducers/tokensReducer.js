@@ -13,40 +13,9 @@ import type { TokenState, Token } from '../../tokens/tokenTypes';
 import { validateCustomToken } from '../../tokens/tokenConfig';
 
 // Static default tokens for consistent object references
-const defaultTokens: $ReadOnlyArray<Token> = [
-  {
-    symbol: 'ETH',
-    address: null,
-    name: 'Ethereum',
-    decimals: 18,
-    isDefault: true,
-    isCustom: false,
-  },
-  {
-    symbol: 'USDC',
-    address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-    name: 'USD Coin',
-    decimals: 6,
-    isDefault: true,
-    isCustom: false,
-  },
-  {
-    symbol: 'USDT',
-    address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
-    name: 'Tether USD',
-    decimals: 6,
-    isDefault: true,
-    isCustom: false,
-  },
-  {
-    symbol: 'DAI',
-    address: '0x68194a729C2450ad26072b3D33ADaCbcef39D574',
-    name: 'Dai Stablecoin',
-    decimals: 18,
-    isDefault: true,
-    isCustom: false,
-  },
-];
+// Note: Default tokens are now dynamically loaded from chain definitions
+// via getDefaultTokensFromConfig() - this array is kept empty for Redux consistency
+const defaultTokens: $ReadOnlyArray<Token> = [];
 
 const initialState: TokenState = {
   selectedTokenSymbol: 'ETH',

@@ -12,16 +12,16 @@ import ZulipButton from '../../common/ZulipButton';
 import ModalContainer from '../components/ModalContainer';
 import { IconAlertTriangle } from '../../common/Icons';
 import { useSelector } from '../../react-redux';
-import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, isCommunityInfoStale } from '../redux/selectors';
-import { fetchCommunityInfo, invalidateCachedBatchData } from '../contract/tandapay-reader/communityInfoManager';
-import { fetchBatchMembersData, fetchBatchSubgroupsData, deserializeMembersData, deserializeSubgroupsData } from '../contract/tandapay-reader/batchDataManager';
-import type { SerializedMemberInfo, SerializedSubgroupInfo } from '../contract/tandapay-reader/batchDataManager';
+import { getCurrentTandaPayContractAddress, getCommunityInfo, getCommunityInfoLoading, getCommunityInfoLastUpdated, isCommunityInfoStale } from '../redux/selectors';
+import CommunityInfoManager from '../contract/data-managers/CommunityInfoManager';
+import MemberDataManager from '../contract/data-managers/MemberDataManager';
+import SubgroupDataManager from '../contract/data-managers/SubgroupDataManager';
 import { getWalletAddress } from '../wallet/WalletManager';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { HALF_COLOR, BRAND_COLOR } from '../../styles/constants';
 import { serializeBigNumbers, deserializeBigNumbers } from '../utils/bigNumberUtils';
 
-import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
+import type { CommunityInfo } from '../contract/types/index';
 import TandaPayStyles from '../styles';
 import {
   CommunityOverviewCard,
@@ -112,8 +112,8 @@ function TandaPayInfoScreen(props: Props): Node {
   // Modal state
   const [membersModalVisible, setMembersModalVisible] = useState(false);
   const [subgroupsModalVisible, setSubgroupsModalVisible] = useState(false);
-  const [membersData, setMembersData] = useState<?SerializedMemberInfo>(null);
-  const [subgroupsData, setSubgroupsData] = useState<?SerializedSubgroupInfo>(null);
+  const [membersData, setMembersData] = useState<?mixed>(null);
+  const [subgroupsData, setSubgroupsData] = useState<?mixed>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<?string>(null);
 
@@ -121,6 +121,7 @@ function TandaPayInfoScreen(props: Props): Node {
   const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
   const reduxCommunityInfo = useSelector(state => getCommunityInfo(state));
   const reduxLoading = useSelector(state => getCommunityInfoLoading(state));
+  const lastUpdated = useSelector(state => getCommunityInfoLastUpdated(state));
   const isDataStale = useSelector(state => isCommunityInfoStale(state, 5 * 60 * 1000)); // 5 minutes
 
   // Use Redux state if available, otherwise fall back to local state
@@ -131,8 +132,8 @@ function TandaPayInfoScreen(props: Props): Node {
     : null;
 
   // Deserialize modal data when needed
-  const deserializedMembersData = deserializeMembersData(membersData);
-  const deserializedSubgroupsData = deserializeSubgroupsData(subgroupsData);
+  const deserializedMembersData = membersData;
+  const deserializedSubgroupsData = subgroupsData;
 
   const communityInfo = reduxCommunityInfo || deserializedLocalCommunityInfo;
 
@@ -192,20 +193,15 @@ function TandaPayInfoScreen(props: Props): Node {
           );
         }
 
-        const result = await fetchCommunityInfo(contractAddress, userWalletAddress);
+        // Use the new CommunityInfoManager to fetch data
+        const result = await CommunityInfoManager.get({ forceRefresh: true });
 
-        if (result.success) {
+        if (result != null) {
           // Serialize BigNumbers before storing in local React state to prevent JSON serialization errors
           // $FlowFixMe[incompatible-call] - serializeBigNumbers handles the type conversion
-          setLocalCommunityInfo(serializeBigNumbers(result.data));
+          setLocalCommunityInfo(serializeBigNumbers(result));
         } else {
-          throw new Error(
-            result.error
-            && typeof result.error.userMessage === 'string'
-            && result.error.userMessage.trim() !== ''
-              ? result.error.userMessage
-              : 'Failed to fetch community information',
-          );
+          throw new Error('Failed to fetch community information');
         }
       } catch (err) {
         // Create comprehensive error information
@@ -263,7 +259,10 @@ function TandaPayInfoScreen(props: Props): Node {
   // Refresh handler
   const handleRefresh = useCallback(() => {
     // Invalidate cached batch data to force fresh fetch on next modal open
-    invalidateCachedBatchData();
+    // Invalidate all cached data using new data managers
+    CommunityInfoManager.invalidate();
+    MemberDataManager.invalidate();
+    SubgroupDataManager.invalidate();
     fetchCommunityData(true);
   }, [fetchCommunityData]);
 
@@ -288,7 +287,22 @@ function TandaPayInfoScreen(props: Props): Node {
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const { startTimestamp, endTimestamp } = communityInfo.currentPeriodInfo;
+    
+    // Safely access currentPeriodInfo properties from mixed type
+    const currentPeriodInfo = communityInfo.currentPeriodInfo;
+    if (currentPeriodInfo == null || typeof currentPeriodInfo !== 'object') {
+      return {
+        isInvalid: true,
+        isActive: false,
+        statusText: 'No period information available',
+        progress: 0,
+      };
+    }
+
+    // $FlowFixMe[prop-missing] - currentPeriodInfo is mixed, accessing properties safely
+    const startTimestamp = currentPeriodInfo.startTimestamp;
+    // $FlowFixMe[prop-missing] - currentPeriodInfo is mixed, accessing properties safely
+    const endTimestamp = currentPeriodInfo.endTimestamp;
 
     // Convert BigNumbers to numbers
     const startTime = bigNumberToNumber(startTimestamp);
@@ -344,27 +358,25 @@ function TandaPayInfoScreen(props: Props): Node {
     setModalLoading(true);
 
     try {
-      const result = await fetchBatchMembersData(contractAddress, userWalletAddress, communityInfo);
-
-      if (result.success) {
-        setMembersData(result.data);
-        // Only show loading if we actually had to fetch (not from cache)
-        if (result.fromCache) {
-          setModalLoading(false);
-        }
+      // Use the new MemberDataManager to fetch data
+      const result = await MemberDataManager.get();
+      
+      if (result != null) {
+        setMembersData(result);
+        setModalLoading(false);
       } else {
-        setModalError(result.error);
+        setModalError('Failed to fetch member data');
       }
     } catch (err) {
       setModalError('Unable to load member information. Please try again.');
     } finally {
       setModalLoading(false);
     }
-  }, [contractAddress, communityInfo, userWalletAddress]);
+  }, [contractAddress, communityInfo]);
 
   // Fetch subgroups data for modal - ONLY runs when user clicks View
   const fetchSubgroupsData = useCallback(async () => {
-    if (contractAddress == null || contractAddress.trim() === '' || !communityInfo || userWalletAddress == null) {
+    if (contractAddress == null || contractAddress.trim() === '' || !communityInfo) {
       return;
     }
 
@@ -372,23 +384,21 @@ function TandaPayInfoScreen(props: Props): Node {
     setModalLoading(true);
 
     try {
-      const result = await fetchBatchSubgroupsData(contractAddress, userWalletAddress, communityInfo);
-
-      if (result.success) {
-        setSubgroupsData(result.data);
-        // Only show loading if we actually had to fetch (not from cache)
-        if (result.fromCache) {
-          setModalLoading(false);
-        }
+      // Use the new SubgroupDataManager to fetch data
+      const result = await SubgroupDataManager.get();
+      
+      if (result != null) {
+        setSubgroupsData(result);
+        setModalLoading(false);
       } else {
-        setModalError(result.error);
+        setModalError('Failed to fetch subgroup data');
       }
     } catch (err) {
       setModalError('Unable to load subgroup information. Please try again.');
     } finally {
       setModalLoading(false);
     }
-  }, [contractAddress, communityInfo, userWalletAddress]);
+  }, [contractAddress, communityInfo]);
 
   // Handle showing members modal - ONLY triggers when user clicks View
   const handleShowMembers = useCallback(() => {
@@ -519,11 +529,11 @@ function TandaPayInfoScreen(props: Props): Node {
         </View>
 
         {/* Last updated info */}
-        {communityInfo && (
+        {communityInfo && lastUpdated != null && (
           <ZulipText style={styles.lastUpdatedText}>
             Last updated:
             {' '}
-            {new Date(communityInfo.lastUpdated).toLocaleString()}
+            {new Date(lastUpdated).toLocaleString()}
           </ZulipText>
         )}
       </ScrollView>
@@ -536,7 +546,8 @@ function TandaPayInfoScreen(props: Props): Node {
       >
         <ModalContainer onClose={handleCloseModals} title="Community Members" contentPadding={0}>
           <MembersModalContent
-            membersData={deserializedMembersData}
+            // $FlowFixMe[incompatible-type] - Temporary fix for modal data compatibility
+            membersData={Array.isArray(deserializedMembersData) ? deserializedMembersData : []}
             loading={modalLoading}
             error={modalError}
             secretaryAddress={communityInfo?.secretaryAddress}
@@ -553,7 +564,8 @@ function TandaPayInfoScreen(props: Props): Node {
       >
         <ModalContainer onClose={handleCloseModals} title="Community Subgroups" contentPadding={0}>
           <SubgroupsModalContent
-            subgroupsData={deserializedSubgroupsData}
+            // $FlowFixMe[incompatible-type] - Temporary fix for modal data compatibility
+            subgroupsData={Array.isArray(deserializedSubgroupsData) ? deserializedSubgroupsData : []}
             loading={modalLoading}
             error={modalError}
             onRefresh={handleRefreshSubgroups}

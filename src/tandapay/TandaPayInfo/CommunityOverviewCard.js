@@ -12,15 +12,15 @@ import { useSelector } from '../../react-redux';
 import {
   getCurrentTandaPayContractAddress,
   getTandaPaySelectedNetwork,
-  getTandaPayDefaultTokens,
   getTandaPayCustomTokens,
 } from '../redux/selectors';
+import { getAvailableTokens } from '../tokens/tokenSelectors';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
 import { findTokenByAddress, getTokenDisplayText } from '../utils/tokenUtils';
 import type { TokenDisplayInfo } from '../utils/tokenUtils';
 import ScrollableTextBox from '../components/ScrollableTextBox';
 
-import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
+import type { CommunityInfo } from '../contract/types/index';
 import { formatBigNumber, formatTokenAmount, getCommunityStateDisplayName, bigNumberToNumber } from './utils';
 
 type Props = $ReadOnly<{|
@@ -85,7 +85,7 @@ export default function CommunityOverviewCard(props: Props): Node {
   const { communityInfo, onShowMembers, onShowSubgroups } = props;
   const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
   const selectedNetwork = useSelector(state => getTandaPaySelectedNetwork(state));
-  const defaultTokens = useSelector(state => getTandaPayDefaultTokens(state));
+  const availableTokens = useSelector(state => getAvailableTokens(state));
   const customTokens = useSelector(state => getTandaPayCustomTokens(state));
 
   const memberCount = bigNumberToNumber(communityInfo.currentMemberCount);
@@ -95,7 +95,7 @@ export default function CommunityOverviewCard(props: Props): Node {
   const paymentTokenInfo: ?TokenDisplayInfo = findTokenByAddress(
     communityInfo.paymentTokenAddress,
     selectedNetwork,
-    defaultTokens,
+    availableTokens,
     customTokens
   );
 

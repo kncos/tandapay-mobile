@@ -6,6 +6,28 @@ import TandaPayErrorHandler from '../../errors/ErrorHandler';
 import { executeTandaPayMulticall } from '../utils/multicall';
 import type { TandaPayResult } from '../../errors/types';
 
+/**
+ * IMPORTANT: These read actions are designed for single, one-off contract calls.
+ *
+ * If you need to fetch multiple pieces of data at once, prefer using multicall
+ * directly with the TandaPay ABI to batch your calls efficiently:
+ *
+ * ```javascript
+ * import { executeTandaPayMulticall } from '../utils/multicall';
+ * import { TandaPayInfo } from '../utils/TandaPay';
+ *
+ * const calls = [
+ *   { functionName: 'getCurrentMemberCount' },
+ *   { functionName: 'getCurrentSubgroupCount' },
+ *   // ... more calls
+ * ];
+ *
+ * const result = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, calls);
+ * ```
+ *
+ * This approach is much more efficient than using Promise.all with individual readActions calls.
+ */
+
 import type {
   SubgroupInfo,
   ClaimInfo,
@@ -13,6 +35,12 @@ import type {
   PeriodInfo,
   TandaPayStateType,
 } from '../types';
+import {
+  convertRawMemberInfo,
+  convertRawSubgroupInfo,
+  convertRawPeriodInfo,
+  convertRawClaimInfo,
+} from '../utils/converters';
 
 // Flow type for ethers BigNumber - using mixed since ethers is not Flow-typed
 type BigNumber = mixed;
@@ -77,7 +105,10 @@ export const getCommunityState = async (contract: EthersContract): Promise<Tanda
  * @param subgroupId Subgroup ID you want information about
  * @returns A promise resolving to an object containing information about the subgroup
  */
-export const getSubgroupInfo = async (contract: EthersContract, subgroupId: number | string): Promise<SubgroupInfo> => contract.getSubgroupInfo(ethers.BigNumber.from(subgroupId));
+export const getSubgroupInfo = async (contract: EthersContract, subgroupId: number | string): Promise<SubgroupInfo> => {
+  const rawSubgroupInfo = await contract.getSubgroupInfo(ethers.BigNumber.from(subgroupId));
+  return convertRawSubgroupInfo(rawSubgroupInfo);
+};
 
 /**
  * Get information about a claim, given a period and claim ID
@@ -86,19 +117,11 @@ export const getSubgroupInfo = async (contract: EthersContract, subgroupId: numb
  * @returns A promise that resolves to an object containing information about the claim
  */
 export const getClaimInfo = async (contract: EthersContract, claimId: number | string, periodId: number | string = 0): Promise<ClaimInfo> => {
-  const res = await contract.getClaimInfo(
+  const rawClaimInfo = await contract.getClaimInfo(
     ethers.BigNumber.from(periodId),
     ethers.BigNumber.from(claimId)
   );
-  return {
-    id: res.id,
-    periodId: ethers.BigNumber.from(periodId),
-    amount: res.claimAmount,
-    isWhitelisted: res.isWhitelistd,
-    claimantWalletAddress: res.claimant,
-    claimantSubgroupId: res.SGId,
-    hasClaimantClaimedFunds: res.isClaimed,
-  };
+  return convertRawClaimInfo(rawClaimInfo, ethers.BigNumber.from(periodId));
 };
 
 /**
@@ -137,24 +160,11 @@ export const getWhitelistedClaimIdsInPeriod = async (contract: EthersContract, p
  * @returns A promise resolving to an object containing information about the given member in the given period ID
  */
 export const getMemberInfoFromAddress = async (contract: EthersContract, walletAddress: string, periodId: number | string = 0): Promise<MemberInfo> => {
-  const memberInfo = await contract.getMemberInfoFromAddress(
+  const rawMemberInfo = await contract.getMemberInfoFromAddress(
     walletAddress,
     ethers.BigNumber.from(periodId)
   );
-  return {
-    id: memberInfo.memberId,
-    subgroupId: memberInfo.associatedGroupId,
-    walletAddress: memberInfo.member,
-    communityEscrowAmount: memberInfo.cEscrowAmount,
-    savingsEscrowAmount: memberInfo.ISEscorwAmount,
-    pendingRefundAmount: memberInfo.pendingRefundAmount,
-    availableToWithdrawAmount: memberInfo.availableToWithdraw,
-    isEligibleForCoverageThisPeriod: memberInfo.eligibleForCoverageInPeriod,
-    isPremiumPaidThisPeriod: memberInfo.isPremiumPaid,
-    queuedRefundAmountThisPeriod: memberInfo.idToQuedRefundAmount,
-    memberStatus: memberInfo.status,
-    assignmentStatus: memberInfo.assignment,
-  };
+  return convertRawMemberInfo(rawMemberInfo);
 };
 
 /** @returns A promise resolving to a hexadecimal string, which is the wallet address of the community's secretary */
@@ -166,14 +176,8 @@ export const getSecretaryAddress = async (contract: EthersContract): Promise<str
  * @returns A promise resolving to an object containing information about the given period
  */
 export const getPeriodInfo = async (contract: EthersContract, periodId: number | string = 0): Promise<PeriodInfo> => {
-  const periodInfo = await contract.getPeriodIdToPeriodInfo(ethers.BigNumber.from(periodId));
-  return {
-    startTimestamp: periodInfo.startedAt,
-    endTimestamp: periodInfo.willEndAt,
-    coverageAmount: periodInfo.coverage,
-    totalPremiumsPaid: periodInfo.totalPaid,
-    claimIds: periodInfo.claimIds,
-  };
+  const rawPeriodInfo = await contract.getPeriodIdToPeriodInfo(ethers.BigNumber.from(periodId));
+  return convertRawPeriodInfo(rawPeriodInfo);
 };
 
 /** Returns a list of the secretary successors */
@@ -198,25 +202,11 @@ export const getEmergencyHandoverNominees = async (contract: EthersContract): Pr
  * @returns information about a member given their Id and an optional periodID
  */
 export const getMemberInfoFromId = async (contract: EthersContract, memberId: number | string, periodId: number | string = 0): Promise<MemberInfo> => {
-  const memberInfo = await contract.getMemberInfoFromId(
+  const rawMemberInfo = await contract.getMemberInfoFromId(
     ethers.BigNumber.from(memberId),
     ethers.BigNumber.from(periodId)
   );
-  // map raw type to MemberInfo type
-  return {
-    id: memberInfo.memberId,
-    subgroupId: memberInfo.associatedGroupId,
-    walletAddress: memberInfo.member,
-    communityEscrowAmount: memberInfo.cEscrowAmount,
-    savingsEscrowAmount: memberInfo.ISEscorwAmount,
-    pendingRefundAmount: memberInfo.pendingRefundAmount,
-    availableToWithdrawAmount: memberInfo.availableToWithdraw,
-    isEligibleForCoverageThisPeriod: memberInfo.eligibleForCoverageInPeriod,
-    isPremiumPaidThisPeriod: memberInfo.isPremiumPaid,
-    queuedRefundAmountThisPeriod: memberInfo.idToQuedRefundAmount,
-    memberStatus: memberInfo.status,
-    assignmentStatus: memberInfo.assignment,
-  };
+  return convertRawMemberInfo(rawMemberInfo);
 };
 
 /**
@@ -288,21 +278,8 @@ export const batchGetAllMemberInfo = async (
       for (let j = 0; j < multicallResult.data.length; j++) {
         const memberInfo = multicallResult.data[j];
         if (memberInfo != null) {
-          // Map raw type to MemberInfo type (same as getMemberInfoFromId)
-          results.push({
-            id: memberInfo.memberId,
-            subgroupId: memberInfo.associatedGroupId,
-            walletAddress: memberInfo.member,
-            communityEscrowAmount: memberInfo.cEscrowAmount,
-            savingsEscrowAmount: memberInfo.ISEscorwAmount,
-            pendingRefundAmount: memberInfo.pendingRefundAmount,
-            availableToWithdrawAmount: memberInfo.availableToWithdraw,
-            isEligibleForCoverageThisPeriod: memberInfo.eligibleForCoverageInPeriod,
-            isPremiumPaidThisPeriod: memberInfo.isPremiumPaid,
-            queuedRefundAmountThisPeriod: memberInfo.idToQuedRefundAmount,
-            memberStatus: memberInfo.status,
-            assignmentStatus: memberInfo.assignment,
-          });
+          // Use converter helper for consistent data shape
+          results.push(convertRawMemberInfo(memberInfo));
         }
       }
     }
@@ -383,11 +360,8 @@ export const batchGetAllSubgroupInfo = async (
       for (let j = 0; j < multicallResult.data.length; j++) {
         const subgroupInfo = multicallResult.data[j];
         if (subgroupInfo != null) {
-          results.push({
-            id: subgroupInfo.id,
-            members: subgroupInfo.members,
-            isValid: subgroupInfo.isValid,
-          });
+          // Use converter helper for consistent data shape
+          results.push(convertRawSubgroupInfo(subgroupInfo));
         }
       }
     }
