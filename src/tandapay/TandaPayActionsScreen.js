@@ -15,7 +15,8 @@ import TransactionModal from './components/TransactionModal';
 import { TandaRibbon } from './components';
 import { AUTO_REORG_MACRO } from './contract/macros/auto-reorg';
 import { IconRefreshCw } from '../common/Icons';
-import { useAutoReorg } from './contract/macros/auto-reorg/useAutoReorg';
+import { useAutoReorgMacro } from './contract/macros/auto-reorg/autoReorgMacroAdapter';
+import MacroWorkflow from './components/MacroWorkflow';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-actions'>,
@@ -25,9 +26,10 @@ type Props = $ReadOnly<{|
 export default function TandaPayActionsScreen(props: Props): Node {
   const [selectedTransaction, setSelectedTransaction] = useState<?WriteTransaction>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [macroWorkflowVisible, setMacroWorkflowVisible] = useState(false);
 
-  // Initialize useAutoReorg hook
-  const autoReorg = useAutoReorg();
+  // Initialize auto-reorg macro hook
+  const { macro: autoReorgMacro } = useAutoReorgMacro();
 
   // Get all write transactions with metadata
   // Note: The TransactionModal now integrates with real contract instances
@@ -59,20 +61,21 @@ export default function TandaPayActionsScreen(props: Props): Node {
     [handleModalClose],
   );
 
-  // Auto-reorg handler
-  const handleAutoReorgPress = useCallback(async () => {
-    try {
-      const result = await autoReorg.runAutoReorg();
+  // Auto-reorg handler - launches macro workflow
+  const handleAutoReorgPress = useCallback(() => {
+    setMacroWorkflowVisible(true);
+  }, []);
 
-      if (!result.success) {
-        // eslint-disable-next-line no-console
-        console.error('❌ Auto-Reorg Failed:', result.error);
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('💥 Auto-Reorg Error:', error);
-    }
-  }, [autoReorg]);
+  // Handle macro workflow completion
+  const handleMacroWorkflowComplete = useCallback(() => {
+    // The MacroWorkflow component will handle closing itself
+    // We could add additional logic here if needed
+  }, []);
+
+  // Handle macro workflow close
+  const handleMacroWorkflowClose = useCallback(() => {
+    setMacroWorkflowVisible(false);
+  }, []);
 
   return (
     <Screen title="TandaPay Actions">
@@ -114,6 +117,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
             />
           ))}
       </TandaRibbon>
+
       <TandaRibbon label="Secretary Actions" marginTop={0}>
         {writeTransactions
           .filter(transaction => transaction.role === 'secretary')
@@ -128,12 +132,18 @@ export default function TandaPayActionsScreen(props: Props): Node {
           ))}
       </TandaRibbon>
 
-      {/* Dynamic Transaction Modal */}
       <TransactionModal
         visible={modalVisible}
         transaction={selectedTransaction}
         onClose={handleModalClose}
         onTransactionComplete={handleTransactionComplete}
+      />
+
+      <MacroWorkflow
+        macro={autoReorgMacro}
+        visible={macroWorkflowVisible}
+        onClose={handleMacroWorkflowClose}
+        onComplete={handleMacroWorkflowComplete}
       />
     </Screen>
   );

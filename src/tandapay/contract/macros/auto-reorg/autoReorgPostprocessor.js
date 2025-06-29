@@ -7,21 +7,35 @@
  * to determine which members need to be reassigned to new subgroups.
  */
 
+import { MemberStatus } from '../../types';
 import type { MemberInfo, SubgroupInfo } from '../../types';
 
 /**
  * Result of postprocessing auto-reorg output
  */
 export type PostprocessorResult = {|
-  /** Members that need to be reassigned (moved to different subgroups) */
-  +membersToReassign: Array<{|
-    +walletAddress: string,
-    +fromSubgroupId: number,
-    +toSubgroupId: number,
+  /** Transaction data for members that need to be reassigned */
+  +transactions: Array<{|
+    +memberWalletAddress: string,
+    +subgroupId: number,
+    +isReorging: boolean,
   |}>,
   /** Total number of members processed */
   +totalMembers: number,
   /** Number of members that stayed in their original subgroups */
+  +membersUnchanged: number,
+|};
+
+/**
+ * Deprecated: Use PostprocessorResult instead
+ * @deprecated
+ */
+export type AutoReorgTransactionData = {|
+  +membersToReassign: Array<{|
+    +walletAddress: string,
+    +toSubgroupId: number,
+  |}>,
+  +totalMembers: number,
   +membersUnchanged: number,
 |};
 
@@ -40,7 +54,7 @@ export function postprocessAutoReorgResults(
 ): PostprocessorResult {
   // Create mapping of member address -> original subgroup ID
   const originalAssignments = new Map<string, number>();
-  
+
   for (const member of originalMemberData) {
     // $FlowFixMe[incompatible-use] - BigNumber has toString method
     const originalSubgroupId = parseInt(member.subgroupId.toString(), 10);
@@ -49,7 +63,7 @@ export function postprocessAutoReorgResults(
 
   // Create mapping of member address -> new subgroup ID
   const newAssignments = new Map<string, number>();
-  
+
   for (const [subgroupId, members] of newSubgroups) {
     for (const memberAddress of members) {
       newAssignments.set(memberAddress, subgroupId);
@@ -57,7 +71,7 @@ export function postprocessAutoReorgResults(
   }
 
   // Compare assignments to find members that need reassignment
-  const membersToReassign = [];
+  const transactions = [];
   let membersUnchanged = 0;
 
   for (const member of originalMemberData) {
@@ -72,10 +86,14 @@ export function postprocessAutoReorgResults(
 
     // Check if member was moved to a different subgroup
     if (originalSubgroupId !== newSubgroupId) {
-      membersToReassign.push({
-        walletAddress,
-        fromSubgroupId: originalSubgroupId,
-        toSubgroupId: newSubgroupId,
+      // Determine if this is a reorg transaction based on member status
+      // isReorging should be true only if the member has PaidInvalid status
+      const isReorging = member.memberStatus === MemberStatus.PaidInvalid;
+
+      transactions.push({
+        memberWalletAddress: walletAddress,
+        subgroupId: newSubgroupId,
+        isReorging,
       });
     } else {
       membersUnchanged++;
@@ -83,7 +101,7 @@ export function postprocessAutoReorgResults(
   }
 
   return {
-    membersToReassign,
+    transactions,
     totalMembers: originalMemberData.length,
     membersUnchanged,
   };

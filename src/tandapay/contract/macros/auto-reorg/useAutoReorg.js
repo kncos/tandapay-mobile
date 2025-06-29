@@ -83,6 +83,7 @@ function preprocessDataForAutoReorg(
 export function useAutoReorg(): {|
   +state: UseAutoReorgState,
   +runAutoReorg: () => Promise<AutoReorgResult>,
+  +refresh: () => void,
   +reset: () => void,
 |} {
   const [state, setState] = useState<UseAutoReorgState>({
@@ -98,6 +99,14 @@ export function useAutoReorg(): {|
       error: null,
     });
   }, []);
+
+  const refresh = useCallback(() => {
+    // Invalidate all the data sources used by auto-reorg
+    MemberDataManager.invalidate();
+    SubgroupDataManager.invalidate();
+    // Reset hook state to force fresh fetch on next run
+    reset();
+  }, [reset]);
 
   const runAutoReorg = useCallback(async (): Promise<AutoReorgResult> => {
     setState(prev => ({ ...prev, loading: true, error: null }));
@@ -138,15 +147,16 @@ export function useAutoReorg(): {|
       );
 
       // Pretty print the reassignments
+      const transactionCount = reassignments.transactions.length;
       // eslint-disable-next-line no-console
-      console.log(`🔄 Auto-Reorg Complete: ${reassignments.membersToReassign.length} reassignments needed`);
-      
-      if (reassignments.membersToReassign.length > 0) {
+      console.log(`🔄 Auto-Reorg Complete: ${transactionCount} reassignments needed`);
+
+      if (transactionCount > 0) {
         // eslint-disable-next-line no-console
         console.log('📋 Required Reassignments:');
-        for (const reassignment of reassignments.membersToReassign) {
+        for (const transaction of reassignments.transactions) {
           // eslint-disable-next-line no-console
-          console.log(`  ${reassignment.walletAddress.slice(0, 8)}... -> subgroup ${reassignment.toSubgroupId}`);
+          console.log(`  ${transaction.memberWalletAddress.slice(0, 8)}... -> subgroup ${transaction.subgroupId}`);
         }
       } else {
         // eslint-disable-next-line no-console
@@ -186,6 +196,7 @@ export function useAutoReorg(): {|
   return {
     state,
     runAutoReorg,
+    refresh,
     reset,
   };
 }

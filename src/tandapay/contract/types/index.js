@@ -31,7 +31,7 @@ export type CommunityInfo = $ReadOnly<{|
   userMemberInfo?: ?MemberInfo,
   // whitelistedClaimsFromPreviousPeriod: Claims that were whitelisted in the previous period (only populated if currentPeriodId >= 2)
   whitelistedClaimsFromPreviousPeriod?: ?Array<ClaimInfo>,
-  
+
   // Metadata
   lastUpdated?: number,
 |}>;

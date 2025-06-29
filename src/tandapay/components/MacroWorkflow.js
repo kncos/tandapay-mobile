@@ -64,6 +64,7 @@ export default function MacroWorkflow(props: Props): Node {
   const [transactions, setTransactions] = useState<TransactionState[]>([]);
   const [currentTransactionIndex, setCurrentTransactionIndex] = useState<number>(0);
   const [macroData, setMacroData] = useState<mixed>(null);
+  const [macroResult, setMacroResult] = useState<mixed>(null); // Cache macro execution result
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [transactionCount, setTransactionCount] = useState<number>(0);
 
@@ -74,6 +75,7 @@ export default function MacroWorkflow(props: Props): Node {
       setTransactions([]);
       setCurrentTransactionIndex(0);
       setMacroData(null);
+      setMacroResult(null);
       setIsRefreshing(false);
       setTransactionCount(0);
     }
@@ -97,13 +99,15 @@ export default function MacroWorkflow(props: Props): Node {
       // Drop all community-related caches
       invalidateAllTandaPayData();
 
-      // Refetch the macro data
+      // Fetch the macro data
       const freshData = await macro.dataFetcher();
       setMacroData(freshData);
 
-      // Re-calculate transaction count
+      // Execute the macro once and cache the result
       if (macro.executeFunction) {
         const result = await macro.executeFunction(freshData);
+        setMacroResult(result);
+
         if (result.success && result.transactions) {
           setTransactionCount(result.transactions.length);
         } else {
@@ -113,6 +117,7 @@ export default function MacroWorkflow(props: Props): Node {
     } catch (error) {
       // Silently handle failed refresh
       setTransactionCount(0);
+      setMacroResult(null);
     } finally {
       setIsRefreshing(false);
     }
@@ -125,38 +130,46 @@ export default function MacroWorkflow(props: Props): Node {
     setWorkflowState('loading');
 
     try {
-      // Fetch data if we don't have it yet
-      let data = macroData;
-      if (data == null) {
-        data = await macro.dataFetcher();
-        setMacroData(data);
-      }
-
-      // Validate if the macro can be executed
-      if (macro.validateFunction) {
-        const validation = macro.validateFunction(data);
-        if (!validation.canExecute) {
-          Alert.alert(
-            'Cannot Execute Macro',
-            validation.reason ?? 'Macro cannot be executed at this time.',
-            [{ text: 'OK', onPress: () => setWorkflowState('intro') }]
-          );
-          return;
+      // Use cached result if available, otherwise execute the macro
+      let result = macroResult;
+      if (result == null) {
+        // Fetch data if we don't have it yet
+        let data = macroData;
+        if (data == null) {
+          data = await macro.dataFetcher();
+          setMacroData(data);
         }
+
+        // Validate if the macro can be executed
+        if (macro.validateFunction) {
+          const validation = macro.validateFunction(data);
+          if (!validation.canExecute) {
+            Alert.alert(
+              'Cannot Execute Macro',
+              validation.reason ?? 'Macro cannot be executed at this time.',
+              [{ text: 'OK', onPress: () => setWorkflowState('intro') }]
+            );
+            return;
+          }
+        }
+
+        // Execute the macro to get transactions
+        result = await macro.executeFunction(data);
+        setMacroResult(result);
       }
 
-      // Execute the macro to get transactions
-      const result = await macro.executeFunction(data);
-
+      // $FlowFixMe - result is from macro execution so we know its structure
       if (!result.success) {
         Alert.alert(
           'Macro Error',
+          // $FlowFixMe - error property exists on macro result
           result.error ?? 'Failed to generate transactions.',
           [{ text: 'OK', onPress: () => setWorkflowState('intro') }]
         );
         return;
       }
 
+      // $FlowFixMe - transactions property exists on successful macro result
       if (!result.transactions || result.transactions.length === 0) {
         Alert.alert(
           'No Transactions Required',
@@ -167,6 +180,7 @@ export default function MacroWorkflow(props: Props): Node {
       }
 
       // Set up transaction states
+      // $FlowFixMe - we've verified transactions exists and is an array
       const transactionStates = result.transactions.map(transaction => ({
         transaction,
         status: 'pending',
@@ -183,7 +197,7 @@ export default function MacroWorkflow(props: Props): Node {
         [{ text: 'OK', onPress: () => setWorkflowState('intro') }]
       );
     }
-  }, [macro, macroData, handleComplete]);
+  }, [macro, macroData, macroResult, handleComplete]);
 
   /**
    * Handles when a transaction is completed successfully

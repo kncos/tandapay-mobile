@@ -352,7 +352,7 @@ export default function TransactionModal(props: Props): Node {
           </View>
 
           {workflowProgress && (
-            <View style={styles.workflowProgress}>
+            <View style={[styles.workflowProgress, { backgroundColor: themeData.backgroundColor }]}>
               <ZulipText style={[styles.workflowText, { color: themeData.color }]}>
                 {`${workflowProgress.macroName} - Step ${workflowProgress.current} of ${workflowProgress.total}`}
               </ZulipText>

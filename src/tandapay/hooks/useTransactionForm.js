@@ -159,10 +159,12 @@ export function useTransactionForm(
 
     if (transaction.parameters) {
       transaction.parameters.forEach((param) => {
-        const defaultValue = getDefaultValue(param);
+        // Use pre-filled value if available, otherwise use default
+        const prefilledValue = transaction.prefilledParams?.[param.name];
+        const defaultValue = prefilledValue || getDefaultValue(param);
         parameters[param.name] = defaultValue;
 
-        // Validate the default value to determine initial form validity
+        // Validate the value to determine initial form validity
         const error = validateParameter(defaultValue, param);
         errors[param.name] = error;
 

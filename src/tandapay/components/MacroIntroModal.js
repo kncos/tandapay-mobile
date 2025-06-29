@@ -1,6 +1,6 @@
 // @flow strict-local
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useContext } from 'react';
 import type { Node } from 'react';
 import { View, Modal, StyleSheet } from 'react-native';
 
@@ -10,6 +10,7 @@ import Card from './Card';
 import CloseButton from './CloseButton';
 import TandaPayStyles, { TandaPayColors } from '../styles';
 import { QUARTER_COLOR } from '../../styles/constants';
+import { ThemeContext } from '../../styles';
 
 type MacroInfo = {|
   id: string,
@@ -60,13 +61,11 @@ const styles = StyleSheet.create({
   },
   transactionInfo: {
     fontSize: 12,
-    color: QUARTER_COLOR,
     marginBottom: 10,
     fontStyle: 'italic',
   },
   loadingText: {
     fontSize: 12,
-    color: QUARTER_COLOR,
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -77,6 +76,7 @@ const styles = StyleSheet.create({
 
 export default function MacroIntroModal(props: Props): Node {
   const { visible, macroInfo, transactionCount, isRefreshing, onClose, onRefresh, onContinue } = props;
+  const themeData = useContext(ThemeContext);
 
   const handleRefresh = useCallback(() => {
     onRefresh();
@@ -98,14 +98,14 @@ export default function MacroIntroModal(props: Props): Node {
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <Card style={styles.modalCard}>
+        <Card style={[styles.modalCard, { backgroundColor: themeData.cardColor }]}>
           <View style={styles.header}>
-            <ZulipText style={styles.title} text={macroInfo.name} />
+            <ZulipText style={[styles.title, { color: themeData.color }]} text={macroInfo.name} />
             <CloseButton onPress={onClose} />
           </View>
 
           <ZulipText
-            style={styles.description}
+            style={[styles.description, { color: themeData.color }]}
             text={macroInfo.description}
           />
 
