@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import type { BigNumber, TandaPayStateType } from '../types';
+import type { BigNumber, TandaPayStateType, MemberInfo, SubgroupInfo, PeriodInfo } from '../types';
 
 /**
  * Community information data structure
@@ -24,11 +24,14 @@ export type CommunityInfo = $ReadOnly<{|
 
   // User-specific derived data
   // currentPeriodInfo: Information about the current period (deadline, state, etc.)
-  currentPeriodInfo?: mixed,
+  currentPeriodInfo?: ?PeriodInfo,
   // userSubgroupInfo: Information about the user's specific subgroup only
-  userSubgroupInfo?: mixed,
+  userSubgroupInfo?: ?SubgroupInfo,
   // userMemberInfo: Information about the user's membership status and details
-  userMemberInfo?: mixed,
+  userMemberInfo?: ?MemberInfo,
+
+  // Metadata
+  lastUpdated?: number,
 |}>;
 
 /**
@@ -36,7 +39,7 @@ export type CommunityInfo = $ReadOnly<{|
  * Contains data about all members (not just the user's data)
  */
 export type MemberBatchInfo = $ReadOnly<{|
-  members: Array<mixed>, // Using mixed for now, can be refined later
+  members: Array<MemberInfo>,
   totalCount: number,
   lastUpdated: number,
 |}>;
@@ -46,7 +49,7 @@ export type MemberBatchInfo = $ReadOnly<{|
  * Contains data about all subgroups (not just the user's subgroup)
  */
 export type SubgroupBatchInfo = $ReadOnly<{|
-  subgroups: Array<mixed>, // Using mixed for now, can be refined later
+  subgroups: Array<SubgroupInfo>,
   totalCount: number,
   lastUpdated: number,
 |}>;

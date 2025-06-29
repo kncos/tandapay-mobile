@@ -46,7 +46,6 @@ export default function UserStatusCard(props: Props): Node {
   const { communityInfo } = props;
 
   const userMemberInfo = communityInfo.userMemberInfo;
-  const userSubgroupInfo = communityInfo.userSubgroupInfo;
   const isValidMember = userMemberInfo != null && bigNumberToNumber(userMemberInfo.id) > 0;
 
   return (
@@ -63,7 +62,7 @@ export default function UserStatusCard(props: Props): Node {
           showSubgroupId
           showRole
           secretaryAddress={communityInfo.secretaryAddress}
-          subgroupId={userSubgroupInfo ? bigNumberToNumber(userSubgroupInfo.id) : null}
+          subgroupId={userMemberInfo.subgroupId != null ? bigNumberToNumber(userMemberInfo.subgroupId) : null}
         />
       ) : (
         <View style={styles.infoRow}>

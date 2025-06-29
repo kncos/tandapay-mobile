@@ -12,6 +12,7 @@ import { getCurrentTandaPayContractAddress } from '../../redux/selectors';
 import { tryGetActiveAccountState } from '../../../account/accountsSelectors';
 import { getProvider } from '../../web3';
 import { getTandaPayReadActions } from '../tandapay-reader/read';
+import { getWalletAddress } from '../../wallet/WalletManager';
 
 /**
  * Centralized manager for community info data
@@ -27,7 +28,7 @@ class CommunityInfoManager {
   |}): Promise<mixed> {
     const state = store.getState();
     const perAccountState = tryGetActiveAccountState(state);
-    
+
     if (!perAccountState) {
       throw new Error('No active account state available');
     }
@@ -54,13 +55,13 @@ class CommunityInfoManager {
   static async fetch(): Promise<mixed> {
     const globalState = store.getState();
     const perAccountState = tryGetActiveAccountState(globalState);
-    
+
     if (!perAccountState) {
       throw new Error('No active account state available');
     }
 
     const contractAddress = getCurrentTandaPayContractAddress(perAccountState);
-    
+
     if (contractAddress == null || contractAddress.trim() === '') {
       throw new Error('Contract address not configured');
     }
@@ -70,6 +71,10 @@ class CommunityInfoManager {
     store.dispatch(setCommunityInfoError(''));
 
     try {
+      // Get wallet address for user-specific data
+      const walletResult = await getWalletAddress();
+      const userWalletAddress = walletResult.success ? walletResult.data : null;
+
       // Get provider and create read actions
       const provider = await getProvider();
       const readActions = getTandaPayReadActions(provider, contractAddress);
@@ -77,14 +82,18 @@ class CommunityInfoManager {
       // Fetch basic community info
       const [
         paymentTokenAddress,
-        memberCount,
-        subgroupCount,
-        claimId,
-        periodId,
+        currentMemberCount,
+        currentSubgroupCount,
+        currentClaimId,
+        currentPeriodId,
         totalCoverageAmount,
         basePremium,
         communityState,
         secretaryAddress,
+        isVoluntaryHandoverInProgress,
+        voluntaryHandoverNominee,
+        emergencyHandoverNominees,
+        secretarySuccessorList,
       ] = await Promise.all([
         readActions.getPaymentTokenAddress(),
         readActions.getCurrentMemberCount(),
@@ -95,18 +104,70 @@ class CommunityInfoManager {
         readActions.getBasePremium(),
         readActions.getCommunityState(),
         readActions.getSecretaryAddress(),
+        readActions.isVoluntaryHandoverInProgress(),
+        readActions.getVoluntaryHandoverNominee(),
+        readActions.getEmergencyHandoverNominees(),
+        readActions.getSecretarySuccessorList(),
       ]);
 
+      // Get current period info
+      const currentPeriodInfo = await readActions.getPeriodInfo();
+
+      // Get user-specific data if wallet address is available
+      let userMemberInfo = null;
+      let userSubgroupInfo = null;
+
+      if (userWalletAddress != null && userWalletAddress.trim() !== '') {
+        try {
+          // Get user's member info
+          const memberInfo = await readActions.getMemberInfoFromAddress(userWalletAddress);
+
+          // Check if user is actually a member (id > 0)
+          // $FlowFixMe[incompatible-use] - BigNumber conversion
+          const memberId = parseInt(memberInfo.id.toString(), 10);
+
+          if (memberId > 0) {
+            userMemberInfo = memberInfo;
+
+            // If user is a member, get their subgroup info
+            if (memberInfo.subgroupId != null) {
+              // $FlowFixMe[incompatible-use] - BigNumber conversion
+              const subgroupId = parseInt(memberInfo.subgroupId.toString(), 10);
+              if (subgroupId > 0) {
+                userSubgroupInfo = await readActions.getSubgroupInfo(subgroupId);
+              }
+            }
+          }
+        } catch (err) {
+          // User might not be a member or there might be a contract error
+          // This is not necessarily an error for the overall fetch
+          userMemberInfo = null;
+          userSubgroupInfo = null;
+        }
+      }
+
       const communityInfo = {
+        // Core contract state
         paymentTokenAddress,
-        memberCount,
-        subgroupCount,
-        claimId,
-        periodId,
+        currentMemberCount,
+        currentSubgroupCount,
+        currentClaimId,
+        currentPeriodId,
         totalCoverageAmount,
         basePremium,
         communityState,
         secretaryAddress,
+        isVoluntaryHandoverInProgress,
+        voluntaryHandoverNominee,
+        emergencyHandoverNominees,
+        secretarySuccessorList,
+
+        // Period and user-specific data
+        currentPeriodInfo,
+        userMemberInfo,
+        userSubgroupInfo,
+
+        // Metadata
         lastUpdated: Date.now(),
       };
 
