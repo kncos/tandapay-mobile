@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { useSelector, useDispatch } from '../../react-redux';
 import {
@@ -10,46 +10,13 @@ import {
   getTandaPayContractAddressForNetwork,
   getTandaPayContractAddresses
 } from '../redux/selectors';
-import { updateTandaPaySettings, updateCommunityInfo } from '../redux/actions';
-import { getWalletAddress } from '../wallet/WalletManager';
+import { updateTandaPaySettings } from '../redux/actions';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import AddressInput from './AddressInput';
 import Card from './Card';
 import ContractDeploymentModal from './ContractDeploymentModal';
 import TandaPayStyles, { TandaPayColors, TandaPayTypography } from '../styles';
-
-/**
- * Utility function to fetch community info for a specific contract address
- * This function can be used to validate contract addresses by attempting to read basic info
- */
-async function fetchCommunityInfo(contractAddress: string, userWalletAddress: ?string): Promise<{|
-  success: boolean,
-  data?: mixed,
-  error?: string,
-|}> {
-  try {
-    // Import the read actions dynamically to avoid circular dependencies
-    const { getTandaPayReadActions } = await import('../contract/tandapay-reader/read');
-    const { getProvider } = await import('../web3');
-    
-    const provider = await getProvider();
-    const readActions = getTandaPayReadActions(provider, contractAddress);
-    
-    // Try to read basic community state to validate the contract
-    const communityState = await readActions.getCommunityState();
-    
-    return {
-      success: true,
-      data: { communityState },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error?.message || 'Failed to read contract data',
-    };
-  }
-}
 
 type Props = $ReadOnly<{|
   disabled?: boolean,
@@ -84,51 +51,12 @@ export default function ContractAddressConfiguration(props: Props): Node {
 
   const [addressInput, setAddressInput] = useState(currentAddress || '');
   const [saving, setSaving] = useState(false);
-  const [fetchingCommunityInfo, setFetchingCommunityInfo] = useState(false);
   const [showDeploymentModal, setShowDeploymentModal] = useState(false);
 
   // Update input when network changes
   React.useEffect(() => {
     setAddressInput(currentAddress || '');
   }, [currentAddress]);
-
-  // Helper function to attempt fetching community info for a new address
-  const fetchCommunityInfoForAddress = useCallback(async (contractAddress: string) => {
-    if (!contractAddress.trim()) {
-      return;
-    }
-
-    setFetchingCommunityInfo(true);
-    try {
-      // Get user wallet address first
-      const walletResult = await getWalletAddress();
-      const userWalletAddress = walletResult.success ? walletResult.data : null;
-
-      // Attempt to fetch community info
-      const result = await fetchCommunityInfo(contractAddress, userWalletAddress);
-
-      if (result.success) {
-        // Update Redux store with the fetched community info
-        dispatch(updateCommunityInfo(result.data));
-      } else {
-        // Show warning alert for failed fetch
-        Alert.alert(
-          'Warning',
-          'WARN: Could not fetch community info! Address may be incorrect or there may be a network configuration issue!',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      // Show warning alert for any error
-      Alert.alert(
-        'Warning',
-        'WARN: Could not fetch community info! Address may be incorrect or there may be a network configuration issue!',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setFetchingCommunityInfo(false);
-    }
-  }, [dispatch]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -152,15 +80,10 @@ export default function ContractAddressConfiguration(props: Props): Node {
       dispatch(updateTandaPaySettings({
         contractAddresses: newContractAddresses,
       }));
-
-      // If we have a new valid address, attempt to fetch community info
-      if (trimmedAddress && trimmedAddress !== currentAddress) {
-        await fetchCommunityInfoForAddress(trimmedAddress);
-      }
     } finally {
       setSaving(false);
     }
-  }, [dispatch, addressInput, selectedNetwork, contractAddresses, currentAddress, fetchCommunityInfoForAddress]);
+  }, [dispatch, addressInput, selectedNetwork, contractAddresses]);
 
   const handleClear = useCallback(() => {
     setAddressInput('');
@@ -198,18 +121,15 @@ export default function ContractAddressConfiguration(props: Props): Node {
         dispatch(updateTandaPaySettings({
           contractAddresses: newContractAddresses,
         }));
-
-        // Fetch community info for the newly deployed contract
-        await fetchCommunityInfoForAddress(contractAddress);
       } finally {
         setSaving(false);
       }
     }, 100);
-  }, [dispatch, selectedNetwork, contractAddresses, fetchCommunityInfoForAddress]);
+  }, [dispatch, selectedNetwork, contractAddresses]);
 
   const hasChanges = (addressInput.trim() || null) !== currentAddress;
   const isValidAddress = addressInput.trim() === '' || /^0x[a-fA-F0-9]{40}$/.test(addressInput.trim());
-  const isOperationInProgress = saving || fetchingCommunityInfo;
+  const isOperationInProgress = saving;
 
   return (
     <Card style={customStyles.card}>
@@ -252,7 +172,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
 
         <ZulipButton
           style={TandaPayStyles.button}
-          text={isOperationInProgress ? (fetchingCommunityInfo ? 'Fetching info...' : 'Saving...') : 'Save'}
+          text={isOperationInProgress ? 'Saving...' : 'Save'}
           onPress={handleSave}
           disabled={disabled || isOperationInProgress || !hasChanges || !isValidAddress}
           progress={isOperationInProgress}
