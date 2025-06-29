@@ -14,8 +14,9 @@ import { getSuggestedMethods } from './contract/suggestedMethods';
 import TransactionModal from './components/TransactionModal';
 import { TandaRibbon } from './components';
 import { AUTO_REORG_MACRO } from './contract/macros/auto-reorg';
-import { IconRefreshCw } from '../common/Icons';
+import { IconRefreshCw, IconUserPlus } from '../common/Icons';
 import { useAutoReorgMacro } from './contract/macros/auto-reorg/autoReorgMacroAdapter';
+import { useAddRequiredMembersMacro } from './contract/macros/add-required-members/addRequiredMembersMacroAdapter';
 import MacroWorkflow from './components/MacroWorkflow';
 
 type Props = $ReadOnly<{|
@@ -27,9 +28,13 @@ export default function TandaPayActionsScreen(props: Props): Node {
   const [selectedTransaction, setSelectedTransaction] = useState<?WriteTransaction>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [macroWorkflowVisible, setMacroWorkflowVisible] = useState(false);
+  const [addMembersWorkflowVisible, setAddMembersWorkflowVisible] = useState(false);
 
   // Initialize auto-reorg macro hook
   const { macro: autoReorgMacro } = useAutoReorgMacro();
+
+  // Initialize add required members macro hook
+  const { macro: addRequiredMembersMacro } = useAddRequiredMembersMacro();
 
   // Get all write transactions with metadata
   // Note: The TransactionModal now integrates with real contract instances
@@ -66,6 +71,11 @@ export default function TandaPayActionsScreen(props: Props): Node {
     setMacroWorkflowVisible(true);
   }, []);
 
+  // Add required members handler - launches macro workflow
+  const handleAddRequiredMembersPress = useCallback(() => {
+    setAddMembersWorkflowVisible(true);
+  }, []);
+
   // Handle macro workflow completion
   const handleMacroWorkflowComplete = useCallback(() => {
     // The MacroWorkflow component will handle closing itself
@@ -77,6 +87,11 @@ export default function TandaPayActionsScreen(props: Props): Node {
     setMacroWorkflowVisible(false);
   }, []);
 
+  // Handle add members workflow close
+  const handleAddMembersWorkflowClose = useCallback(() => {
+    setAddMembersWorkflowVisible(false);
+  }, []);
+
   return (
     <Screen title="TandaPay Actions">
       {/* Macros Ribbon */}
@@ -86,6 +101,12 @@ export default function TandaPayActionsScreen(props: Props): Node {
           title={AUTO_REORG_MACRO.name}
           subtitle={AUTO_REORG_MACRO.description}
           onPress={handleAutoReorgPress}
+        />
+        <NavRow
+          leftElement={{ type: 'icon', Component: IconUserPlus }}
+          title={addRequiredMembersMacro.name}
+          subtitle={addRequiredMembersMacro.description}
+          onPress={handleAddRequiredMembersPress}
         />
       </TandaRibbon>
 
@@ -143,6 +164,13 @@ export default function TandaPayActionsScreen(props: Props): Node {
         macro={autoReorgMacro}
         visible={macroWorkflowVisible}
         onClose={handleMacroWorkflowClose}
+        onComplete={handleMacroWorkflowComplete}
+      />
+
+      <MacroWorkflow
+        macro={addRequiredMembersMacro}
+        visible={addMembersWorkflowVisible}
+        onClose={handleAddMembersWorkflowClose}
         onComplete={handleMacroWorkflowComplete}
       />
     </Screen>

@@ -265,10 +265,10 @@ export default function MacroWorkflow(props: Props): Node {
 
   // Fetch initial transaction count when visible
   useEffect(() => {
-    if (visible && !isRefreshing && transactionCount === 0) {
+    if (visible && !isRefreshing && macroResult === null) {
       handleRefresh();
     }
-  }, [visible, isRefreshing, transactionCount, handleRefresh]);
+  }, [visible, isRefreshing, macroResult, handleRefresh]);
 
   // Don't render anything if not visible
   if (!visible) {

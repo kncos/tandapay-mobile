@@ -116,6 +116,13 @@ export default function MacroIntroModal(props: Props): Node {
             />
           )}
 
+          {transactionCount !== undefined && transactionCount === 0 && isRefreshing !== true && (
+            <ZulipText
+              style={styles.transactionInfo}
+              text="No transactions needed - the community is already in the desired state."
+            />
+          )}
+
           {isRefreshing === true && (
             <ZulipText
               style={styles.loadingText}
