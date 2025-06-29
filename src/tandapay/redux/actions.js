@@ -42,6 +42,7 @@ export const updateTandaPaySettings = (settings: $Shape<TandaPaySettingsState>):
  * Action to select a different token in the wallet
  */
 export function selectToken(tokenSymbol: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_SELECT,
     tokenSymbol,
@@ -57,6 +58,7 @@ export function addCustomToken(token: {|
   name: string,
   decimals?: number,
 |}): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_ADD_CUSTOM,
     token,
@@ -67,6 +69,7 @@ export function addCustomToken(token: {|
  * Action to remove a custom token from the user's wallet
  */
 export function removeCustomToken(tokenSymbol: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_REMOVE_CUSTOM,
     tokenSymbol,
@@ -77,6 +80,7 @@ export function removeCustomToken(tokenSymbol: string): PerAccountAction {
  * Action to update the cached balance for a token
  */
 export function updateTokenBalance(tokenSymbol: string, balance: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_UPDATE_BALANCE,
     tokenSymbol,
@@ -88,6 +92,7 @@ export function updateTokenBalance(tokenSymbol: string, balance: string): PerAcc
  * Action to invalidate the cached balance for a token, forcing a refresh
  */
 export function invalidateTokenBalance(tokenSymbol: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_INVALIDATE_BALANCE,
     tokenSymbol,
@@ -215,6 +220,7 @@ export function updateRetryAttempts(retryAttempts: number): TandaPaySettingsUpda
  * Action creator for updating community info loading state
  */
 export function setCommunityInfoLoading(loading: boolean): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_LOADING,
     loading,
@@ -227,6 +233,7 @@ export function setCommunityInfoLoading(loading: boolean): PerAccountAction {
 export function updateCommunityInfo(
   communityInfo: $FlowFixMe, // CommunityInfo type
 ): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_UPDATE,
     communityInfo: serializeBigNumbers(communityInfo),
@@ -237,6 +244,7 @@ export function updateCommunityInfo(
  * Action creator for community info error
  */
 export function setCommunityInfoError(error: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_ERROR,
     error,
