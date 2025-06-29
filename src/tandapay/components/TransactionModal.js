@@ -68,7 +68,6 @@ const styles = StyleSheet.create({
   },
   workflowProgress: {
     padding: 12,
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     marginBottom: 16,
   },
