@@ -3,13 +3,11 @@
 import type { Action } from '../../types';
 import settingsReducer from './reducers/settingsReducer';
 import tokensReducer from './reducers/tokensReducer';
-import communityInfoReducer from './reducers/communityInfoReducer';
 import communityInfoDataReducer from './reducers/communityInfoDataReducer';
 import memberDataReducer from './reducers/memberDataReducer';
 import subgroupDataReducer from './reducers/subgroupDataReducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
 import type { TokenState } from '../tokens/tokenTypes';
-import type { CommunityInfoState } from './reducers/communityInfoReducer';
 import type { CommunityInfoDataState } from './reducers/communityInfoDataReducer';
 import type { MemberDataState } from './reducers/memberDataReducer';
 import type { SubgroupDataState } from './reducers/subgroupDataReducer';
@@ -17,8 +15,6 @@ import type { SubgroupDataState } from './reducers/subgroupDataReducer';
 export type TandaPayState = $ReadOnly<{|
   settings: TandaPaySettingsState,
   tokens: TokenState,
-  // Legacy unified community info (includes batch data)
-  communityInfo: CommunityInfoState,
   // New decoupled data structures
   communityInfoData: CommunityInfoDataState,
   memberData: MemberDataState,
@@ -27,7 +23,6 @@ export type TandaPayState = $ReadOnly<{|
 
 // Re-export types for backward compatibility
 export type { TandaPaySettingsState };
-export type { CommunityInfoState };
 export type { CommunityInfoDataState };
 export type { MemberDataState };
 export type { SubgroupDataState };
@@ -38,7 +33,6 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
   const currentState = state || {
     settings: settingsReducer(undefined, action),
     tokens: tokensReducer(undefined, action),
-    communityInfo: communityInfoReducer(undefined, action),
     communityInfoData: communityInfoDataReducer(undefined, action),
     memberData: memberDataReducer(undefined, action),
     subgroupData: subgroupDataReducer(undefined, action),
@@ -46,7 +40,6 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
 
   const newSettings = settingsReducer(currentState.settings, action);
   const newTokens = tokensReducer(currentState.tokens, action);
-  const newCommunityInfo = communityInfoReducer(currentState.communityInfo, action);
   const newCommunityInfoData = communityInfoDataReducer(currentState.communityInfoData, action);
   const newMemberData = memberDataReducer(currentState.memberData, action);
   const newSubgroupData = subgroupDataReducer(currentState.subgroupData, action);
@@ -54,7 +47,6 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
   // Only return a new object if at least one sub-reducer changed
   if (newSettings === currentState.settings
       && newTokens === currentState.tokens
-      && newCommunityInfo === currentState.communityInfo
       && newCommunityInfoData === currentState.communityInfoData
       && newMemberData === currentState.memberData
       && newSubgroupData === currentState.subgroupData) {
@@ -64,7 +56,6 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
   return {
     settings: newSettings,
     tokens: newTokens,
-    communityInfo: newCommunityInfo,
     communityInfoData: newCommunityInfoData,
     memberData: newMemberData,
     subgroupData: newSubgroupData,

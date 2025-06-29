@@ -18,16 +18,11 @@ import {
   TANDAPAY_COMMUNITY_INFO_UPDATE,
   TANDAPAY_COMMUNITY_INFO_LOADING,
   TANDAPAY_COMMUNITY_INFO_ERROR,
-  TANDAPAY_COMMUNITY_INFO_CLEAR,
   TANDAPAY_COMMUNITY_INFO_INVALIDATE,
   TANDAPAY_MEMBER_DATA_UPDATE,
   TANDAPAY_MEMBER_DATA_INVALIDATE,
   TANDAPAY_SUBGROUP_DATA_UPDATE,
   TANDAPAY_SUBGROUP_DATA_INVALIDATE,
-  // Legacy batch actions (deprecated)
-  TANDAPAY_BATCH_MEMBERS_UPDATE,
-  TANDAPAY_BATCH_SUBGROUPS_UPDATE,
-  TANDAPAY_BATCH_DATA_INVALIDATE,
 } from '../../actionConstants';
 
 // =============================================================================
@@ -231,14 +226,10 @@ export function setCommunityInfoLoading(loading: boolean): PerAccountAction {
  */
 export function updateCommunityInfo(
   communityInfo: $FlowFixMe, // CommunityInfo type
-  contractAddress: ?string,
-  userAddress: ?string,
 ): PerAccountAction {
   return {
     type: TANDAPAY_COMMUNITY_INFO_UPDATE,
     communityInfo: serializeBigNumbers(communityInfo),
-    contractAddress,
-    userAddress,
   };
 }
 
@@ -252,60 +243,7 @@ export function setCommunityInfoError(error: string): PerAccountAction {
   };
 }
 
-/**
- * Action creator for clearing community info
- */
-export function clearCommunityInfo(): PerAccountAction {
-  return {
-    type: TANDAPAY_COMMUNITY_INFO_CLEAR,
-  };
-}
-
-/**
- * Action creator for updating batch members data in community info
- * @deprecated Use updateMemberData instead
- */
-export function updateBatchMembers(
-  allMembersInfo: $FlowFixMe, // Array<MemberInfo>
-  contractAddress: ?string,
-  userAddress: ?string,
-): PerAccountAction {
-  return {
-    type: TANDAPAY_BATCH_MEMBERS_UPDATE,
-    allMembersInfo: serializeBigNumbers(allMembersInfo),
-    contractAddress,
-    userAddress,
-    timestamp: Date.now(),
-  };
-}
-
-/**
- * Action creator for updating batch subgroups data in community info
- * @deprecated Use updateSubgroupData instead
- */
-export function updateBatchSubgroups(
-  allSubgroupsInfo: $FlowFixMe, // Array<SubgroupInfo>
-  contractAddress: ?string,
-  userAddress: ?string,
-): PerAccountAction {
-  return {
-    type: TANDAPAY_BATCH_SUBGROUPS_UPDATE,
-    allSubgroupsInfo: serializeBigNumbers(allSubgroupsInfo),
-    contractAddress,
-    userAddress,
-    timestamp: Date.now(),
-  };
-}
-
-/**
- * Action creator for invalidating batch data (members and subgroups)
- * This will force a refresh the next time the data is requested
- */
-export function invalidateBatchData(): PerAccountAction {
-  return {
-    type: TANDAPAY_BATCH_DATA_INVALIDATE,
-  };
-}
+// Legacy actions removed - use new decoupled data actions instead
 
 // =============================================================================
 // MEMBER DATA ACTIONS
@@ -376,27 +314,6 @@ export function invalidateCommunityInfo(): PerAccountAction {
   // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_INVALIDATE,
-  };
-}
-
-// =============================================================================
-// NEW COMMUNITY INFO DATA ACTIONS (decoupled from batch data)
-// =============================================================================
-
-/**
- * Action creator for updating community info data (without batch data)
- */
-export function updateCommunityInfoData(
-  communityInfo: $FlowFixMe,
-  contractAddress: ?string = null,
-  userAddress: ?string = null,
-): PerAccountAction {
-  // $FlowFixMe[prop-missing] - New action type structure
-  return {
-    type: TANDAPAY_COMMUNITY_INFO_UPDATE,
-    communityInfo: serializeBigNumbers(communityInfo),
-    contractAddress,
-    userAddress,
   };
 }
 

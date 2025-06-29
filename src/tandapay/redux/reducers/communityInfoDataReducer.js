@@ -1,5 +1,17 @@
 /* @flow strict-local */
 
+/**
+ * Redux reducer for community information data
+ *
+ * This reducer manages the core TandaPay community state including:
+ * - Contract configuration and metadata
+ * - Current period and claim information
+ * - User-specific derived data (member status, subgroup info, etc.)
+ *
+ * This is separate from batch data (all members/subgroups) which are managed
+ * by their respective data managers and reducers.
+ */
+
 import {
   RESET_ACCOUNT_DATA,
   TANDAPAY_COMMUNITY_INFO_UPDATE,
@@ -10,13 +22,21 @@ import {
 import type { Action } from '../../../types';
 import type { CommunityInfo } from '../../contract/types/index';
 
-// Community info specific state
+/**
+ * Community info specific state
+ */
 export type CommunityInfoDataState = $ReadOnly<{|
+  /** The current community info data from the contract */
   data: ?CommunityInfo,
+  /** Whether a fetch operation is currently in progress */
   loading: boolean,
+  /** Error message if the last fetch failed */
   error: ?string,
+  /** Timestamp of when data was last successfully updated */
   lastUpdated: ?number,
+  /** Contract address for which this data is valid */
   contractAddress: ?string,
+  /** User address for which this data is valid */
   userAddress: ?string,
 |}>;
 

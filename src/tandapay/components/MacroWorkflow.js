@@ -6,9 +6,20 @@ import { Alert } from 'react-native';
 
 import MacroIntroModal from './MacroIntroModal';
 import TransactionModal from './TransactionModal';
-import { invalidateCachedBatchData } from '../contract/tandapay-reader/communityInfoManager';
+import CommunityInfoManager from '../contract/data-managers/CommunityInfoManager';
+import MemberDataManager from '../contract/data-managers/MemberDataManager';
+import SubgroupDataManager from '../contract/data-managers/SubgroupDataManager';
 
 import type { WriteTransaction } from '../contract/tandapay-writer/writeTransactionObjects';
+
+/**
+ * Invalidates all cached TandaPay data across the new decoupled data managers
+ */
+function invalidateAllTandaPayData(): void {
+  CommunityInfoManager.invalidate();
+  MemberDataManager.invalidate();
+  SubgroupDataManager.invalidate();
+}
 
 export type MacroDefinition = {|
   id: string,
@@ -84,7 +95,7 @@ export default function MacroWorkflow(props: Props): Node {
     setIsRefreshing(true);
     try {
       // Drop all community-related caches
-      invalidateCachedBatchData();
+      invalidateAllTandaPayData();
 
       // Refetch the macro data
       const freshData = await macro.dataFetcher();
@@ -212,7 +223,7 @@ export default function MacroWorkflow(props: Props): Node {
 
     // Drop cache since workflow was started but not completed
     try {
-      invalidateCachedBatchData();
+      invalidateAllTandaPayData();
     } catch (error) {
       // Silently handle cache invalidation errors
     }

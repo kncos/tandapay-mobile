@@ -11,7 +11,6 @@ import {
   getTandaPayContractAddresses
 } from '../redux/selectors';
 import { updateTandaPaySettings, updateCommunityInfo } from '../redux/actions';
-import { fetchCommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
 import { getWalletAddress } from '../wallet/WalletManager';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -19,6 +18,38 @@ import AddressInput from './AddressInput';
 import Card from './Card';
 import ContractDeploymentModal from './ContractDeploymentModal';
 import TandaPayStyles, { TandaPayColors, TandaPayTypography } from '../styles';
+
+/**
+ * Utility function to fetch community info for a specific contract address
+ * This function can be used to validate contract addresses by attempting to read basic info
+ */
+async function fetchCommunityInfo(contractAddress: string, userWalletAddress: ?string): Promise<{|
+  success: boolean,
+  data?: mixed,
+  error?: string,
+|}> {
+  try {
+    // Import the read actions dynamically to avoid circular dependencies
+    const { getTandaPayReadActions } = await import('../contract/tandapay-reader/read');
+    const { getProvider } = await import('../web3');
+    
+    const provider = await getProvider();
+    const readActions = getTandaPayReadActions(provider, contractAddress);
+    
+    // Try to read basic community state to validate the contract
+    const communityState = await readActions.getCommunityState();
+    
+    return {
+      success: true,
+      data: { communityState },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error?.message || 'Failed to read contract data',
+    };
+  }
+}
 
 type Props = $ReadOnly<{|
   disabled?: boolean,
@@ -78,11 +109,7 @@ export default function ContractAddressConfiguration(props: Props): Node {
 
       if (result.success) {
         // Update Redux store with the fetched community info
-        dispatch(updateCommunityInfo(
-          result.data,
-          contractAddress,
-          userWalletAddress,
-        ));
+        dispatch(updateCommunityInfo(result.data));
       } else {
         // Show warning alert for failed fetch
         Alert.alert(

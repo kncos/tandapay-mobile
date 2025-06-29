@@ -4,7 +4,7 @@ import type {
   TandaPayState,
 } from './reducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
-import type { CommunityInfoState } from './reducers/communityInfoReducer';
+import type { CommunityInfoDataState } from './reducers/communityInfoDataReducer';
 import type { NetworkIdentifier } from '../definitions/types';
 import type { CommunityInfo } from '../contract/types/index';
 import { deserializeBigNumbers } from '../utils/bigNumberUtils';
@@ -36,14 +36,6 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
         customTokens: [],
         balances: {},
         lastUpdated: {},
-      },
-      communityInfo: {
-        communityInfo: null,
-        loading: false,
-        error: null,
-        lastUpdated: null,
-        contractAddress: null,
-        userAddress: null,
       },
       // New decoupled data structures
       communityInfoData: {
@@ -241,17 +233,17 @@ export const getTandaPayCustomTokens = (state: PerAccountState): $ReadOnlyArray<
   }
 };
 
-// Community info selectors
-export const getCommunityInfoState = (state: PerAccountState): CommunityInfoState => {
+// Community info selectors - using new decoupled data structure
+export const getCommunityInfoDataState = (state: PerAccountState): CommunityInfoDataState => {
   const tandaPayState = getTandaPayState(state);
-  return tandaPayState.communityInfo;
+  return tandaPayState.communityInfoData;
 };
 
 export const getCommunityInfo = (state: PerAccountState): ?CommunityInfo => {
   try {
-    const communityInfo = getCommunityInfoState(state).communityInfo;
+    const communityInfoData = getCommunityInfoDataState(state).data;
     // $FlowFixMe[incompatible-return] - deserializeBigNumbers returns the correct type structure
-    return communityInfo ? deserializeBigNumbers(communityInfo) : null;
+    return communityInfoData ? deserializeBigNumbers(communityInfoData) : null;
   } catch (error) {
     return null;
   }
@@ -259,7 +251,7 @@ export const getCommunityInfo = (state: PerAccountState): ?CommunityInfo => {
 
 export const getCommunityInfoLoading = (state: PerAccountState): boolean => {
   try {
-    return getCommunityInfoState(state).loading;
+    return getCommunityInfoDataState(state).loading;
   } catch (error) {
     return false;
   }
@@ -267,7 +259,7 @@ export const getCommunityInfoLoading = (state: PerAccountState): boolean => {
 
 export const getCommunityInfoError = (state: PerAccountState): ?string => {
   try {
-    return getCommunityInfoState(state).error;
+    return getCommunityInfoDataState(state).error;
   } catch (error) {
     return null;
   }
@@ -275,7 +267,7 @@ export const getCommunityInfoError = (state: PerAccountState): ?string => {
 
 export const getCommunityInfoLastUpdated = (state: PerAccountState): ?number => {
   try {
-    return getCommunityInfoState(state).lastUpdated;
+    return getCommunityInfoDataState(state).lastUpdated;
   } catch (error) {
     return null;
   }

@@ -21,12 +21,12 @@ import {
 const testNewArchitecture = () => {
   console.log('✓ All new data managers imported successfully');
   console.log('✓ New selectors imported successfully');
-  
+
   // Test that manager methods exist
   console.log('✓ CommunityInfoManager.get method exists:', typeof CommunityInfoManager.get === 'function');
   console.log('✓ MemberDataManager.get method exists:', typeof MemberDataManager.get === 'function');
   console.log('✓ SubgroupDataManager.get method exists:', typeof SubgroupDataManager.get === 'function');
-  
+
   console.log('🎉 New TandaPay data architecture verification complete!');
 };
 

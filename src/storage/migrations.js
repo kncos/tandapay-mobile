@@ -608,14 +608,6 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
         balances: {},
         lastUpdated: {},
       },
-      communityInfo: {
-        communityInfo: null,
-        loading: false,
-        error: null,
-        lastUpdated: null,
-        contractAddress: null,
-        userAddress: null,
-      },
       communityInfoData: {
         data: null,
         loading: false,
