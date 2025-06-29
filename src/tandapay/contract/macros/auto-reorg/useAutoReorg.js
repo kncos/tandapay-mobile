@@ -146,22 +146,21 @@ export function useAutoReorg(): {|
         newSubgroups
       );
 
-      // Pretty print the reassignments
-      const transactionCount = reassignments.transactions.length;
-      // eslint-disable-next-line no-console
-      console.log(`🔄 Auto-Reorg Complete: ${transactionCount} reassignments needed`);
-
-      if (transactionCount > 0) {
-        // eslint-disable-next-line no-console
-        console.log('📋 Required Reassignments:');
-        for (const transaction of reassignments.transactions) {
-          // eslint-disable-next-line no-console
-          console.log(`  ${transaction.memberWalletAddress.slice(0, 8)}... -> subgroup ${transaction.subgroupId}`);
-        }
-      } else {
-        // eslint-disable-next-line no-console
-        console.log('✅ No reassignments needed - all members are optimally assigned');
-      }
+      // // Pretty print the reassignments
+      // const transactionCount = reassignments.transactions.length;
+      // // eslint-disable-next-line no-console
+      // console.log(`🔄 Auto-Reorg Complete: ${transactionCount} reassignments needed`);
+      // if (transactionCount > 0) {
+      //   // eslint-disable-next-line no-console
+      //   console.log('📋 Required Reassignments:');
+      //   for (const transaction of reassignments.transactions) {
+      //     // eslint-disable-next-line no-console
+      //     console.log(`  ${transaction.memberWalletAddress.slice(0, 8)}... -> subgroup ${transaction.subgroupId}`);
+      //   }
+      // } else {
+      //   // eslint-disable-next-line no-console
+      //   console.log('✅ No reassignments needed - all members are optimally assigned');
+      // }
 
       const result: AutoReorgResult = {
         success: true,
