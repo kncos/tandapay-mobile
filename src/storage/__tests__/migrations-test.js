@@ -128,46 +128,48 @@ describe('migrations', () => {
       settings: {
         selectedNetwork: 'sepolia',
         customRpcConfig: null,
+        // Per-network contract addresses configured by users
+        contractAddresses: {
+          mainnet: null,
+          sepolia: null,
+          arbitrum: null,
+          polygon: null,
+          custom: null,
+        },
+        // Network performance settings
+        networkPerformance: {
+          cacheExpirationMs: 30000, // 30 seconds default
+          rateLimitDelayMs: 100, // 100ms between calls
+          retryAttempts: 3,
+        },
       },
       tokens: {
         selectedTokenSymbol: 'ETH',
-        defaultTokens: [
-          {
-            symbol: 'ETH',
-            address: null,
-            name: 'Ethereum',
-            decimals: 18,
-            isDefault: true,
-            isCustom: false,
-          },
-          {
-            symbol: 'USDC',
-            address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
-            name: 'USD Coin',
-            decimals: 6,
-            isDefault: true,
-            isCustom: false,
-          },
-          {
-            symbol: 'USDT',
-            address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
-            name: 'Tether USD',
-            decimals: 6,
-            isDefault: true,
-            isCustom: false,
-          },
-          {
-            symbol: 'DAI',
-            address: '0x68194a729C2450ad26072b3D33ADaCbcef39D574',
-            name: 'Dai Stablecoin',
-            decimals: 18,
-            isDefault: true,
-            isCustom: false,
-          },
-        ],
+        defaultTokens: [], // Tokens are now dynamically loaded from chain definitions
         customTokens: [],
         balances: {},
         lastUpdated: {},
+      },
+      // New decoupled data structures
+      communityInfoData: {
+        data: null,
+        loading: false,
+        error: null,
+        lastUpdated: null,
+        contractAddress: null,
+        userAddress: null,
+      },
+      memberData: {
+        memberBatchInfo: null,
+        lastUpdated: null,
+        isLoading: false,
+        error: null,
+      },
+      subgroupData: {
+        subgroupBatchInfo: null,
+        lastUpdated: null,
+        isLoading: false,
+        error: null,
       },
     },
   };
