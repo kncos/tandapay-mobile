@@ -10,7 +10,7 @@ import { IconShield } from '../../common/Icons';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
 import TandaPayColors from '../styles/colors';
 
-import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
+import type { CommunityInfo } from '../contract/types/index';
 import { formatBigNumber, formatTimeDuration } from './utils';
 
 type PeriodTiming = $ReadOnly<{|

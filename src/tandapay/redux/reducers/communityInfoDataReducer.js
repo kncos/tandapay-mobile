@@ -5,29 +5,23 @@ import {
   TANDAPAY_COMMUNITY_INFO_UPDATE,
   TANDAPAY_COMMUNITY_INFO_LOADING,
   TANDAPAY_COMMUNITY_INFO_ERROR,
-  TANDAPAY_COMMUNITY_INFO_CLEAR,
+  TANDAPAY_COMMUNITY_INFO_INVALIDATE,
 } from '../../../actionConstants';
 import type { Action } from '../../../types';
 import type { CommunityInfo } from '../../contract/types/index';
 
-// Community info reducer state
-export type CommunityInfoState = $ReadOnly<{|
-  // The current community info data
-  communityInfo: ?CommunityInfo,
-  // Loading state
+// Community info specific state
+export type CommunityInfoDataState = $ReadOnly<{|
+  data: ?CommunityInfo,
   loading: boolean,
-  // Error message if fetch failed
   error: ?string,
-  // Timestamp of last successful fetch
   lastUpdated: ?number,
-  // Contract address for which this data is valid
   contractAddress: ?string,
-  // User address for which this data is valid
   userAddress: ?string,
 |}>;
 
-const initialState: CommunityInfoState = {
-  communityInfo: null,
+const initialState: CommunityInfoDataState = {
+  data: null,
   loading: false,
   error: null,
   lastUpdated: null,
@@ -36,19 +30,19 @@ const initialState: CommunityInfoState = {
 };
 
 // eslint-disable-next-line default-param-last
-export default (state: CommunityInfoState = initialState, action: Action): CommunityInfoState => {
+export default (state: CommunityInfoDataState = initialState, action: Action): CommunityInfoDataState => {
   switch (action.type) {
     case RESET_ACCOUNT_DATA:
       return initialState;
 
     case TANDAPAY_COMMUNITY_INFO_LOADING: {
-      // $FlowFixMe[prop-missing] - Flow doesn't understand discriminated unions well
+      // $FlowFixMe[prop-missing] - Action discriminated union handling
       const loading: boolean = action.loading;
 
       return {
         ...state,
         loading,
-        error: loading ? null : state.error, // Clear error when starting to load
+        error: loading ? null : state.error,
       };
     }
 
@@ -56,7 +50,7 @@ export default (state: CommunityInfoState = initialState, action: Action): Commu
       // $FlowFixMe[prop-missing] - Action discriminated union handling
       return {
         ...state,
-        communityInfo: action.communityInfo,
+        data: action.communityInfo,
         loading: false,
         error: null,
         lastUpdated: Date.now(),
@@ -71,13 +65,16 @@ export default (state: CommunityInfoState = initialState, action: Action): Commu
         ...state,
         loading: false,
         error: action.error,
-        communityInfo: null, // Clear stale data on error
+        data: null, // Clear stale data on error
       };
     }
 
-    case TANDAPAY_COMMUNITY_INFO_CLEAR: {
+    case TANDAPAY_COMMUNITY_INFO_INVALIDATE: {
       return {
-        ...initialState,
+        ...state,
+        data: null,
+        lastUpdated: null,
+        error: null,
       };
     }
 

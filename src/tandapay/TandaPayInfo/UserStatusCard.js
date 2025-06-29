@@ -10,7 +10,7 @@ import { IconPerson } from '../../common/Icons';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
 import MemberInfoDisplay from './MemberInfoDisplay';
 
-import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
+import type { CommunityInfo } from '../contract/types/index';
 import { bigNumberToNumber } from './utils';
 
 type Props = $ReadOnly<{|

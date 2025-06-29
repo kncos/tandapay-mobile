@@ -4,7 +4,7 @@ import type { WriteTransaction } from './tandapay-writer/writeTransactionObjects
 import { getAllWriteTransactions } from './tandapay-writer/writeTransactionObjects';
 import { TandaPayState, TandaPayRole } from './types';
 import type { TandaPayStateType, TandaPayRoleType } from './types';
-import type { CommunityInfo } from './tandapay-reader/communityInfoManager';
+import type { CommunityInfo } from './types/index';
 import { getCommunityInfo } from '../redux/selectors';
 import { tryGetActiveAccountState } from '../../selectors';
 import store from '../../boot/store';

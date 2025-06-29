@@ -6,8 +6,7 @@ import type {
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
 import type { CommunityInfoState } from './reducers/communityInfoReducer';
 import type { NetworkIdentifier } from '../definitions/types';
-import type { CommunityInfo } from '../contract/tandapay-reader/communityInfoManager';
-import type { MemberInfo, SubgroupInfo } from '../contract/types';
+import type { CommunityInfo } from '../contract/types/index';
 import { deserializeBigNumbers } from '../utils/bigNumberUtils';
 
 // Main TandaPay state selector
@@ -45,10 +44,27 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
         lastUpdated: null,
         contractAddress: null,
         userAddress: null,
-        cachedBatchMembers: null,
-        cachedBatchSubgroups: null,
-        batchMembersLastUpdated: null,
-        batchSubgroupsLastUpdated: null,
+      },
+      // New decoupled data structures
+      communityInfoData: {
+        data: null,
+        loading: false,
+        error: null,
+        lastUpdated: null,
+        contractAddress: null,
+        userAddress: null,
+      },
+      memberData: {
+        memberBatchInfo: null,
+        isLoading: false,
+        error: null,
+        lastUpdated: null,
+      },
+      subgroupData: {
+        subgroupBatchInfo: null,
+        isLoading: false,
+        error: null,
+        lastUpdated: null,
       },
     };
   }
@@ -268,83 +284,6 @@ export const getCommunityInfoLastUpdated = (state: PerAccountState): ?number => 
 export const isCommunityInfoStale = (state: PerAccountState, maxAgeMs: number = 30000): boolean => {
   try {
     const lastUpdated = getCommunityInfoLastUpdated(state);
-    if (lastUpdated == null) {
-      return true;
-    }
-    return Date.now() - lastUpdated > maxAgeMs;
-  } catch (error) {
-    return true;
-  }
-};
-
-/**
- * Get cached batch members data from separate cache field
- */
-export const getCachedBatchMembers = (state: PerAccountState): ?Array<MemberInfo> => {
-  try {
-    const communityInfoState = getCommunityInfoState(state);
-    return communityInfoState.cachedBatchMembers;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Get cached batch subgroups data from separate cache field
- */
-export const getCachedBatchSubgroups = (state: PerAccountState): ?Array<SubgroupInfo> => {
-  try {
-    const communityInfoState = getCommunityInfoState(state);
-    return communityInfoState.cachedBatchSubgroups;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Get timestamp of last batch members update
- */
-export const getBatchMembersLastUpdated = (state: PerAccountState): ?number => {
-  try {
-    return getCommunityInfoState(state).batchMembersLastUpdated;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Get timestamp of last batch subgroups update
- */
-export const getBatchSubgroupsLastUpdated = (state: PerAccountState): ?number => {
-  try {
-    return getCommunityInfoState(state).batchSubgroupsLastUpdated;
-  } catch (error) {
-    return null;
-  }
-};
-
-/**
- * Check if cached batch members data is stale (default 5 minutes)
- */
-export const isBatchMembersStale = (state: PerAccountState, maxAgeMs: number = 300000): boolean => {
-  try {
-    const lastUpdated = getBatchMembersLastUpdated(state);
-    if (lastUpdated == null) {
-      return true;
-    }
-    const age = Date.now() - lastUpdated;
-    return age > maxAgeMs;
-  } catch (error) {
-    return true;
-  }
-};
-
-/**
- * Check if cached batch subgroups data is stale (default 5 minutes)
- */
-export const isBatchSubgroupsStale = (state: PerAccountState, maxAgeMs: number = 300000): boolean => {
-  try {
-    const lastUpdated = getBatchSubgroupsLastUpdated(state);
     if (lastUpdated == null) {
       return true;
     }

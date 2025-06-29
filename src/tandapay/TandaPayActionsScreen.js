@@ -78,14 +78,14 @@ export default function TandaPayActionsScreen(props: Props): Node {
     id: AUTO_REORG_MACRO.id,
     name: AUTO_REORG_MACRO.name,
     description: AUTO_REORG_MACRO.description,
-    
+
     dataFetcher: async () => [],
-    
+
     validateFunction: (data: mixed) => ({
       canExecute: Array.isArray(data),
       reason: Array.isArray(data) ? undefined : 'Invalid data format',
     }),
-    
+
     executeFunction: async (data: mixed) => ({
       success: true,
       transactions: [],

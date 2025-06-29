@@ -616,6 +616,26 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
         contractAddress: null,
         userAddress: null,
       },
+      communityInfoData: {
+        data: null,
+        loading: false,
+        error: null,
+        lastUpdated: null,
+        contractAddress: null,
+        userAddress: null,
+      },
+      memberData: {
+        memberBatchInfo: null,
+        lastUpdated: null,
+        isLoading: false,
+        error: null,
+      },
+      subgroupData: {
+        subgroupBatchInfo: null,
+        lastUpdated: null,
+        isLoading: false,
+        error: null,
+      },
     },
   }),
 

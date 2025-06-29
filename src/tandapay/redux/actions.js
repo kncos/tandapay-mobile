@@ -19,6 +19,12 @@ import {
   TANDAPAY_COMMUNITY_INFO_LOADING,
   TANDAPAY_COMMUNITY_INFO_ERROR,
   TANDAPAY_COMMUNITY_INFO_CLEAR,
+  TANDAPAY_COMMUNITY_INFO_INVALIDATE,
+  TANDAPAY_MEMBER_DATA_UPDATE,
+  TANDAPAY_MEMBER_DATA_INVALIDATE,
+  TANDAPAY_SUBGROUP_DATA_UPDATE,
+  TANDAPAY_SUBGROUP_DATA_INVALIDATE,
+  // Legacy batch actions (deprecated)
   TANDAPAY_BATCH_MEMBERS_UPDATE,
   TANDAPAY_BATCH_SUBGROUPS_UPDATE,
   TANDAPAY_BATCH_DATA_INVALIDATE,
@@ -257,6 +263,7 @@ export function clearCommunityInfo(): PerAccountAction {
 
 /**
  * Action creator for updating batch members data in community info
+ * @deprecated Use updateMemberData instead
  */
 export function updateBatchMembers(
   allMembersInfo: $FlowFixMe, // Array<MemberInfo>
@@ -274,6 +281,7 @@ export function updateBatchMembers(
 
 /**
  * Action creator for updating batch subgroups data in community info
+ * @deprecated Use updateSubgroupData instead
  */
 export function updateBatchSubgroups(
   allSubgroupsInfo: $FlowFixMe, // Array<SubgroupInfo>
@@ -296,5 +304,108 @@ export function updateBatchSubgroups(
 export function invalidateBatchData(): PerAccountAction {
   return {
     type: TANDAPAY_BATCH_DATA_INVALIDATE,
+  };
+}
+
+// =============================================================================
+// MEMBER DATA ACTIONS
+// =============================================================================
+
+/**
+ * Action creator for updating member data
+ */
+export function updateMemberData(
+  memberBatchInfo: $FlowFixMe,
+  isLoading: boolean = false,
+  error: ?string = null,
+): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_MEMBER_DATA_UPDATE,
+    memberBatchInfo: serializeBigNumbers(memberBatchInfo),
+    isLoading,
+    error,
+  };
+}
+
+/**
+ * Action creator for invalidating member data
+ */
+export function invalidateMemberData(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_MEMBER_DATA_INVALIDATE,
+  };
+}
+
+// =============================================================================
+// SUBGROUP DATA ACTIONS
+// =============================================================================
+
+/**
+ * Action creator for updating subgroup data
+ */
+export function updateSubgroupData(
+  subgroupBatchInfo: $FlowFixMe,
+  isLoading: boolean = false,
+  error: ?string = null,
+): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_SUBGROUP_DATA_UPDATE,
+    subgroupBatchInfo: serializeBigNumbers(subgroupBatchInfo),
+    isLoading,
+    error,
+  };
+}
+
+/**
+ * Action creator for invalidating subgroup data
+ */
+export function invalidateSubgroupData(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_SUBGROUP_DATA_INVALIDATE,
+  };
+}
+
+/**
+ * Action creator for invalidating community info
+ */
+export function invalidateCommunityInfo(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_INVALIDATE,
+  };
+}
+
+// =============================================================================
+// NEW COMMUNITY INFO DATA ACTIONS (decoupled from batch data)
+// =============================================================================
+
+/**
+ * Action creator for updating community info data (without batch data)
+ */
+export function updateCommunityInfoData(
+  communityInfo: $FlowFixMe,
+  contractAddress: ?string = null,
+  userAddress: ?string = null,
+): PerAccountAction {
+  // $FlowFixMe[prop-missing] - New action type structure
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_UPDATE,
+    communityInfo: serializeBigNumbers(communityInfo),
+    contractAddress,
+    userAddress,
+  };
+}
+
+/**
+ * Action creator for invalidating community info data
+ */
+export function invalidateCommunityInfoData(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_COMMUNITY_INFO_INVALIDATE,
   };
 }
