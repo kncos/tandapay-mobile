@@ -10,8 +10,6 @@ import {
 } from '../../redux/actions';
 import { getCurrentTandaPayContractAddress } from '../../redux/selectors';
 import { tryGetActiveAccountState } from '../../../account/accountsSelectors';
-import { getProvider } from '../../web3';
-import { getTandaPayReadActions } from '../tandapay-reader/read';
 import { getWalletAddress } from '../../wallet/WalletManager';
 
 /**
@@ -75,11 +73,36 @@ class CommunityInfoManager {
       const walletResult = await getWalletAddress();
       const userWalletAddress = walletResult.success ? walletResult.data : null;
 
-      // Get provider and create read actions
-      const provider = await getProvider();
-      const readActions = getTandaPayReadActions(provider, contractAddress);
+      // Import TandaPay ABI for multicall
+      // $FlowFixMe[untyped-import] - TandaPay utils are untyped but safe to use
+      const { TandaPayInfo } = await import('../utils/TandaPay');
+      // $FlowFixMe[untyped-import] - multicall utils are untyped but safe to use
+      const { executeTandaPayMulticall } = await import('../utils/multicall');
 
-      // Fetch basic community info
+      // Prepare basic contract calls for multicall
+      const basicCalls = [
+        { functionName: 'getPaymentTokenAddress' },
+        { functionName: 'getCurrentMemberCount' },
+        { functionName: 'getCurrentSubgroupCount' },
+        { functionName: 'getCurrentClaimId' },
+        { functionName: 'getCurrentPeriodId' },
+        { functionName: 'getTotalCoverageAmount' },
+        { functionName: 'getBasePremium' },
+        { functionName: 'getCommunityState' },
+        { functionName: 'getSecretaryAddress' },
+        { functionName: 'getIsHandingOver' },
+        { functionName: 'getUpcomingSecretary' },
+        { functionName: 'getEmergencySecretaries' },
+        { functionName: 'getSecretarySuccessorList' },
+      ];
+
+      // Execute basic multicall
+      const basicResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, basicCalls);
+
+      if (!basicResult.success) {
+        throw new Error(`Failed to fetch basic community info: ${basicResult.error ? basicResult.error.message : 'Unknown error'}`);
+      }
+
       const [
         paymentTokenAddress,
         currentMemberCount,
@@ -94,47 +117,119 @@ class CommunityInfoManager {
         voluntaryHandoverNominee,
         emergencyHandoverNominees,
         secretarySuccessorList,
-      ] = await Promise.all([
-        readActions.getPaymentTokenAddress(),
-        readActions.getCurrentMemberCount(),
-        readActions.getCurrentSubgroupCount(),
-        readActions.getCurrentClaimId(),
-        readActions.getCurrentPeriodId(),
-        readActions.getTotalCoverageAmount(),
-        readActions.getBasePremium(),
-        readActions.getCommunityState(),
-        readActions.getSecretaryAddress(),
-        readActions.isVoluntaryHandoverInProgress(),
-        readActions.getVoluntaryHandoverNominee(),
-        readActions.getEmergencyHandoverNominees(),
-        readActions.getSecretarySuccessorList(),
+      ] = basicResult.data;
+
+      // Get current period info - need to pass the current period ID
+      // $FlowFixMe[incompatible-use] - BigNumber conversion
+      const currentPeriodIdForQuery = parseInt(currentPeriodId.toString(), 10);
+      const currentPeriodInfoResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, [
+        { functionName: 'getPeriodIdToPeriodInfo', args: [currentPeriodIdForQuery] }
       ]);
 
-      // Get current period info
-      const currentPeriodInfo = await readActions.getPeriodInfo();
+      if (!currentPeriodInfoResult.success) {
+        throw new Error(`Failed to fetch current period info: ${currentPeriodInfoResult.error ? currentPeriodInfoResult.error.message : 'Unknown error'}`);
+      }
 
-      // Get user-specific data if wallet address is available
+      // Transform the raw period info to match the expected format
+      const rawPeriodInfo = currentPeriodInfoResult.data[0];
+      const currentPeriodInfo = rawPeriodInfo ? {
+        startTimestamp: rawPeriodInfo.startedAt,
+        endTimestamp: rawPeriodInfo.willEndAt,
+        coverageAmount: rawPeriodInfo.coverage,
+        totalPremiumsPaid: rawPeriodInfo.totalPaid,
+        claimIds: rawPeriodInfo.claimIds,
+      } : null;
+
+      // Get user-specific data and whitelisted claims if applicable
       let userMemberInfo = null;
       let userSubgroupInfo = null;
+      let whitelistedClaimsFromPreviousPeriod = null;
 
+      // Check if we should fetch whitelisted claims from previous period (only if currentPeriodId >= 2)
+      // $FlowFixMe[incompatible-use] - BigNumber conversion
+      const currentPeriodIdNum = parseInt(currentPeriodId.toString(), 10);
+      if (currentPeriodIdNum >= 2) {
+        const previousPeriodId = currentPeriodIdNum - 1;
+        
+        try {
+          // Get whitelisted claim IDs from previous period
+          const whitelistedClaimIdsResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, [
+            { functionName: 'getWhitelistedClaimIdsInPeriod', args: [previousPeriodId] }
+          ]);
+
+          if (whitelistedClaimIdsResult.success && whitelistedClaimIdsResult.data[0] != null) {
+            const whitelistedClaimIds = whitelistedClaimIdsResult.data[0];
+            
+            if (Array.isArray(whitelistedClaimIds) && whitelistedClaimIds.length > 0) {
+              // Fetch detailed claim info for each whitelisted claim
+              const claimInfoCalls = whitelistedClaimIds.map(claimId => ({
+                functionName: 'getClaimInfo',
+                args: [previousPeriodId, claimId]
+              }));
+
+              const claimInfoResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, claimInfoCalls);
+              
+              if (claimInfoResult.success) {
+                whitelistedClaimsFromPreviousPeriod = claimInfoResult.data.filter(claim => claim != null);
+              }
+            }
+          }
+        } catch (err) {
+          // Don't fail the entire fetch if whitelisted claims fetch fails
+          // This is supplementary data
+        }
+      }
+
+      // Get user-specific data if wallet address is available
       if (userWalletAddress != null && userWalletAddress.trim() !== '') {
         try {
-          // Get user's member info
-          const memberInfo = await readActions.getMemberInfoFromAddress(userWalletAddress);
-
-          // Check if user is actually a member (id > 0)
+          // Get user's member info - need to pass current period ID
           // $FlowFixMe[incompatible-use] - BigNumber conversion
-          const memberId = parseInt(memberInfo.id.toString(), 10);
-
-          if (memberId > 0) {
-            userMemberInfo = memberInfo;
-
-            // If user is a member, get their subgroup info
-            if (memberInfo.subgroupId != null) {
-              // $FlowFixMe[incompatible-use] - BigNumber conversion
-              const subgroupId = parseInt(memberInfo.subgroupId.toString(), 10);
-              if (subgroupId > 0) {
-                userSubgroupInfo = await readActions.getSubgroupInfo(subgroupId);
+          const currentPeriodIdForMember = parseInt(currentPeriodId.toString(), 10);
+          const memberInfoResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, [
+            { functionName: 'getMemberInfoFromAddress', args: [userWalletAddress, currentPeriodIdForMember] }
+          ]);
+          
+          if (memberInfoResult.success && memberInfoResult.data[0] != null) {
+            const rawMemberInfo = memberInfoResult.data[0];
+            
+            // Check if user is actually a member (memberId > 0)
+            // The contract returns 'memberId' field, not 'id'
+            // $FlowFixMe[incompatible-use] - BigNumber conversion
+            const memberId = parseInt(rawMemberInfo.memberId.toString(), 10);
+            
+            if (memberId > 0) {
+              // Transform the raw contract data to match our expected MemberInfo type
+              const memberInfo = {
+                id: rawMemberInfo.memberId,
+                subgroupId: rawMemberInfo.associatedGroupId,
+                walletAddress: rawMemberInfo.member,
+                communityEscrowAmount: rawMemberInfo.cEscrowAmount,
+                savingsEscrowAmount: rawMemberInfo.ISEscorwAmount,
+                pendingRefundAmount: rawMemberInfo.pendingRefundAmount,
+                availableToWithdrawAmount: rawMemberInfo.availableToWithdraw,
+                isEligibleForCoverageThisPeriod: rawMemberInfo.eligibleForCoverageInPeriod,
+                isPremiumPaidThisPeriod: rawMemberInfo.isPremiumPaid,
+                queuedRefundAmountThisPeriod: rawMemberInfo.idToQuedRefundAmount,
+                memberStatus: rawMemberInfo.status,
+                assignmentStatus: rawMemberInfo.assignment,
+              };
+              
+              userMemberInfo = memberInfo;
+              
+              // If user is a member, get their subgroup info
+              if (memberInfo.subgroupId != null) {
+                // $FlowFixMe[incompatible-use] - BigNumber conversion
+                const subgroupId = parseInt(memberInfo.subgroupId.toString(), 10);
+                if (subgroupId > 0) {
+                  const subgroupInfoResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, [
+                    { functionName: 'getSubgroupInfo', args: [subgroupId] }
+                  ]);
+                  
+                  if (subgroupInfoResult.success && subgroupInfoResult.data[0] != null) {
+                    userSubgroupInfo = subgroupInfoResult.data[0];
+                  }
+                }
               }
             }
           }
@@ -166,6 +261,7 @@ class CommunityInfoManager {
         currentPeriodInfo,
         userMemberInfo,
         userSubgroupInfo,
+        whitelistedClaimsFromPreviousPeriod,
 
         // Metadata
         lastUpdated: Date.now(),

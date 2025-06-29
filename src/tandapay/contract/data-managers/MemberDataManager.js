@@ -25,7 +25,7 @@ class MemberDataManager {
   |}): Promise<mixed> {
     const state = store.getState();
     const perAccountState = tryGetActiveAccountState(state);
-    
+
     if (!perAccountState) {
       throw new Error('No active account state available');
     }
@@ -52,13 +52,13 @@ class MemberDataManager {
   static async fetch(): Promise<mixed> {
     const globalState = store.getState();
     const perAccountState = tryGetActiveAccountState(globalState);
-    
+
     if (!perAccountState) {
       throw new Error('No active account state available');
     }
 
     const contractAddress = getCurrentTandaPayContractAddress(perAccountState);
-    
+
     if (contractAddress == null || contractAddress.trim() === '') {
       throw new Error('Contract address not configured');
     }
@@ -85,7 +85,7 @@ class MemberDataManager {
 
       // Batch fetch all member info
       const batchResult = await readActions.batchGetAllMemberInfo(memberCountNum);
-      
+
       if (!batchResult.success) {
         throw new Error(batchResult.error.message || 'Failed to fetch member data');
       }

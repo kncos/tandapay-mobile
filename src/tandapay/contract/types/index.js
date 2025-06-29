@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import type { BigNumber, TandaPayStateType, MemberInfo, SubgroupInfo, PeriodInfo } from '../types';
+import type { BigNumber, TandaPayStateType, MemberInfo, SubgroupInfo, PeriodInfo, ClaimInfo } from '../types';
 
 /**
  * Community information data structure
@@ -29,7 +29,9 @@ export type CommunityInfo = $ReadOnly<{|
   userSubgroupInfo?: ?SubgroupInfo,
   // userMemberInfo: Information about the user's membership status and details
   userMemberInfo?: ?MemberInfo,
-
+  // whitelistedClaimsFromPreviousPeriod: Claims that were whitelisted in the previous period (only populated if currentPeriodId >= 2)
+  whitelistedClaimsFromPreviousPeriod?: ?Array<ClaimInfo>,
+  
   // Metadata
   lastUpdated?: number,
 |}>;

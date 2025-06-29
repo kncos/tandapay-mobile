@@ -6,6 +6,28 @@ import TandaPayErrorHandler from '../../errors/ErrorHandler';
 import { executeTandaPayMulticall } from '../utils/multicall';
 import type { TandaPayResult } from '../../errors/types';
 
+/**
+ * IMPORTANT: These read actions are designed for single, one-off contract calls.
+ *
+ * If you need to fetch multiple pieces of data at once, prefer using multicall
+ * directly with the TandaPay ABI to batch your calls efficiently:
+ *
+ * ```javascript
+ * import { executeTandaPayMulticall } from '../utils/multicall';
+ * import { TandaPayInfo } from '../utils/TandaPay';
+ *
+ * const calls = [
+ *   { functionName: 'getCurrentMemberCount' },
+ *   { functionName: 'getCurrentSubgroupCount' },
+ *   // ... more calls
+ * ];
+ *
+ * const result = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, calls);
+ * ```
+ *
+ * This approach is much more efficient than using Promise.all with individual readActions calls.
+ */
+
 import type {
   SubgroupInfo,
   ClaimInfo,
