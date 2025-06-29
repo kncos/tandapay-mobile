@@ -11,6 +11,12 @@ import {
 import { getCurrentTandaPayContractAddress } from '../../redux/selectors';
 import { tryGetActiveAccountState } from '../../../account/accountsSelectors';
 import { getWalletAddress } from '../../wallet/WalletManager';
+import {
+  convertRawMemberInfo,
+  convertRawSubgroupInfo,
+  convertRawPeriodInfo,
+  convertRawClaimInfo,
+} from '../utils/converters';
 
 /**
  * Centralized manager for community info data
@@ -130,15 +136,9 @@ class CommunityInfoManager {
         throw new Error(`Failed to fetch current period info: ${currentPeriodInfoResult.error ? currentPeriodInfoResult.error.message : 'Unknown error'}`);
       }
 
-      // Transform the raw period info to match the expected format
+      // Transform the raw period info to match the expected format using converter
       const rawPeriodInfo = currentPeriodInfoResult.data[0];
-      const currentPeriodInfo = rawPeriodInfo ? {
-        startTimestamp: rawPeriodInfo.startedAt,
-        endTimestamp: rawPeriodInfo.willEndAt,
-        coverageAmount: rawPeriodInfo.coverage,
-        totalPremiumsPaid: rawPeriodInfo.totalPaid,
-        claimIds: rawPeriodInfo.claimIds,
-      } : null;
+      const currentPeriodInfo = rawPeriodInfo ? convertRawPeriodInfo(rawPeriodInfo) : null;
 
       // Get user-specific data and whitelisted claims if applicable
       let userMemberInfo = null;
@@ -150,7 +150,7 @@ class CommunityInfoManager {
       const currentPeriodIdNum = parseInt(currentPeriodId.toString(), 10);
       if (currentPeriodIdNum >= 2) {
         const previousPeriodId = currentPeriodIdNum - 1;
-        
+
         try {
           // Get whitelisted claim IDs from previous period
           const whitelistedClaimIdsResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, [
@@ -159,7 +159,7 @@ class CommunityInfoManager {
 
           if (whitelistedClaimIdsResult.success && whitelistedClaimIdsResult.data[0] != null) {
             const whitelistedClaimIds = whitelistedClaimIdsResult.data[0];
-            
+
             if (Array.isArray(whitelistedClaimIds) && whitelistedClaimIds.length > 0) {
               // Fetch detailed claim info for each whitelisted claim
               const claimInfoCalls = whitelistedClaimIds.map(claimId => ({
@@ -168,9 +168,11 @@ class CommunityInfoManager {
               }));
 
               const claimInfoResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, claimInfoCalls);
-              
+
               if (claimInfoResult.success) {
-                whitelistedClaimsFromPreviousPeriod = claimInfoResult.data.filter(claim => claim != null);
+                whitelistedClaimsFromPreviousPeriod = claimInfoResult.data
+                  .filter(claim => claim != null)
+                  .map(claim => convertRawClaimInfo(claim, previousPeriodId));
               }
             }
           }
@@ -189,34 +191,21 @@ class CommunityInfoManager {
           const memberInfoResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, [
             { functionName: 'getMemberInfoFromAddress', args: [userWalletAddress, currentPeriodIdForMember] }
           ]);
-          
+
           if (memberInfoResult.success && memberInfoResult.data[0] != null) {
             const rawMemberInfo = memberInfoResult.data[0];
-            
+
             // Check if user is actually a member (memberId > 0)
             // The contract returns 'memberId' field, not 'id'
             // $FlowFixMe[incompatible-use] - BigNumber conversion
             const memberId = parseInt(rawMemberInfo.memberId.toString(), 10);
-            
+
             if (memberId > 0) {
-              // Transform the raw contract data to match our expected MemberInfo type
-              const memberInfo = {
-                id: rawMemberInfo.memberId,
-                subgroupId: rawMemberInfo.associatedGroupId,
-                walletAddress: rawMemberInfo.member,
-                communityEscrowAmount: rawMemberInfo.cEscrowAmount,
-                savingsEscrowAmount: rawMemberInfo.ISEscorwAmount,
-                pendingRefundAmount: rawMemberInfo.pendingRefundAmount,
-                availableToWithdrawAmount: rawMemberInfo.availableToWithdraw,
-                isEligibleForCoverageThisPeriod: rawMemberInfo.eligibleForCoverageInPeriod,
-                isPremiumPaidThisPeriod: rawMemberInfo.isPremiumPaid,
-                queuedRefundAmountThisPeriod: rawMemberInfo.idToQuedRefundAmount,
-                memberStatus: rawMemberInfo.status,
-                assignmentStatus: rawMemberInfo.assignment,
-              };
-              
+              // Transform the raw contract data using converter helper
+              const memberInfo = convertRawMemberInfo(rawMemberInfo);
+
               userMemberInfo = memberInfo;
-              
+
               // If user is a member, get their subgroup info
               if (memberInfo.subgroupId != null) {
                 // $FlowFixMe[incompatible-use] - BigNumber conversion
@@ -225,9 +214,9 @@ class CommunityInfoManager {
                   const subgroupInfoResult = await executeTandaPayMulticall(contractAddress, TandaPayInfo.abi, [
                     { functionName: 'getSubgroupInfo', args: [subgroupId] }
                   ]);
-                  
+
                   if (subgroupInfoResult.success && subgroupInfoResult.data[0] != null) {
-                    userSubgroupInfo = subgroupInfoResult.data[0];
+                    userSubgroupInfo = convertRawSubgroupInfo(subgroupInfoResult.data[0]);
                   }
                 }
               }
