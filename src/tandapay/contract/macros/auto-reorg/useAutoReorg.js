@@ -18,6 +18,7 @@ export type AutoReorgResult = {|
   +success: boolean,
   +data?: Map<number, Array<string>>,
   +reassignments?: PostprocessorResult,
+  +subgroupData?: $ReadOnlyArray<SubgroupInfo>,
   +error?: string,
 |};
 
@@ -166,6 +167,7 @@ export function useAutoReorg(): {|
         success: true,
         data: newSubgroups,
         reassignments,
+        subgroupData: typedSubgroupData,
       };
 
       setState({

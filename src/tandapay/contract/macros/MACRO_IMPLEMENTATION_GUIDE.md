@@ -397,6 +397,46 @@ function createTransactions(result: ExampleMacroResult) {
 }
 ```
 
+### Pattern 4: Prerequisites + Main Actions (Like Enhanced Auto-Reorg)
+
+When your macro needs to create resources before using them:
+
+```javascript
+function createTransactions(result: ExampleMacroResult) {
+  const transactions: WriteTransaction[] = [];
+
+  // Calculate what resources are needed
+  const maxResourceIdNeeded = Math.max(...result.actions.map(action => action.resourceId));
+  const currentResourceCount = result.existingResources.length;
+  const resourcesToCreate = Math.max(0, maxResourceIdNeeded - currentResourceCount);
+
+  // Get transaction templates
+  const createResourceTransaction = getWriteTransactionByName('createResource');
+  const useResourceTransaction = getWriteTransactionByName('useResource');
+
+  // Add resource creation transactions first
+  for (let i = 0; i < resourcesToCreate; i++) {
+    transactions.push({
+      ...createResourceTransaction,
+      displayName: `Create Resource ${currentResourceCount + i + 1}`,
+    });
+  }
+
+  // Add main action transactions
+  result.actions.forEach(action => {
+    transactions.push({
+      ...useResourceTransaction,
+      prefilledParams: action.params,
+    });
+  });
+
+  return {
+    success: true,
+    transactions,
+  };
+}
+```
+
 ## Key Design Principles
 
 ### 1. Handle "Nothing to Do" Cases Gracefully
@@ -452,8 +492,10 @@ try {
 ### Auto-Reorg Pattern
 - Fetches member and subgroup data
 - Runs algorithm to determine optimal assignments
-- Creates pre-filled `assignMemberToSubgroup` transactions
+- Calculates if additional subgroups need to be created first
+- Creates `createSubgroup` transactions if needed, followed by pre-filled `assignMemberToSubgroup` transactions
 - Returns empty array when no reassignments needed
+- **Key insight**: Ensures prerequisites (subgroups) exist before using them in assignments
 
 ### Add Required Members Pattern
 - Fetches community data

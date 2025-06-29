@@ -31,6 +31,10 @@ Features of TandaPay Mobile include:
 - [x] A comprehensive dashboard for sending any transaction to the TandaPay smart contract
 - [x] Heuristic guidance to suggest potentially relevant transactions to users and help them filter transactions for the ones that they are most likely to use to interact with the TandaPay smart contract, given it's current state
 - [ ] Macros to help users send sequences of transactions and reduce tedium when doing multi-step smart contract interactions
+  - [x] Auto reorganize all members into valid subgroups workflow
+  - [x] Adding required number of members to exit initialization state workflow
+  - [ ] Defining secretary successors workflow
+  - [ ] exiting the initialization state workflow (chained macro)
 - [ ] a refined user onboarding experience using the existing server infrastructure, but with modifications to make sign-up go more smoothly within TandaPay mobile's application
 
 

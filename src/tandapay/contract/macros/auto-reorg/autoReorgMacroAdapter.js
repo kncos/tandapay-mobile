@@ -58,9 +58,25 @@ export function useAutoReorgMacro(): {|
           };
         }
 
-        // Get the assignMemberToSubgroup transaction template
+        // Calculate the maximum subgroup ID needed from reassignments
+        // $FlowFixMe - Flow doesn't understand that we've already checked reassignments exists
+        const maxSubgroupIdNeeded = Math.max(
+          ...result.reassignments.transactions.map(tx => tx.subgroupId)
+        );
+
+        // Count current subgroups from the subgroup data
+        // $FlowFixMe - Flow doesn't understand that we've already checked result.success
+        const currentSubgroupCount = result.subgroupData ? result.subgroupData.length : 0;
+
+        // Calculate how many new subgroups we need to create
+        const subgroupsToCreate = Math.max(0, maxSubgroupIdNeeded - currentSubgroupCount);
+
+        // Get transaction templates
         const assignMemberTransaction = getAllWriteTransactions().find(
           tx => tx.functionName === 'assignMemberToSubgroup'
+        );
+        const createSubgroupTransaction = getAllWriteTransactions().find(
+          tx => tx.functionName === 'createSubgroup'
         );
 
         if (!assignMemberTransaction) {
@@ -70,9 +86,28 @@ export function useAutoReorgMacro(): {|
           };
         }
 
-        // Create pre-filled transactions
+        if (subgroupsToCreate > 0 && !createSubgroupTransaction) {
+          return {
+            success: false,
+            error: 'createSubgroup transaction not found',
+          };
+        }
+
+        // Build transactions array: create subgroups first, then assignments
+        const transactions: WriteTransaction[] = [];
+
+        // Add create subgroup transactions if needed
+        for (let i = 0; i < subgroupsToCreate; i++) {
+          // $FlowFixMe - We've already checked that createSubgroupTransaction exists above
+          transactions.push({
+            ...createSubgroupTransaction,
+            displayName: `Create Subgroup ${currentSubgroupCount + i + 1}`,
+          });
+        }
+
+        // Add assignment transactions
         // $FlowFixMe - Flow doesn't understand that we've already checked reassignments exists
-        const transactions: WriteTransaction[] = result.reassignments.transactions.map(txData => ({
+        const assignmentTransactions = result.reassignments.transactions.map(txData => ({
           ...assignMemberTransaction,
           // $FlowFixMe - Adding prefilledParams to WriteTransaction
           prefilledParams: {
@@ -81,6 +116,8 @@ export function useAutoReorgMacro(): {|
             isReorging: txData.isReorging, // Keep as boolean, don't convert to string
           },
         }));
+
+        transactions.push(...assignmentTransactions);
 
         return {
           success: true,
