@@ -270,6 +270,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
 
       {/* Individual Transaction Modal */}
       <TransactionModal
+        key={`individual-${selectedTransaction?.functionName || 'no-transaction'}-${JSON.stringify(selectedTransaction?.prefilledParams || {})}`}
         visible={transactionModalVisible}
         transaction={selectedTransaction}
         onClose={handleTransactionModalClose}
@@ -287,6 +288,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
 
       {/* Transaction Chain Modal */}
       <TransactionModal
+        key={`chain-${transactionChain.currentTransaction?.functionName || 'no-transaction'}-${transactionChain.chainProgress?.current || 0}-${JSON.stringify(transactionChain.currentTransaction?.prefilledParams || {})}`}
         visible={transactionChain.isVisible}
         transaction={transactionChain.currentTransaction}
         onClose={handleChainTransactionClose}

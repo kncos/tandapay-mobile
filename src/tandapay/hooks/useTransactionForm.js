@@ -258,7 +258,7 @@ export function useTransactionForm(
       transaction.parameters.forEach((param) => {
         // Use pre-filled value if available, otherwise use default
         const prefilledValue = transaction.prefilledParams?.[param.name];
-        const defaultValue = prefilledValue || getDefaultValue(param);
+        const defaultValue = prefilledValue !== undefined ? prefilledValue : getDefaultValue(param);
         parameters[param.name] = defaultValue;
 
         // Validate the value to determine initial form validity
