@@ -140,11 +140,19 @@ export default function MacroIntroModal(props: Props): Node {
   // Load initial transaction count when visible
   useEffect(() => {
     if (currentMacro && visible && !isRefreshing && transactionCount === null) {
-      currentMacro.generateTransactions().then(transactions => {
-        setTransactionCount(transactions.length);
-      }).catch(() => {
-        setTransactionCount(0);
-      });
+      const loadInitialData = async () => {
+        setIsRefreshing(true);
+        try {
+          const transactions = await currentMacro.generateTransactions();
+          setTransactionCount(transactions.length);
+        } catch (error) {
+          setTransactionCount(0);
+        } finally {
+          setIsRefreshing(false);
+        }
+      };
+      
+      loadInitialData();
     }
   }, [currentMacro, visible, isRefreshing, transactionCount]);
 
@@ -203,6 +211,9 @@ export default function MacroIntroModal(props: Props): Node {
                 style={TandaPayStyles.button}
                 text="Refresh Data"
                 onPress={handleRefresh}
+                secondary
+                progress={isRefreshing}
+                disabled={isRefreshing}
               />
             </View>
             <View style={TandaPayStyles.buttonRow}>
@@ -210,6 +221,8 @@ export default function MacroIntroModal(props: Props): Node {
                 style={TandaPayStyles.button}
                 text="Continue"
                 onPress={handleContinue}
+                progress={isRefreshing}
+                disabled={isRefreshing}
               />
             </View>
           </View>
