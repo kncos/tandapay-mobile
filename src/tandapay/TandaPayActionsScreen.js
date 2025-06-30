@@ -154,7 +154,11 @@ export default function TandaPayActionsScreen(props: Props): Node {
         id: `macro-${macroName.toLowerCase().replace(/\s+/g, '-')}`,
         name: macroName,
         transactions,
-        onComplete,
+        onComplete: async () => {
+          if (onComplete) {
+            await onComplete();
+          }
+        },
         onError: async (error: string, transactionIndex: number) => {
           // Could show an error modal or refresh data
         },

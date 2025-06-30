@@ -11,6 +11,11 @@ import { MemberStatus } from '../../types';
 import type { MemberInfo, SubgroupInfo } from '../../types';
 
 /**
+ * Experimental flag: When true, compacts subgroup IDs to remove gaps and ensure consecutive numbering
+ */
+const USE_SUBGROUP_ID_COMPACTION = true;
+
+/**
  * Result of postprocessing auto-reorg output
  */
 export type PostprocessorResult = {|
@@ -40,6 +45,31 @@ export type AutoReorgTransactionData = {|
 |};
 
 /**
+ * Compact subgroup IDs to remove gaps and ensure consecutive numbering
+ *
+ * @param newSubgroups Map of subgroup ID to member addresses
+ * @returns Map with compacted subgroup IDs (starting from 1, consecutive)
+ */
+function compactSubgroupIds(
+  newSubgroups: Map<number, Array<string>>
+): Map<number, Array<string>> {
+  const compactedSubgroups = new Map<number, Array<string>>();
+
+  // Get all subgroup IDs and sort them
+  const subgroupIds = Array.from(newSubgroups.keys()).sort((a, b) => a - b);
+
+  // Reassign consecutive IDs starting from 1 (TandaPay subgroups are 1-based)
+  subgroupIds.forEach((originalId, index) => {
+    const members = newSubgroups.get(originalId);
+    if (members && members.length > 0) {
+      compactedSubgroups.set(index + 1, members);
+    }
+  });
+
+  return compactedSubgroups;
+}
+
+/**
  * Postprocess auto-reorg results to determine what transactions need to be executed
  *
  * @param originalMemberData Raw member data from contract
@@ -52,6 +82,11 @@ export function postprocessAutoReorgResults(
   originalSubgroupData: Array<SubgroupInfo>,
   newSubgroups: Map<number, Array<string>>
 ): PostprocessorResult {
+  // Conditionally compact subgroup IDs based on experimental flag
+  const processedSubgroups = USE_SUBGROUP_ID_COMPACTION
+    ? compactSubgroupIds(newSubgroups)
+    : newSubgroups;
+
   // Create mapping of member address -> original subgroup ID
   const originalAssignments = new Map<string, number>();
 
@@ -61,10 +96,10 @@ export function postprocessAutoReorgResults(
     originalAssignments.set(member.walletAddress, originalSubgroupId);
   }
 
-  // Create mapping of member address -> new subgroup ID
+  // Create mapping of member address -> new subgroup ID (using processed IDs)
   const newAssignments = new Map<string, number>();
 
-  for (const [subgroupId, members] of newSubgroups) {
+  for (const [subgroupId, members] of processedSubgroups) {
     for (const memberAddress of members) {
       newAssignments.set(memberAddress, subgroupId);
     }

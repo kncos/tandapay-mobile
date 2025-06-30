@@ -78,9 +78,26 @@ export function useAddRequiredMembers(): {|
 
       // Get current member count and state
       // $FlowFixMe[unclear-type] - mixed data from contract
-      const currentMemberCount = bigNumberToNumber(((typedCommunityData: any).currentMemberCount: mixed)) || 0;
+      const rawMemberCount = ((typedCommunityData: any).currentMemberCount: mixed);
+      const currentMemberCount = bigNumberToNumber(rawMemberCount) || 0;
+      
       // $FlowFixMe[unclear-type] - mixed data from contract
-      const isInInitializationState = ((typedCommunityData: any).currentState: string) === CommunityStates.initialization;
+      const rawCommunityState = ((typedCommunityData: any).communityState: mixed);
+      
+      // Community state is likely a BigNumber enum: 0 = initialization, 1 = operational, 2 = dissolved
+      let communityStateNumber = 0;
+      if (rawCommunityState != null) {
+        communityStateNumber = bigNumberToNumber(rawCommunityState) || 0;
+      }
+      
+      // Map numeric state to string (0 = initialization, 1 = operational, 2 = dissolved)
+      const communityStateString = communityStateNumber === 0
+        ? CommunityStates.initialization
+        : communityStateNumber === 1
+        ? CommunityStates.operational
+        : CommunityStates.dissolved;
+      
+      const isInInitializationState = communityStateString === CommunityStates.initialization;
 
       // Check if we're in the right state to add members
       if (!isInInitializationState) {
@@ -95,7 +112,6 @@ export function useAddRequiredMembers(): {|
           result,
           error: null,
         });
-
         return result;
       }
 

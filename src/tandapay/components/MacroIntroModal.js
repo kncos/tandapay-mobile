@@ -130,6 +130,7 @@ export default function MacroIntroModal(props: Props): Node {
       }
 
       // Start transaction chain for current macro
+      // Note: handleMacroComplete should only be called when ALL transactions complete, not after each one
       onStartTransactionChain(transactions, currentMacro.name, handleMacroComplete);
     } catch (error) {
       // Handle error - could show an alert or refresh

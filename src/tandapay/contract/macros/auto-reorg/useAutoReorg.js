@@ -160,22 +160,6 @@ export function useAutoReorg(): {|
         transactions.push(...assignmentTransactions);
       }
 
-      // // Pretty print the reassignments
-      // const transactionCount = transactions.length;
-      // // eslint-disable-next-line no-console
-      // console.log(`🔄 Auto-Reorg Complete: ${transactionCount} transactions needed`);
-      // if (transactionCount > 0) {
-      //   // eslint-disable-next-line no-console
-      //   console.log('📋 Required Transactions:');
-      //   for (const transaction of transactions) {
-      //     // eslint-disable-next-line no-console
-      //     console.log(`  ${transaction.displayName}`);
-      //   }
-      // } else {
-      //   // eslint-disable-next-line no-console
-      //   console.log('✅ No transactions needed - all members are optimally assigned');
-      // }
-
       const result: AutoReorgResult = {
         success: true,
         data: newSubgroups,

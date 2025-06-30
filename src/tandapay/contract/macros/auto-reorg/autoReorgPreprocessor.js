@@ -11,6 +11,13 @@ import type { MemberInfo } from '../../types';
 import type { AutoReorgParameters } from './autoReorgAlgorithm';
 
 /**
+ * Experimental flag: When true, removes members from invalid subgroups entirely
+ * instead of keeping them in the subgroups map. This ensures only valid subgroups
+ * are passed to the auto-reorg algorithm, with all invalid subgroup members in needsAssigned.
+ */
+const REMOVE_INVALID_SUBGROUPS = false;
+
+/**
  * Converts BigNumber to regular number for subgroup IDs
  */
 function bigNumberToNumber(bn: mixed): number {
@@ -62,18 +69,40 @@ export function preprocessMembersForAutoReorg(
     }
   }
 
-  // Step 4: Move members from invalid subgroups to needsAssigned
-  for (const [, membersList] of subgroups.entries()) {
-    if (membersList.length < SubgroupConstants.minSize) {
-      // Invalid subgroup - move all members to needsAssigned
-      needsAssigned.push(...membersList);
-      // Keep the subgroup but with the same members also in needsAssigned
-      // This allows the algorithm to filter them out properly
-    }
-  }
+  // Step 4: Handle invalid subgroups based on experimental flag
+  // TODO: note, this doesn't seem to work?
+  if (REMOVE_INVALID_SUBGROUPS) {
+    // New behavior: Remove invalid subgroups entirely and move all members to needsAssigned
+    const validSubgroups = new Map<number, string[]>();
 
-  return {
-    subgroups,
-    needsAssigned
-  };
+    for (const [subgroupId, membersList] of subgroups.entries()) {
+      if (membersList.length < SubgroupConstants.minSize) {
+        // Invalid subgroup - move all members to needsAssigned and don't include in final map
+        needsAssigned.push(...membersList);
+      } else {
+        // Valid subgroup - keep it
+        validSubgroups.set(subgroupId, membersList);
+      }
+    }
+
+    return {
+      subgroups: validSubgroups,
+      needsAssigned
+    };
+  } else {
+    // Original behavior: Move members from invalid subgroups to needsAssigned but keep subgroups
+    for (const [, membersList] of subgroups.entries()) {
+      if (membersList.length < SubgroupConstants.minSize) {
+        // Invalid subgroup - move all members to needsAssigned
+        needsAssigned.push(...membersList);
+        // Keep the subgroup but with the same members also in needsAssigned
+        // This allows the algorithm to filter them out properly
+      }
+    }
+
+    return {
+      subgroups,
+      needsAssigned
+    };
+  }
 }

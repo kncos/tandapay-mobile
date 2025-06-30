@@ -305,8 +305,13 @@ export default function TransactionModal(props: Props): Node {
     if (onTransactionComplete) {
       onTransactionComplete({ success: true, txHash });
     }
-    onClose();
-  }, [onTransactionComplete, onClose]);
+    
+    // Only close the modal if we're NOT in a workflow (transaction chain)
+    // If we're in a workflow, let the workflow logic handle modal state
+    if (!workflowProgress) {
+      onClose();
+    }
+  }, [onTransactionComplete, onClose, workflowProgress]);
 
   // Transaction error callback
   const handleTransactionError = useCallback((error: string) => {
