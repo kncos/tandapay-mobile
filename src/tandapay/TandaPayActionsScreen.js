@@ -19,6 +19,7 @@ import { IconRefreshCw, IconUserPlus, IconSettings } from '../common/Icons';
 import { useAutoReorg } from './contract/macros/auto-reorg/useAutoReorg';
 import { useAddRequiredMembers } from './contract/macros/add-required-members/useAddRequiredMembers';
 import { useDefineSuccessorList } from './contract/macros/define-successor-list/useDefineSuccessorList';
+import { useInitiateDefaultState } from './contract/macros/initiate-default-state/useInitiateDefaultState';
 import { useTransactionChain } from './hooks/useTransactionChain';
 import type { TransactionResult } from './hooks/useTransactionChain';
 
@@ -36,6 +37,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
   const autoReorg = useAutoReorg();
   const addRequiredMembers = useAddRequiredMembers();
   const defineSuccessorList = useDefineSuccessorList();
+  const initiateDefaultState = useInitiateDefaultState();
 
   // Initialize transaction chain
   const transactionChain = useTransactionChain();
@@ -69,7 +71,14 @@ export default function TandaPayActionsScreen(props: Props): Node {
       generateTransactions: defineSuccessorList.getTransactions,
       refresh: defineSuccessorList.refresh,
     },
-  }), [autoReorg.getTransactions, autoReorg.refresh, addRequiredMembers.getTransactions, addRequiredMembers.refresh, defineSuccessorList.getTransactions, defineSuccessorList.refresh]);
+    'initiate-default-state': {
+      id: 'initiate-default-state',
+      name: 'Initiate Default State',
+      description: 'Analyze community readiness and initiate the default operational state if all conditions are met.',
+      generateTransactions: initiateDefaultState.getTransactions,
+      refresh: initiateDefaultState.refresh,
+    },
+  }), [autoReorg.getTransactions, autoReorg.refresh, addRequiredMembers.getTransactions, addRequiredMembers.refresh, defineSuccessorList.getTransactions, defineSuccessorList.refresh, initiateDefaultState.getTransactions, initiateDefaultState.refresh]);
 
   // Helper function to handle individual transaction button press
   const handleTransactionPress = useCallback((transaction: WriteTransaction) => {
@@ -111,10 +120,11 @@ export default function TandaPayActionsScreen(props: Props): Node {
       macroDefinitions['add-required-members'],
       macroDefinitions['auto-reorg'],
       macroDefinitions['define-successor-list'],
+      macroDefinitions['initiate-default-state'],
     ];
 
     const [firstMacro, ...remainingMacros] = setupMacros;
-    
+
     const chainConfig: MacroChainConfig = {
       currentMacro: firstMacro,
       nextMacros: remainingMacros,
@@ -123,7 +133,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
         // Could navigate somewhere or show success message
       },
     };
-    
+
     setMacroChainConfig(chainConfig);
   }, [macroDefinitions]);
 
@@ -180,7 +190,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
         <NavRow
           leftElement={{ type: 'icon', Component: IconSettings }}
           title="Complete Community Setup"
-          subtitle="Run through all setup macros: Add Members → Auto-Reorg → Define Successors"
+          subtitle="Run through all setup macros: Add Members → Auto-Reorg → Define Successors → Initiate Default State"
           onPress={handleCompleteSetupPress}
         />
       </TandaRibbon>
@@ -204,6 +214,12 @@ export default function TandaPayActionsScreen(props: Props): Node {
           title={macroDefinitions['define-successor-list'].name}
           subtitle={macroDefinitions['define-successor-list'].description}
           onPress={() => handleMacroPress('define-successor-list')}
+        />
+        <NavRow
+          leftElement={{ type: 'icon', Component: IconSettings }}
+          title={macroDefinitions['initiate-default-state'].name}
+          subtitle={macroDefinitions['initiate-default-state'].description}
+          onPress={() => handleMacroPress('initiate-default-state')}
         />
       </TandaRibbon>
 

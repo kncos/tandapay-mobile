@@ -104,13 +104,13 @@ export function useAddRequiredMembers(): {|
 
       // Generate guidance transactions (these are informational, not executable)
       const transactions: WriteTransaction[] = [];
-      
+
       if (membersNeeded > 0) {
         // Get the addMemberToCommunity transaction template for guidance
         const addMemberTransaction = getAllWriteTransactions().find(
           tx => tx.functionName === 'addMemberToCommunity'
         );
-        
+
         if (addMemberTransaction) {
           // Create guidance transactions showing that members need to be added
           for (let i = 0; i < membersNeeded; i++) {

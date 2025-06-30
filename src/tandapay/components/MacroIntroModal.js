@@ -72,7 +72,7 @@ export default function MacroIntroModal(props: Props): Node {
     if (!currentMacro) {
       return;
     }
-    
+
     setIsRefreshing(true);
     try {
       await currentMacro.refresh();
@@ -92,7 +92,7 @@ export default function MacroIntroModal(props: Props): Node {
     }
 
     const { nextMacros, onChainComplete } = macroChainConfig;
-    
+
     if (nextMacros && nextMacros.length > 0) {
       // Move to next macro in chain
       const [nextMacro, ...remainingMacros] = nextMacros;
@@ -101,7 +101,7 @@ export default function MacroIntroModal(props: Props): Node {
         nextMacros: remainingMacros,
         onChainComplete,
       };
-      
+
       if (onMacroChainAdvance) {
         onMacroChainAdvance(nextChainConfig);
       }
@@ -122,7 +122,7 @@ export default function MacroIntroModal(props: Props): Node {
     try {
       // Generate transactions for current macro
       const transactions = await currentMacro.generateTransactions();
-      
+
       if (transactions.length === 0) {
         // No transactions needed, move to next macro immediately
         await handleMacroComplete();
@@ -151,7 +151,7 @@ export default function MacroIntroModal(props: Props): Node {
           setIsRefreshing(false);
         }
       };
-      
+
       loadInitialData();
     }
   }, [currentMacro, visible, isRefreshing, transactionCount]);

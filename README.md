@@ -35,6 +35,7 @@ Features of TandaPay Mobile include:
   - [x] Auto reorganize all members into valid subgroups workflow
   - [x] Adding required number of members to exit initialization state workflow
   - [x] Defining secretary successors workflow
+  - [x] intelligent default state initialization macro
   - [x] exiting the initialization state workflow (chained macro)
 - [ ] a refined user onboarding experience using the existing server infrastructure, but with modifications to make sign-up go more smoothly within TandaPay mobile's application
 
