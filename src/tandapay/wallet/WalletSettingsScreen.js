@@ -10,10 +10,6 @@ import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import TandaPayStyles, { TandaPayColors, TandaPayLayout } from '../styles';
 import {
-  hasEtherscanApiKey,
-  storeEtherscanApiKey,
-  getEtherscanApiKey,
-  deleteEtherscanApiKey,
   hasAlchemyApiKey,
   storeAlchemyApiKey,
   getAlchemyApiKey,
@@ -28,7 +24,6 @@ type Props = $ReadOnly<{|
 |}>;
 
 export default function WalletSettingsScreen(props: Props): Node {
-  const [hasApiKey, setHasApiKey] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const handleDeleteWallet = useCallback(async () => {
@@ -71,30 +66,11 @@ export default function WalletSettingsScreen(props: Props): Node {
   // Check if API key exists on component mount
   useEffect(() => {
     const checkApiKey = async () => {
-      const result = await hasEtherscanApiKey();
-      if (result.success) {
-        setHasApiKey(result.data);
-      } else {
-        // Error checking API key - default to false
-        setHasApiKey(false);
-      }
+      // Just simulate loading for consistency
       setLoading(false);
     };
 
     checkApiKey();
-  }, []);
-
-  // Create API key methods object for the reusable component
-  const etherscanApiKeyMethods = {
-    hasApiKey: hasEtherscanApiKey,
-    getApiKey: getEtherscanApiKey,
-    storeApiKey: storeEtherscanApiKey,
-    deleteApiKey: deleteEtherscanApiKey,
-  };
-
-  // Callback to update the status card when API key changes
-  const handleApiKeyChange = useCallback((hasKey: boolean) => {
-    setHasApiKey(hasKey);
   }, []);
 
   if (loading) {
@@ -111,24 +87,10 @@ export default function WalletSettingsScreen(props: Props): Node {
     <Screen title="Wallet Settings" canGoBack>
       <ScrollView style={TandaPayLayout.screen}>
         <View style={TandaPayLayout.scrollPadded}>
-          {/* Etherscan API Configuration Section */}
-          <View style={TandaPayLayout.section}>
-            {/* API Key Management */}
-            <ApiKeyCard
-              title="Etherscan API Key"
-              description="Configure your Etherscan API key to enable transaction history and enhanced blockchain data features."
-              inputLabel={hasApiKey ? 'Update API Key' : 'Etherscan API Key'}
-              inputPlaceholder="Enter your Etherscan API key"
-              updateInputPlaceholder="Enter new Etherscan API key"
-              apiKeyMethods={etherscanApiKeyMethods}
-              onApiKeyChange={handleApiKeyChange}
-            />
-          </View>
-
           <View style={TandaPayLayout.section}>
             <ApiKeyCard
               title="Alchemy API Key"
-              description="Configure your Alchemy API key for enhanced transaction data and better performance."
+              description="Configure your Alchemy API key for transaction history and enhanced blockchain data features."
               inputLabel="Alchemy API Key"
               inputPlaceholder="Enter your Alchemy API key"
               updateInputPlaceholder="Enter new Alchemy API key"
@@ -141,7 +103,7 @@ export default function WalletSettingsScreen(props: Props): Node {
             />
           </View>
 
-          {/* Back to Wallet Button */}
+          {/* Delete Wallet Button */}
           <View style={TandaPayLayout.buttonRow}>
             <ZulipButton
               text="Delete Wallet"

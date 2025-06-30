@@ -18,7 +18,7 @@ export type TandaPayError = $ReadOnly<{|
   type: ErrorType,
   message: string,
   userMessage?: string,  // User-friendly message for display
-  code?: string,         // Specific error code (e.g., 'ETHERSCAN_API_INVALID')
+  code?: string,         // Specific error code (e.g., 'ALCHEMY_API_INVALID')
   details?: mixed,       // Additional error context
   retryable?: boolean,   // Whether operation can be retried
   timestamp: number,

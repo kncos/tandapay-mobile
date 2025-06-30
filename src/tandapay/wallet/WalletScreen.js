@@ -14,7 +14,7 @@ import WalletBalanceCard from './WalletBalanceCard';
 import ZulipText from '../../common/ZulipText';
 import { TandaRibbon } from '../components';
 import { BRAND_COLOR } from '../../styles';
-import { hasWallet, getWalletAddress, hasEtherscanApiKey } from './WalletManager';
+import { hasWallet, getWalletAddress, hasAlchemyApiKey } from './WalletManager';
 import { useNavigation } from '../../react-navigation';
 import { useSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getCurrentTandaPayContractAddress } from '../redux/selectors';
@@ -108,7 +108,7 @@ export default function WalletScreen(props: Props): Node {
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const tandaPayContractAddress = useSelector(getCurrentTandaPayContractAddress);
 
-  // Filter out custom networks since Alchemy/Etherscan only support specific networks
+  // Filter out custom networks since Alchemy only supports specific networks
   const supportedNetwork = selectedNetwork === 'custom' ? 'sepolia' : selectedNetwork;
 
   // Use the transaction management hook
@@ -156,7 +156,7 @@ export default function WalletScreen(props: Props): Node {
         }
 
         // Check if API key is configured
-        const apiKeyResult = await hasEtherscanApiKey();
+        const apiKeyResult = await hasAlchemyApiKey();
         if (apiKeyResult.success) {
           const hasApiKey = apiKeyResult.data;
           if (isMounted) {

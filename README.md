@@ -13,7 +13,7 @@ Features of TandaPay Mobile include:
   - [x] supports chronological transaction history including ERC20 token transfers
   - [x] supports securely generating new wallet mnemonic or importing existing ones
   - [x] supports detailed transaction information and block explorer integrations
-  - [x] can be configured with Etherscan or Alchemy API keys (these can be gotten for free) for better information display 
+  - [x] can be configured with an Alchemy API key (free to obtain) for enhanced transaction data and better performance 
   - [x] if an alchemy api key is provided, RPC urls will fall back to alchemy endpoints for better performance
   - [x] has a built-in integration with TandaPay so that TandaPay contract transactions show up in a user friendly manner
 - [x] Configurable Network Settings:
