@@ -66,16 +66,20 @@ export default function useTransactionHistory({
   // Use refs to maintain instances across re-renders
   const alchemyFetcherRef = useRef<?AlchemyTransferFetcher>(null);
   const managerRef = useRef<?ChronologicalTransferManager>(null);
+  const isMountedRef = useRef<boolean>(true);
 
   // Helper function to process raw transfers into etherscan format
   const processTransfers = useCallback(async (rawTransfers: $ReadOnlyArray<Transfer>) => {
-    if (walletAddress == null || walletAddress === '') {
+    if (walletAddress == null || walletAddress === '' || !isMountedRef.current) {
       return rawTransfers;
     }
 
     try {
       const processedTransfers = await Promise.all(
         rawTransfers.map(async (transfer) => {
+          if (!isMountedRef.current) {
+            return transfer;
+          }
           try {
             const result = await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
             return result;
@@ -85,6 +89,11 @@ export default function useTransactionHistory({
           }
         })
       );
+      
+      if (!isMountedRef.current) {
+        return rawTransfers;
+      }
+      
       return processedTransfers;
     } catch (error) {
       // If all processing fails, return original transfers
@@ -94,13 +103,17 @@ export default function useTransactionHistory({
 
   // Initialize Alchemy and managers when needed
   const initializeManagers = useCallback(async () => {
-    if (walletAddress == null || walletAddress === '' || !apiKeyConfigured) {
+    if (walletAddress == null || walletAddress === '' || !apiKeyConfigured || !isMountedRef.current) {
       return null;
     }
 
     try {
       // Check if API key is available using our helper
       if (!await hasAlchemyApiKey()) {
+        return null;
+      }
+
+      if (!isMountedRef.current) {
         return null;
       }
 
@@ -133,6 +146,10 @@ export default function useTransactionHistory({
       return;
     }
 
+    if (!isMountedRef.current) {
+      return;
+    }
+
     setTransactionState({ status: 'loading' });
 
     try {
@@ -152,12 +169,20 @@ export default function useTransactionHistory({
       // Process the transactions before setting state
       const processedTransfers = await processTransfers(result.transfers);
 
+      if (!isMountedRef.current) {
+        return;
+      }
+
       setTransactionState({
         status: 'success',
         transfers: processedTransfers,
         hasMore: result.metadata.hasMore,
       });
     } catch (error) {
+      if (!isMountedRef.current) {
+        return;
+      }
+
       const tandaPayError = TandaPayErrorHandler.createError(
         'API_ERROR',
         error.message || 'Failed to fetch transactions',
@@ -195,6 +220,7 @@ export default function useTransactionHistory({
       || loadMoreState.status === 'loading'
       || loadMoreState.status === 'complete'
       || !managerRef.current
+      || !isMountedRef.current
     ) {
       return;
     }
@@ -211,6 +237,10 @@ export default function useTransactionHistory({
       // Process the new transactions before adding them
       const processedNewTransfers = await processTransfers(result.transfers);
 
+      if (!isMountedRef.current) {
+        return;
+      }
+
       setTransactionState({
         status: 'success',
         transfers: [...transactionState.transfers, ...processedNewTransfers],
@@ -219,6 +249,9 @@ export default function useTransactionHistory({
 
       setLoadMoreState(result.metadata.hasMore ? { status: 'idle' } : { status: 'complete' });
     } catch (error) {
+      if (!isMountedRef.current) {
+        return;
+      }
       // For load more errors, just mark as complete
       setLoadMoreState({ status: 'complete' });
     }
@@ -243,6 +276,7 @@ export default function useTransactionHistory({
   // Cleanup on unmount
   useEffect(() => () => {
     // Clear refs on unmount
+    isMountedRef.current = false;
     alchemyFetcherRef.current = null;
     managerRef.current = null;
   }, []);
