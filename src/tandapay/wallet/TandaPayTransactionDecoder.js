@@ -12,7 +12,8 @@
 import { ethers } from 'ethers';
 // $FlowFixMe[untyped-import] - TandaPay contract import
 import { TandaPayInfo } from '../contract/utils/TandaPay';
-import { getAlchemyApiKey } from './WalletManager';
+import { getAlchemyRpcUrl } from '../providers/ProviderManager';
+import type { SupportedNetwork } from '../definitions';
 
 export type DecodedTandaPayTransaction = {|
   methodName: string,
@@ -123,33 +124,19 @@ const METHOD_DISPLAY_NAMES = {
  */
 async function fetchTransactionInputData(
   txHash: string,
-  network: string = 'sepolia'
+  network?: string
 ): Promise<?string> {
   try {
-    const apiKeyResult = await getAlchemyApiKey();
-    if (!apiKeyResult.success || apiKeyResult.data == null || apiKeyResult.data === '') {
+    // Convert string network to SupportedNetwork, defaulting to sepolia
+    const supportedNetwork: SupportedNetwork =
+      (network === 'mainnet' || network === 'sepolia' || network === 'arbitrum' || network === 'polygon')
+        ? network
+        : 'sepolia';
+
+    // Use the centralized helper to get the Alchemy RPC URL
+    const alchemyUrl = await getAlchemyRpcUrl(supportedNetwork);
+    if (alchemyUrl == null || alchemyUrl === '') {
       return null;
-    }
-
-    const apiKey = apiKeyResult.data;
-    let alchemyUrl;
-
-    // Map network to Alchemy URL
-    switch (network) {
-      case 'mainnet':
-        alchemyUrl = `https://eth-mainnet.g.alchemy.com/v2/${apiKey}`;
-        break;
-      case 'sepolia':
-        alchemyUrl = `https://eth-sepolia.g.alchemy.com/v2/${apiKey}`;
-        break;
-      case 'arbitrum':
-        alchemyUrl = `https://arb-mainnet.g.alchemy.com/v2/${apiKey}`;
-        break;
-      case 'polygon':
-        alchemyUrl = `https://polygon-mainnet.g.alchemy.com/v2/${apiKey}`;
-        break;
-      default:
-        return null;
     }
 
     const response = await fetch(alchemyUrl, {

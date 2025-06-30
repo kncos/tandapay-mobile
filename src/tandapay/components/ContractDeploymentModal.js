@@ -12,6 +12,7 @@ import { getAvailableTokens } from '../tokens/tokenSelectors';
 import { updateTandaPaySettings } from '../redux/actions';
 import { createProvider } from '../providers/ProviderManager';
 import { getWalletInstance } from '../wallet/WalletManager';
+import { estimateContractDeploymentGas } from '../web3';
 // $FlowFixMe[untyped-import] - TandaPay contract import
 import { TandaPayInfo } from '../contract/utils/TandaPay';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
@@ -78,22 +79,6 @@ const styles = StyleSheet.create({
     ...TandaPayTypography.label,
     marginBottom: 8,
   },
-  estimateSection: {
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: TandaPayColors.white,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: TandaPayColors.subtle,
-  },
-  estimateTitle: {
-    ...TandaPayTypography.label,
-    marginBottom: 8,
-  },
-  estimateValue: {
-    ...TandaPayTypography.body,
-    fontWeight: 'bold',
-  },
   errorText: {
     ...TandaPayTypography.body,
     color: TandaPayColors.error,
@@ -130,7 +115,14 @@ export default function ContractDeploymentModal(props: Props): Node {
   const [customGasLimit, setCustomGasLimit] = useState('15000000'); // 15M default
   const [isEstimating, setIsEstimating] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
-  const [gasEstimate, setGasEstimate] = useState<?string>(null);
+  const [gasEstimate, setGasEstimate] = useState<?{|
+    gasLimit: string,
+    gasPrice: string,
+    totalCost: string,
+    isEIP1559: boolean,
+    maxPriorityFeePerGas: string,
+    baseFeePerGas: ?string,
+  |}>(null);
   const [errorMessage, setErrorMessage] = useState<?string>(null);
 
   // Validation
@@ -139,8 +131,7 @@ export default function ContractDeploymentModal(props: Props): Node {
   const canEstimate = selectedToken != null
     && secretaryAddress.trim() !== ''
     && isValidSecretaryAddress
-    && isValidGasLimit
-    && selectedNetwork !== 'custom';
+    && isValidGasLimit;
   const canDeploy = canEstimate && gasEstimate != null;
 
   const handleClose = useCallback(() => {
@@ -162,7 +153,13 @@ export default function ContractDeploymentModal(props: Props): Node {
   }, []);
 
   const handleEstimateGas = useCallback(async () => {
-    if (!selectedToken || !secretaryAddress.trim() || selectedNetwork === 'custom') {
+    if (!selectedToken || !secretaryAddress.trim()) {
+      return;
+    }
+
+    // Check for custom network and show appropriate error
+    if (selectedNetwork === 'custom') {
+      setErrorMessage('Contract deployment is not supported on custom networks. Please switch to a supported network.');
       return;
     }
 
@@ -188,7 +185,7 @@ export default function ContractDeploymentModal(props: Props): Node {
 
         const signer = walletResult.data;
 
-        // Create contract factory with error handling
+        // Create contract factory
         const factory = new ethers.ContractFactory(
           TandaPayInfo.abi,
           TandaPayInfo.bytecode.object,
@@ -198,45 +195,41 @@ export default function ContractDeploymentModal(props: Props): Node {
         // Get token address (use zero address for native token)
         const tokenAddress = (selectedToken.address != null && selectedToken.address !== '')
           ? selectedToken.address
-          : ethers.constants.AddressZero;        // Create deployment transaction data
-        const deployTransaction = factory.getDeployTransaction(tokenAddress, secretaryAddress.trim());
+          : ethers.constants.AddressZero;
 
-        // Use custom gas limit for estimation
-        const userGasLimit = ethers.BigNumber.from(customGasLimit);
+        // Use our EIP-1559 aware gas estimation
+        const gasEstimationResult = await estimateContractDeploymentGas(
+          signer,
+          factory,
+          [tokenAddress, secretaryAddress.trim()]
+        );
 
-        // Validate that the custom gas limit is sufficient by estimating
-        await signer.estimateGas({
-          ...deployTransaction,
-          gasLimit: userGasLimit,
-        });
+        if (!gasEstimationResult.success) {
+          throw new Error(gasEstimationResult.error.userMessage ?? 'Gas estimation failed');
+        }
 
-        // Get gas price
-        // $FlowFixMe[incompatible-use] - provider.getGasPrice exists on ethers provider
-        const gasPrice = await provider.getGasPrice();
-        const totalCost = userGasLimit.mul(gasPrice);
-
+        const gasData = gasEstimationResult.data;
+        
         return {
-          gasLimit: userGasLimit.toString(),
-          gasPrice: gasPrice.toString(),
-          totalCost: ethers.utils.formatEther(totalCost),
+          gasLimit: gasData.gasLimit,
+          gasPrice: gasData.maxFeePerGas, // Use maxFeePerGas for display
+          totalCost: gasData.estimatedTotalCostETH,
+          isEIP1559: gasData.isEIP1559,
+          maxPriorityFeePerGas: gasData.maxPriorityFeePerGas,
+          baseFeePerGas: gasData.baseFeePerGas,
         };
       },
-      'CONTRACT_ERROR',
-      'Failed to estimate contract deployment cost. This may be due to high gas prices or network congestion.',
-      'GAS_ESTIMATION_FAILED'
+      'CONTRACT_ERROR'
     );
 
     setIsEstimating(false);
 
     if (estimationResult.success) {
-      const { totalCost, gasLimit } = estimationResult.data;
-      setGasEstimate(`${totalCost} ETH (Gas: ${gasLimit})`);
+      setGasEstimate(estimationResult.data);
     } else {
-      // Show user-friendly error alert
-      TandaPayErrorHandler.handleError(estimationResult.error, true);
-      setErrorMessage(estimationResult.error.userMessage ?? 'Gas estimation failed');
+      setErrorMessage(estimationResult.error.userMessage ?? 'Failed to estimate gas costs');
     }
-  }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit]);
+  }, [selectedToken, secretaryAddress, selectedNetwork]);
 
   const handleDeploy = useCallback(async () => {
     if (!selectedToken || !secretaryAddress.trim() || selectedNetwork === 'custom') {
@@ -414,15 +407,52 @@ export default function ContractDeploymentModal(props: Props): Node {
               </View>
             )}
 
-            {(gasEstimate != null && gasEstimate !== '') && !isEstimating && (
-              <View style={styles.estimateSection}>
-                <ZulipText style={styles.estimateTitle}>
-                  Estimated Deployment Cost
+            {gasEstimate != null && !isEstimating && (
+              <Card style={{ marginBottom: 16, marginTop: 16 }}>
+                <ZulipText style={styles.sectionTitle}>
+                  Gas Estimate
                 </ZulipText>
-                <ZulipText style={styles.estimateValue}>
-                  {gasEstimate}
-                </ZulipText>
-              </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <ZulipText style={{ fontWeight: 'bold' }}>Gas Limit:</ZulipText>
+                  <ZulipText>
+                    {gasEstimate.gasLimit}
+                    {' '}
+                    units
+                  </ZulipText>
+                </View>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <ZulipText style={{ fontWeight: 'bold' }}>
+                    {gasEstimate.isEIP1559 ? 'Max Fee:' : 'Gas Price:'}
+                  </ZulipText>
+                  <ZulipText>
+                    {gasEstimate.gasPrice}
+                    {' '}
+                    gwei
+                  </ZulipText>
+                </View>
+
+                {gasEstimate.isEIP1559 && (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <ZulipText style={{ fontWeight: 'bold' }}>Priority Fee:</ZulipText>
+                    <ZulipText>
+                      {gasEstimate.maxPriorityFeePerGas}
+                      {' '}
+                      gwei
+                    </ZulipText>
+                  </View>
+                )}
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <ZulipText style={{ fontWeight: 'bold' }}>Estimated Cost:</ZulipText>
+                  <ZulipText>
+                    {gasEstimate.totalCost}
+                    {' '}
+                    ETH
+                  </ZulipText>
+                </View>
+              </Card>
             )}
 
             <View style={TandaPayStyles.buttonRow}>

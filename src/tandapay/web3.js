@@ -846,4 +846,93 @@ export async function estimateContractTransactionGas(
   );
 }
 
+/**
+ * Estimate gas for contract deployment using EIP-1559 aware gas pricing
+ */
+export async function estimateContractDeploymentGas(
+  signer: mixed,
+  contractFactory: mixed,
+  constructorArgs: mixed[] = [],
+): Promise<TandaPayResult<GasEstimationResult>> {
+  return TandaPayErrorHandler.withEthersErrorHandling(
+    async () => {
+      if (signer == null || contractFactory == null) {
+        throw TandaPayErrorHandler.createError('CONTRACT_ERROR', 'Signer or contract factory not provided', {
+          userMessage: 'Unable to estimate deployment gas. Please check your wallet connection.',
+        });
+      }
+
+      // $FlowFixMe[incompatible-use] - signer is validated above
+      const provider = signer.provider;
+      if (!provider) {
+        throw TandaPayErrorHandler.createError('WALLET_ERROR', 'Signer provider is not set', {
+          userMessage: 'Unable to access network. Please check your connection.',
+        });
+      }
+
+      // Add timeout protection
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(
+            TandaPayErrorHandler.createError('TIMEOUT_ERROR', 'Gas estimation timed out', {
+              userMessage: 'Gas estimation took too long. Please try again.',
+              retryable: true,
+            }),
+          );
+        }, 15000); // 15 second timeout
+      });
+
+      // Get comprehensive fee data
+      const feeDataPromise = provider.getFeeData();
+      const feeData = await Promise.race([feeDataPromise, timeoutPromise]);
+
+      let maxFeePerGas;
+      let maxPriorityFeePerGas;
+      let baseFeePerGas = null;
+      let isEIP1559 = false;
+
+      if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+        // EIP-1559 supported network
+        isEIP1559 = true;
+        maxFeePerGas = feeData.maxFeePerGas;
+        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
+        // In EIP-1559, gasPrice often represents the baseFeePerGas
+        baseFeePerGas = feeData.gasPrice;
+      } else {
+        // Legacy network - use gasPrice with a reasonable buffer
+        isEIP1559 = false;
+        const gasPrice = feeData.gasPrice || (await provider.getGasPrice());
+        // Add 20% buffer for legacy networks to account for price volatility
+        maxFeePerGas = gasPrice.mul(120).div(100);
+        maxPriorityFeePerGas = ethers.BigNumber.from(0); // No priority fee for legacy
+      }
+
+      // Get deployment transaction data
+      // $FlowFixMe[incompatible-use] - contractFactory is validated above
+      const deployTransaction = contractFactory.getDeployTransaction(...constructorArgs);
+
+      // Estimate gas limit for deployment
+      // $FlowFixMe[incompatible-use] - signer is validated above
+      const gasLimitPromise = signer.estimateGas(deployTransaction);
+      const gasLimit = await Promise.race([gasLimitPromise, timeoutPromise]);
+
+      // Calculate maximum possible cost (what gets reserved from balance)
+      const estimatedTotalCost = maxFeePerGas.mul(gasLimit);
+
+      // Format results for easy consumption
+      const result: GasEstimationResult = {
+        gasLimit: gasLimit.toString(),
+        maxFeePerGas: ethers.utils.formatUnits(maxFeePerGas, 'gwei'),
+        maxPriorityFeePerGas: ethers.utils.formatUnits(maxPriorityFeePerGas, 'gwei'),
+        estimatedTotalCostETH: ethers.utils.formatEther(estimatedTotalCost),
+        isEIP1559,
+        baseFeePerGas: baseFeePerGas ? ethers.utils.formatUnits(baseFeePerGas, 'gwei') : null,
+      };
+
+      return result;
+    },
+    'CONTRACT_ERROR',
+  );
+}
+
 // =============================================================================

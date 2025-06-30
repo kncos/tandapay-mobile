@@ -44,7 +44,7 @@ type NetworkConfig = {|
  */
 async function getNetworkConfig(network: SupportedNetwork): Promise<NetworkConfig> {
   const chain = getChainByNetwork(network);
-  
+
   // Try to get Alchemy URL first (for better performance), fall back to default
   const alchemyUrl = await getAlchemyRpcUrl(network);
   const rpcUrl = (alchemyUrl != null && alchemyUrl !== '') ? alchemyUrl : chain.rpcUrls.default.http[0];
