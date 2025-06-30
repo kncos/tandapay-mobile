@@ -14,9 +14,10 @@ import { getSuggestedMethods } from './contract/suggestedMethods';
 import TransactionModal from './components/TransactionModal';
 import { TandaRibbon } from './components';
 import { AUTO_REORG_MACRO } from './contract/macros/auto-reorg';
-import { IconRefreshCw, IconUserPlus } from '../common/Icons';
+import { IconRefreshCw, IconUserPlus, IconSettings } from '../common/Icons';
 import { useAutoReorgMacro } from './contract/macros/auto-reorg/autoReorgMacroAdapter';
 import { useAddRequiredMembersMacro } from './contract/macros/add-required-members/addRequiredMembersMacroAdapter';
+import { useDefineSuccessorListAdapter } from './contract/macros/define-successor-list/defineSuccessorListAdapter';
 import MacroWorkflow from './components/MacroWorkflow';
 
 type Props = $ReadOnly<{|
@@ -29,12 +30,16 @@ export default function TandaPayActionsScreen(props: Props): Node {
   const [modalVisible, setModalVisible] = useState(false);
   const [macroWorkflowVisible, setMacroWorkflowVisible] = useState(false);
   const [addMembersWorkflowVisible, setAddMembersWorkflowVisible] = useState(false);
+  const [defineSuccessorWorkflowVisible, setDefineSuccessorWorkflowVisible] = useState(false);
 
   // Initialize auto-reorg macro hook
   const { macro: autoReorgMacro } = useAutoReorgMacro();
 
   // Initialize add required members macro hook
   const { macro: addRequiredMembersMacro } = useAddRequiredMembersMacro();
+
+  // Initialize define successor list macro hook
+  const { macro: defineSuccessorListMacro } = useDefineSuccessorListAdapter();
 
   // Get all write transactions with metadata
   // Note: The TransactionModal now integrates with real contract instances
@@ -76,6 +81,11 @@ export default function TandaPayActionsScreen(props: Props): Node {
     setAddMembersWorkflowVisible(true);
   }, []);
 
+  // Define successor list handler - launches macro workflow
+  const handleDefineSuccessorListPress = useCallback(() => {
+    setDefineSuccessorWorkflowVisible(true);
+  }, []);
+
   // Handle macro workflow completion
   const handleMacroWorkflowComplete = useCallback(() => {
     // The MacroWorkflow component will handle closing itself
@@ -90,6 +100,11 @@ export default function TandaPayActionsScreen(props: Props): Node {
   // Handle add members workflow close
   const handleAddMembersWorkflowClose = useCallback(() => {
     setAddMembersWorkflowVisible(false);
+  }, []);
+
+  // Handle define successor workflow close
+  const handleDefineSuccessorWorkflowClose = useCallback(() => {
+    setDefineSuccessorWorkflowVisible(false);
   }, []);
 
   return (
@@ -107,6 +122,12 @@ export default function TandaPayActionsScreen(props: Props): Node {
           title={addRequiredMembersMacro.name}
           subtitle={addRequiredMembersMacro.description}
           onPress={handleAddRequiredMembersPress}
+        />
+        <NavRow
+          leftElement={{ type: 'icon', Component: IconSettings }}
+          title={defineSuccessorListMacro.name}
+          subtitle={defineSuccessorListMacro.description}
+          onPress={handleDefineSuccessorListPress}
         />
       </TandaRibbon>
 
@@ -171,6 +192,13 @@ export default function TandaPayActionsScreen(props: Props): Node {
         macro={addRequiredMembersMacro}
         visible={addMembersWorkflowVisible}
         onClose={handleAddMembersWorkflowClose}
+        onComplete={handleMacroWorkflowComplete}
+      />
+
+      <MacroWorkflow
+        macro={defineSuccessorListMacro}
+        visible={defineSuccessorWorkflowVisible}
+        onClose={handleDefineSuccessorWorkflowClose}
         onComplete={handleMacroWorkflowComplete}
       />
     </Screen>
