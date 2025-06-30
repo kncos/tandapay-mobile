@@ -15,6 +15,7 @@ import FormStyles from '../styles/forms';
 import { ThemeContext } from '../../styles';
 import AddressInput from './AddressInput';
 import Card from './Card';
+import { ExpectedSuccessorCounts } from '../contract/constants';
 
 type Props = $ReadOnly<{|
   addresses: string[],
@@ -40,7 +41,7 @@ export default function AddressArrayInput(props: Props): Node {
     onAddressesChange,
     label,
     description,
-    maxAddresses = 10,
+    maxAddresses = ExpectedSuccessorCounts.communityLargerThan35,
     disabled = false,
     style,
   } = props;

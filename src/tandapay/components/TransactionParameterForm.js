@@ -12,6 +12,7 @@ import NumberInput from './NumberInput';
 import BooleanToggle from './BooleanToggle';
 import AddressArrayInput from './AddressArrayInput';
 import ErrorText from './ErrorText';
+import { ExpectedSuccessorCounts } from '../contract/constants';
 
 import FormStyles from '../styles/forms';
 import { TandaPayColors } from '../styles';
@@ -46,7 +47,8 @@ function renderParameterInput(
   value: any,
   error: ?string,
   onParameterChange: (name: string, value: any) => void,
-  themeData: any
+  themeData: any,
+  transaction: WriteTransaction
 ): React$Node {
   const { name, type, label, placeholder, isCurrency } = parameter;
 
@@ -106,17 +108,65 @@ function renderParameterInput(
         </View>
       );
 
-    case 'address[]':
+    case 'address[]': {
+      // MACRO INTEGRATION SUPPORT:
+      // This case handles address[] parameters and supports macro-driven configuration.
+      // Macros can control the address limit in two ways:
+      //
+      // Method 1: Via prefilledParams.maxAddresses
+      // transaction.prefilledParams = { maxAddresses: 4, ...otherParams }
+      //
+      // Method 2: Via displayName suffix (fallback)
+      // transaction.displayName = "Define Secretary Successor List (4 addresses)"
+      //
+      // The address limit determines how many address inputs the user can add,
+      // indicating to the secretary how many addresses they should provide.
+
+      // Determine maxAddresses based on the transaction and parameter
+      // This allows different transactions to have different limits
+      // and enables macros to configure custom limits in the future
+      let maxAddresses = ExpectedSuccessorCounts.communityLargerThan35; // Default for most address arrays
+
+      // Transaction-specific limits
+      if (transaction.functionName === 'defineSecretarySuccessorList' && name === 'successorListWalletAddresses') {
+        // For secretary successor list, use the constant for larger communities
+        // This matches the smart contract's expected successor count
+        maxAddresses = ExpectedSuccessorCounts.communityLargerThan35;
+      }
+
+      // Allow macros to override maxAddresses via transaction metadata
+      // Macros can set this to indicate how many addresses the user should input
+      if (transaction.prefilledParams && transaction.prefilledParams.maxAddresses) {
+        const macroMaxAddresses = transaction.prefilledParams.maxAddresses;
+        if (typeof macroMaxAddresses === 'number' && macroMaxAddresses > 0) {
+          maxAddresses = macroMaxAddresses;
+        }
+      }
+
+      // Macros can also set this via displayName suffix (e.g., "Define Secretary Successor List (4 addresses)")
+      // This provides a fallback method for macros that don't use prefilledParams
+      if (transaction.displayName && transaction.displayName.includes('(') && transaction.displayName.includes('addresses)')) {
+        const match = transaction.displayName.match(/\((\d+) addresses?\)/);
+        if (match && match[1]) {
+          const countFromDisplayName = parseInt(match[1], 10);
+          if (!Number.isNaN(countFromDisplayName) && countFromDisplayName > 0) {
+            maxAddresses = countFromDisplayName;
+          }
+        }
+      }
+
       return (
         <View key={name} style={styles.parameterContainer}>
           <AddressArrayInput
             label={label}
             addresses={value || []}
             onAddressesChange={(newValue: string[]) => onParameterChange(name, newValue)}
+            maxAddresses={maxAddresses}
           />
           {error && <ErrorText>{error}</ErrorText>}
         </View>
       );
+    }
 
     default:
       // Fallback for unknown types
@@ -177,7 +227,8 @@ export default function TransactionParameterForm({
             value,
             error,
             onParameterChange,
-            themeData
+            themeData,
+            transaction
           );
         })}
       </View>

@@ -360,7 +360,49 @@ function createTransactions(result: ExampleMacroResult) {
 }
 ```
 
-### Pattern 3: Mixed Transactions
+### Pattern 3: Address Array Configuration
+
+Use this pattern when you need to configure the number of addresses a user should input:
+
+```javascript
+function createTransactions(result: ExampleMacroResult) {
+  const baseTransaction = getWriteTransactionByName('defineSecretarySuccessorList');
+  
+  if (!baseTransaction) {
+    return {
+      success: false,
+      error: 'Target transaction not found',
+    };
+  }
+
+  // Method 1: Configure via prefilledParams.maxAddresses
+  const transactions: WriteTransaction[] = [{
+    ...baseTransaction,
+    displayName: `Define Secretary Successor List (${result.successorCount} needed)`,
+    // $FlowFixMe - Adding prefilledParams to WriteTransaction
+    prefilledParams: {
+      maxAddresses: result.successorCount, // This controls the address array limit
+      // Can also include pre-filled addresses if known:
+      // successorListWalletAddresses: result.knownAddresses || [],
+    },
+  }];
+
+  // Method 2: Configure via displayName (fallback approach)
+  // The TransactionParameterForm will parse "(N addresses)" from displayName
+  const alternativeTransaction = {
+    ...baseTransaction,
+    displayName: `Define Secretary Successor List (${result.successorCount} addresses)`,
+    // No prefilledParams needed when using displayName method
+  };
+
+  return {
+    success: true,
+    transactions,
+  };
+}
+```
+
+### Pattern 4: Mixed Transactions
 
 Some transactions pre-filled, others require user input:
 
@@ -397,7 +439,7 @@ function createTransactions(result: ExampleMacroResult) {
 }
 ```
 
-### Pattern 4: Prerequisites + Main Actions (Like Enhanced Auto-Reorg)
+### Pattern 5: Prerequisites + Main Actions (Like Enhanced Auto-Reorg)
 
 When your macro needs to create resources before using them:
 
@@ -520,3 +562,112 @@ try {
 6. **Consistent Patterns**: Follow the established architecture patterns
 
 This guide should provide everything needed to implement new macros consistently within the TandaPay ecosystem. The key is following the established patterns while adapting the business logic to your specific use case.
+
+## Complete Example: Secretary Successor Macro
+
+Here's a complete example of how a macro would dynamically configure the address array limit:
+
+```javascript
+// useSecretarySuccessorMacro.js
+export function useSecretarySuccessorMacro() {
+  // ... macro logic ...
+  
+  const runSecretarySuccessorMacro = useCallback(async () => {
+    try {
+      const communityData = await CommunityDataManager.get({ forceRefresh: true });
+      
+      if (!communityData) {
+        throw new Error('Failed to fetch community data');
+      }
+      
+      // Determine how many successors are needed based on community size
+      const successorCount = ExpectedSuccessorCounts.getExpectedSuccessorCount(
+        communityData.memberCount
+      );
+      
+      const result = {
+        success: true,
+        successorCount,
+        communitySize: communityData.memberCount,
+      };
+      
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: error?.message || 'Failed to analyze successor requirements',
+      };
+    }
+  }, []);
+  
+  return { runSecretarySuccessorMacro, /* ... other methods ... */ };
+}
+
+// secretarySuccessorMacroAdapter.js
+export function useSecretarySuccessorMacroAdapter() {
+  const successorMacro = useSecretarySuccessorMacro();
+  
+  const macro = {
+    id: 'secretary-successor',
+    name: 'Configure Secretary Successors',
+    description: 'Set up the required number of secretary successors based on community size.',
+    
+    dataFetcher: async () => ({}),
+    validateFunction: (data) => ({ canExecute: true }),
+    
+    executeFunction: async (data) => {
+      try {
+        const result = await successorMacro.runSecretarySuccessorMacro();
+        
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error ?? 'Secretary successor macro failed',
+          };
+        }
+        
+        const baseTransaction = getWriteTransactionByName('defineSecretarySuccessorList');
+        
+        if (!baseTransaction) {
+          return {
+            success: false,
+            error: 'defineSecretarySuccessorList transaction not found',
+          };
+        }
+        
+        // Configure the transaction with the dynamic successor count
+        const transaction = {
+          ...baseTransaction,
+          displayName: `Define Secretary Successor List (${result.successorCount} needed)`,
+          // $FlowFixMe - Adding prefilledParams to WriteTransaction
+          prefilledParams: {
+            // This tells TransactionParameterForm how many addresses to allow
+            maxAddresses: result.successorCount,
+          },
+        };
+        
+        return {
+          success: true,
+          transactions: [transaction],
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error?.message ?? 'Failed to configure secretary successors',
+        };
+      }
+    },
+  };
+  
+  return { macro, refresh: successorMacro.refresh };
+}
+```
+
+In this example:
+- The macro analyzes the community size
+- Determines the appropriate number of successors using `ExpectedSuccessorCounts.getExpectedSuccessorCount()`
+- Creates a transaction with `prefilledParams.maxAddresses` set to the required count
+- The UI will automatically limit the address inputs to exactly that number
+- The secretary sees a clear indication of how many addresses they need to provide
+
+## Flow Type Considerations
