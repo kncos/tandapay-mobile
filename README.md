@@ -14,6 +14,7 @@ Features of TandaPay Mobile include:
   - [x] supports securely generating new wallet mnemonic or importing existing ones
   - [x] supports detailed transaction information and block explorer integrations
   - [x] can be configured with Etherscan or Alchemy API keys (these can be gotten for free) for better information display 
+  - [x] if an alchemy api key is provided, RPC urls will fall back to alchemy endpoints for better performance
   - [x] has a built-in integration with TandaPay so that TandaPay contract transactions show up in a user friendly manner
 - [x] Configurable Network Settings:
   - [x] Can select which network you want to use among the defaults (ethereum, polygon, arbitrum), with sane default RPC providers that allow free use with no API key with rate limits that are generous enough for this use case.
@@ -30,11 +31,11 @@ Features of TandaPay Mobile include:
 - [x] A rich TandaPay information display, with all of the information required to interact with the smart contract
 - [x] A comprehensive dashboard for sending any transaction to the TandaPay smart contract
 - [x] Heuristic guidance to suggest potentially relevant transactions to users and help them filter transactions for the ones that they are most likely to use to interact with the TandaPay smart contract, given it's current state
-- [ ] Macros to help users send sequences of transactions and reduce tedium when doing multi-step smart contract interactions
+- [x] Macros to help users send sequences of transactions and reduce tedium when doing multi-step smart contract interactions
   - [x] Auto reorganize all members into valid subgroups workflow
   - [x] Adding required number of members to exit initialization state workflow
-  - [ ] Defining secretary successors workflow
-  - [ ] exiting the initialization state workflow (chained macro)
+  - [x] Defining secretary successors workflow
+  - [x] exiting the initialization state workflow (chained macro)
 - [ ] a refined user onboarding experience using the existing server infrastructure, but with modifications to make sign-up go more smoothly within TandaPay mobile's application
 
 

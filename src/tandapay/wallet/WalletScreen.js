@@ -102,6 +102,7 @@ export default function WalletScreen(props: Props): Node {
   const [loading, setLoading] = useState(true);
   const [walletExists, setWalletExists] = useState(false);
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
+  const [isMounted, setIsMounted] = useState(true);
 
   const navigation = useNavigation();
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
@@ -120,57 +121,76 @@ export default function WalletScreen(props: Props): Node {
 
   const checkWallet = useCallback(async () => {
     try {
+      if (!isMounted) {
+        return;
+      }
       setLoading(true);
 
       const walletExistsResult = await hasWallet();
       if (!walletExistsResult.success) {
         // Handle wallet check error - treat as no wallet for now
-        setWalletExists(false);
+        if (isMounted) {
+          setWalletExists(false);
+        }
         return;
       }
 
       const exists = walletExistsResult.data;
-      setWalletExists(exists);
+      if (isMounted) {
+        setWalletExists(exists);
+      }
 
       if (exists) {
         const addressResult = await getWalletAddress();
         if (!addressResult.success) {
           // Handle address fetch error - treat as no address
-          setWalletAddress(null);
+          if (isMounted) {
+            setWalletAddress(null);
+          }
           return;
         }
 
         const address = addressResult.data;
-        setWalletAddress(address);
+        if (isMounted) {
+          setWalletAddress(address);
+        }
 
         // Check if API key is configured
         const apiKeyResult = await hasEtherscanApiKey();
         if (apiKeyResult.success) {
           const hasApiKey = apiKeyResult.data;
-          setApiKeyConfigured(hasApiKey);
+          if (isMounted) {
+            setApiKeyConfigured(hasApiKey);
+          }
 
           // Refresh the transaction history when wallet changes
-          if (address != null && address !== '' && hasApiKey) {
+          if (address != null && address !== '' && hasApiKey && isMounted) {
             refresh();
           }
-        } else {
-          // Handle API key check error - treat as no API key
+        } else if (isMounted) {
           setApiKeyConfigured(false);
         }
-      } else {
+      } else if (isMounted) {
         setWalletAddress(null);
         setApiKeyConfigured(false);
       }
     } catch (error) {
       // Handle unexpected errors silently
     } finally {
-      setLoading(false);
+      if (isMounted) {
+        setLoading(false);
+      }
     }
-  }, [refresh]);
+  }, [refresh, isMounted]);
 
   useEffect(() => {
     checkWallet();
   }, [checkWallet]);
+
+  // Cleanup effect to prevent state updates on unmounted component
+  useEffect(() => () => {
+    setIsMounted(false);
+  }, []);
 
   // Refresh wallet state when screen comes into focus (e.g., returning from setup)
   useFocusEffect(
