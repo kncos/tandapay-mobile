@@ -129,9 +129,9 @@ function renderParameterInput(
 
       // Transaction-specific limits
       if (transaction.functionName === 'defineSecretarySuccessorList' && name === 'successorListWalletAddresses') {
-        // For secretary successor list, use the constant for larger communities
-        // This matches the smart contract's expected successor count
-        maxAddresses = ExpectedSuccessorCounts.communityLargerThan35;
+        // For secretary successor list, always use minimum of communitySmallerThan35 as the base
+        // This ensures there's always a minimum number of successors required
+        maxAddresses = ExpectedSuccessorCounts.communitySmallerThan35; // Minimum of 2 successors
       }
 
       // Allow macros to override maxAddresses via transaction metadata
@@ -139,7 +139,12 @@ function renderParameterInput(
       if (transaction.prefilledParams && transaction.prefilledParams.maxAddresses) {
         const macroMaxAddresses = transaction.prefilledParams.maxAddresses;
         if (typeof macroMaxAddresses === 'number' && macroMaxAddresses > 0) {
-          maxAddresses = macroMaxAddresses;
+          // For secretary successor list, ensure we never go below the minimum
+          if (transaction.functionName === 'defineSecretarySuccessorList') {
+            maxAddresses = Math.max(macroMaxAddresses, ExpectedSuccessorCounts.communitySmallerThan35);
+          } else {
+            maxAddresses = macroMaxAddresses;
+          }
         }
       }
 
@@ -150,9 +155,21 @@ function renderParameterInput(
         if (match && match[1]) {
           const countFromDisplayName = parseInt(match[1], 10);
           if (!Number.isNaN(countFromDisplayName) && countFromDisplayName > 0) {
-            maxAddresses = countFromDisplayName;
+            // For secretary successor list, ensure we never go below the minimum
+            if (transaction.functionName === 'defineSecretarySuccessorList') {
+              maxAddresses = Math.max(countFromDisplayName, ExpectedSuccessorCounts.communitySmallerThan35);
+            } else {
+              maxAddresses = countFromDisplayName;
+            }
           }
         }
+      }
+
+      // Determine minAddresses for specific transactions
+      let minAddresses = 0; // Default minimum is 0
+      if (transaction.functionName === 'defineSecretarySuccessorList' && name === 'successorListWalletAddresses') {
+        // Secretary successor list always requires a minimum number of successors
+        minAddresses = ExpectedSuccessorCounts.communitySmallerThan35;
       }
 
       return (
@@ -162,6 +179,7 @@ function renderParameterInput(
             addresses={value || []}
             onAddressesChange={(newValue: string[]) => onParameterChange(name, newValue)}
             maxAddresses={maxAddresses}
+            minAddresses={minAddresses}
           />
           {error && <ErrorText>{error}</ErrorText>}
         </View>

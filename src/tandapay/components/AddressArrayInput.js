@@ -15,6 +15,7 @@ import FormStyles from '../styles/forms';
 import { ThemeContext } from '../../styles';
 import AddressInput from './AddressInput';
 import Card from './Card';
+import ScrollableTextBox from './ScrollableTextBox';
 import { ExpectedSuccessorCounts } from '../contract/constants';
 
 type Props = $ReadOnly<{|
@@ -23,6 +24,7 @@ type Props = $ReadOnly<{|
   label: string,
   description?: string,
   maxAddresses?: number,
+  minAddresses?: number,
   disabled?: boolean,
   style?: ?{},
 |}>;
@@ -30,7 +32,7 @@ type Props = $ReadOnly<{|
 const customStyles = StyleSheet.create({
   addressItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start', // Align to top since ScrollableTextBox has its own height
     marginBottom: 8,
   },
 });
@@ -42,6 +44,7 @@ export default function AddressArrayInput(props: Props): Node {
     label,
     description,
     maxAddresses = ExpectedSuccessorCounts.communityLargerThan35,
+    minAddresses = 0,
     disabled = false,
     style,
   } = props;
@@ -108,14 +111,6 @@ export default function AddressArrayInput(props: Props): Node {
     onAddressesChange(newAddresses);
   }, [addresses, onAddressesChange]);
 
-  // Format address for display (truncate middle)
-  const formatAddress = useCallback((address: string): string => {
-    if (address.length <= 42) {
-      return address;
-    }
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  }, []);
-
   return (
     <View style={[FormStyles.container, style]}>
       <View style={FormStyles.header}>
@@ -133,6 +128,20 @@ export default function AddressArrayInput(props: Props): Node {
         </ZulipText>
       )}
 
+      {/* Validation feedback for minimum requirement */}
+      {minAddresses > 0 && addresses.length < minAddresses && (
+        <ZulipText style={[TandaPayTypography.description, { color: '#ff4444', marginTop: 4, marginBottom: 8 }]}>
+          At least
+          {' '}
+          {minAddresses}
+          {' '}
+          address
+          {minAddresses === 1 ? ' is' : 'es are'}
+          {' '}
+          required
+        </ZulipText>
+      )}
+
       <Card style={disabled ? FormStyles.disabledContainer : null}>
         {/* Address List */}
         {addresses.length === 0 ? (
@@ -144,17 +153,15 @@ export default function AddressArrayInput(props: Props): Node {
         ) : (
           addresses.map((address, index) => (
             <View key={address} style={customStyles.addressItem}>
-              <View style={FormStyles.inputContainer}>
-                <ZulipText style={TandaPayTypography.body}>
-                  {formatAddress(address)}
-                </ZulipText>
-                <ZulipText style={[TandaPayTypography.description, { fontSize: 10 }]}>
-                  {address}
-                </ZulipText>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <ScrollableTextBox
+                  text={address}
+                  label={`Address ${index + 1}`}
+                />
               </View>
               {!disabled && (
                 <TouchableOpacity
-                  style={FormStyles.removeButton}
+                  style={[FormStyles.removeButton, { marginTop: 12 }]} // Align with middle of ScrollableTextBox
                   onPress={() => handleRemoveAddress(index)}
                 >
                   <Icon name="remove" size={16} style={FormStyles.removeIcon} />
