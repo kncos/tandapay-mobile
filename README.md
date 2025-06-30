@@ -6,7 +6,7 @@ TandaPay mobile is built on top of Zulip Mobile, a free and open source chat app
 Features of TandaPay Mobile include:
 - [x] A custom built-in ethereum wallet:
   - [x] can send/receive ethereum or any ERC-20 token, including a "MAX" button to transfer all funds that is gas-price aware
-  - [x] can estimate gas prices and display the potential transaction fees to the user
+  - [x] can estimate gas prices and display the potential transaction fees to the user with EIP 1559
   - [x] supports QR code generation for receiving funds as well as QR code scanning for sending funds
   - [x] supports any ERC-20 token, with a few default options (USDC, USDT, DAI) + user-defined custom tokens
   - [x] supports any EVM compatible network, with a few defaults (mainnet, arbitrum, polygon) + user-defined custom rpc networks

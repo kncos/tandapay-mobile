@@ -1,6 +1,6 @@
 /* @flow strict-local */
 
-import React, { useState, useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext, useEffect } from 'react';
 import type { Node } from 'react';
 import { View, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 
@@ -125,6 +125,19 @@ export default function ContractDeploymentModal(props: Props): Node {
   |}>(null);
   const [errorMessage, setErrorMessage] = useState<?string>(null);
 
+  // Reset state when modal becomes visible to ensure clean form
+  useEffect(() => {
+    if (visible) {
+      setSelectedToken(null);
+      setSecretaryAddress('');
+      setCustomGasLimit('15000000'); // Reset to default
+      setGasEstimate(null);
+      setErrorMessage(null);
+      setIsEstimating(false);
+      setIsDeploying(false);
+    }
+  }, [visible]);
+
   // Validation
   const isValidSecretaryAddress = secretaryAddress.trim() === '' || /^0x[a-fA-F0-9]{40}$/.test(secretaryAddress.trim());
   const isValidGasLimit = customGasLimit.trim() !== '' && parseInt(customGasLimit, 10) >= 1000000; // At least 1M gas
@@ -136,6 +149,15 @@ export default function ContractDeploymentModal(props: Props): Node {
 
   const handleClose = useCallback(() => {
     if (!isDeploying && !isEstimating) {
+      // Reset all state when closing the modal
+      setSelectedToken(null);
+      setSecretaryAddress('');
+      setCustomGasLimit('15000000'); // Reset to default
+      setGasEstimate(null);
+      setErrorMessage(null);
+      setIsEstimating(false);
+      setIsDeploying(false);
+      
       onClose();
     }
   }, [onClose, isDeploying, isEstimating]);

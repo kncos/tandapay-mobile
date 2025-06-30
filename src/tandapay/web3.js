@@ -8,6 +8,7 @@ import { ethers } from 'ethers';
 import type { Token } from './tokens/tokenTypes';
 import type { TandaPayResult, GasEstimateData, TokenInfo } from './errors/types';
 import type { NetworkIdentifier } from './definitions/types';
+import { getChainByNetwork } from './definitions';
 import TandaPayErrorHandler from './errors/ErrorHandler';
 import { createProvider } from './providers/ProviderManager';
 
@@ -933,6 +934,126 @@ export async function estimateContractDeploymentGas(
     },
     'CONTRACT_ERROR',
   );
+}
+
+/**
+ * Get the native token symbol for a given network (or current network from Redux)
+ * @param networkOverride - Optional network identifier to override current Redux state
+ * @returns Native token symbol (e.g., 'ETH', 'POL', etc.)
+ */
+export function getNativeTokenSymbol(networkOverride?: NetworkIdentifier): string {
+  let network: NetworkIdentifier = 'sepolia'; // default fallback
+
+  // Try to get network from Redux state first if no override provided
+  if (!networkOverride) {
+    try {
+      if (store) {
+        const globalState = store.getState();
+        const perAccountState = tryGetActiveAccountState(globalState);
+        if (perAccountState) {
+          const selectedNetwork = getTandaPaySelectedNetwork(perAccountState);
+          if (selectedNetwork) {
+            network = selectedNetwork;
+          }
+        }
+      }
+    } catch (error) {
+      // Fallback to default if Redux state is not accessible
+    }
+  } else {
+    // Use the override
+    network = networkOverride;
+  }
+
+  // For custom networks, we can't determine the native token symbol
+  // so return a generic placeholder
+  if (network === 'custom') {
+    return 'ETH'; // Default assumption for custom networks
+  }
+
+  try {
+    // Only proceed if it's a supported network (not custom)
+    if (network === 'mainnet' || network === 'sepolia' || network === 'arbitrum' || network === 'polygon') {
+      const chainConfig = getChainByNetwork(network);
+      return chainConfig.nativeCurrency.symbol;
+    } else {
+      // Fallback for any other cases
+      return 'ETH';
+    }
+  } catch (error) {
+    // Fallback to ETH if chain config is not available
+    return 'ETH';
+  }
+}
+
+/**
+ * Get the full native token information for a given network (or current network from Redux)
+ * @param networkOverride - Optional network identifier to override current Redux state
+ * @returns Native token info object with name, symbol, and decimals
+ */
+export function getNativeTokenInfo(networkOverride?: NetworkIdentifier): {|
+  name: string,
+  symbol: string,
+  decimals: number,
+|} {
+  let network: NetworkIdentifier = 'sepolia'; // default fallback
+
+  // Try to get network from Redux state first if no override provided
+  if (!networkOverride) {
+    try {
+      if (store) {
+        const globalState = store.getState();
+        const perAccountState = tryGetActiveAccountState(globalState);
+        if (perAccountState) {
+          const selectedNetwork = getTandaPaySelectedNetwork(perAccountState);
+          if (selectedNetwork) {
+            network = selectedNetwork;
+          }
+        }
+      }
+    } catch (error) {
+      // Fallback to default if Redux state is not accessible
+    }
+  } else {
+    // Use the override
+    network = networkOverride;
+  }
+
+  // For custom networks, we can't determine the native token info
+  // so return generic ETH info
+  if (network === 'custom') {
+    return {
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    };
+  }
+
+  try {
+    // Only proceed if it's a supported network (not custom)
+    if (network === 'mainnet' || network === 'sepolia' || network === 'arbitrum' || network === 'polygon') {
+      const chainConfig = getChainByNetwork(network);
+      return {
+        name: chainConfig.nativeCurrency.name,
+        symbol: chainConfig.nativeCurrency.symbol,
+        decimals: chainConfig.nativeCurrency.decimals,
+      };
+    } else {
+      // Fallback for any other cases
+      return {
+        name: 'Ether',
+        symbol: 'ETH',
+        decimals: 18,
+      };
+    }
+  } catch (error) {
+    // Fallback to ETH if chain config is not available
+    return {
+      name: 'Ether',
+      symbol: 'ETH',
+      decimals: 18,
+    };
+  }
 }
 
 // =============================================================================
