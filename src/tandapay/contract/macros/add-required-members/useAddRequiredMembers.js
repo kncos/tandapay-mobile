@@ -4,6 +4,9 @@ import { useState, useCallback } from 'react';
 import CommunityInfoManager from '../../data-managers/CommunityInfoManager';
 import { bigNumberToNumber } from '../../../TandaPayInfo/utils';
 import { InitializationStateConstants, CommunityStates } from '../../constants';
+import { getAllWriteTransactions } from '../../tandapay-writer/writeTransactionObjects';
+
+import type { WriteTransaction } from '../../tandapay-writer/writeTransactionObjects';
 
 const MINIMUM_MEMBERS = InitializationStateConstants.minCommunitySizeToExit;
 
@@ -13,6 +16,7 @@ const MINIMUM_MEMBERS = InitializationStateConstants.minCommunitySizeToExit;
 export type AddRequiredMembersResult = {|
   +success: boolean,
   +membersNeeded?: number,
+  +transactions?: $ReadOnlyArray<WriteTransaction>,
   +error?: string,
 |};
 
@@ -26,12 +30,13 @@ export type UseAddRequiredMembersState = {|
 |};
 
 /**
- * Hook for determining how many members need to be added
+ * Hook for determining how many members need to be added and generating appropriate UI guidance
  * Fetches community data and calculates members needed to reach minimum
  */
 export function useAddRequiredMembers(): {|
   +state: UseAddRequiredMembersState,
   +runAddRequiredMembers: () => Promise<AddRequiredMembersResult>,
+  +getTransactions: () => Promise<WriteTransaction[]>,
   +refresh: () => void,
   +reset: () => void,
 |} {
@@ -81,7 +86,8 @@ export function useAddRequiredMembers(): {|
       if (!isInInitializationState) {
         const result: AddRequiredMembersResult = {
           success: true,
-          membersNeeded: 0, // 0 transactions needed
+          membersNeeded: 0,
+          transactions: [], // No transactions needed
         };
 
         setState({
@@ -96,9 +102,31 @@ export function useAddRequiredMembers(): {|
       // Calculate how many members are needed
       const membersNeeded = Math.max(0, MINIMUM_MEMBERS - currentMemberCount);
 
+      // Generate guidance transactions (these are informational, not executable)
+      const transactions: WriteTransaction[] = [];
+      
+      if (membersNeeded > 0) {
+        // Get the addMember transaction template for guidance
+        const addMemberTransaction = getAllWriteTransactions().find(
+          tx => tx.functionName === 'addMember'
+        );
+        
+        if (addMemberTransaction) {
+          // Create guidance transactions showing that members need to be added
+          for (let i = 0; i < membersNeeded; i++) {
+            transactions.push({
+              ...addMemberTransaction,
+              displayName: `Add Member ${i + 1} (Manual Action Required)`,
+              description: `This community needs ${membersNeeded} more member${membersNeeded === 1 ? '' : 's'} to reach the minimum of ${MINIMUM_MEMBERS}. Please add members manually through the TandaPay interface.`,
+            });
+          }
+        }
+      }
+
       const result: AddRequiredMembersResult = {
         success: true,
         membersNeeded,
+        transactions,
       };
 
       setState({
@@ -125,9 +153,15 @@ export function useAddRequiredMembers(): {|
     }
   }, []);
 
+  const getTransactions = useCallback(async (): Promise<WriteTransaction[]> => {
+    const result = await runAddRequiredMembers();
+    return result.transactions ? [...result.transactions] : [];
+  }, [runAddRequiredMembers]);
+
   return {
     state,
     runAddRequiredMembers,
+    getTransactions,
     refresh,
     reset,
   };

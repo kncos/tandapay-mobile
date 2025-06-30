@@ -1,6 +1,6 @@
 // @flow strict-local
 
-import React, { useCallback, useContext } from 'react';
+import React, { useCallback, useContext, useState, useEffect } from 'react';
 import type { Node } from 'react';
 import { View, Modal, StyleSheet } from 'react-native';
 
@@ -13,21 +13,35 @@ import ModalStyles from '../styles/modals';
 import { QUARTER_COLOR } from '../../styles/constants';
 import { ThemeContext } from '../../styles';
 
-type MacroInfo = {|
-  id: string,
-  name: string,
-  description: string,
-  icon?: string,
+import type { WriteTransaction } from '../contract/tandapay-writer/writeTransactionObjects';
+
+/**
+ * Macro definition for the new simplified system
+ */
+export type MacroDefinition = {|
+  +id: string,
+  +name: string,
+  +description: string,
+  +icon?: string,
+  +generateTransactions: () => Promise<WriteTransaction[]>,
+  +refresh: () => void | Promise<void>,
+|};
+
+/**
+ * Macro chain configuration
+ */
+export type MacroChainConfig = {|
+  +currentMacro: MacroDefinition,
+  +nextMacros?: MacroDefinition[],
+  +onChainComplete?: () => void | Promise<void>,
 |};
 
 type Props = $ReadOnly<{|
   visible: boolean,
-  macroInfo: ?MacroInfo,
-  transactionCount?: number,
-  isRefreshing?: boolean,
+  macroChainConfig: ?MacroChainConfig,
   onClose: () => void,
-  onRefresh: () => void | Promise<void>,
-  onContinue: () => void | Promise<void>,
+  onMacroChainAdvance?: (nextConfig: MacroChainConfig) => void,
+  onStartTransactionChain: (transactions: WriteTransaction[], macroName: string, onComplete?: () => Promise<void>) => void,
 |}>;
 
 const styles = StyleSheet.create({
@@ -47,18 +61,99 @@ const styles = StyleSheet.create({
 });
 
 export default function MacroIntroModal(props: Props): Node {
-  const { visible, macroInfo, transactionCount, isRefreshing, onClose, onRefresh, onContinue } = props;
+  const { visible, macroChainConfig, onClose, onMacroChainAdvance, onStartTransactionChain } = props;
   const themeData = useContext(ThemeContext);
+  const [transactionCount, setTransactionCount] = useState<?number>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  const handleRefresh = useCallback(() => {
-    onRefresh();
-  }, [onRefresh]);
+  const currentMacro = macroChainConfig?.currentMacro;
 
-  const handleContinue = useCallback(() => {
-    onContinue();
-  }, [onContinue]);
+  const handleRefresh = useCallback(async () => {
+    if (!currentMacro) {
+      return;
+    }
+    
+    setIsRefreshing(true);
+    try {
+      await currentMacro.refresh();
+      // Re-generate transaction count
+      const transactions = await currentMacro.generateTransactions();
+      setTransactionCount(transactions.length);
+    } catch (error) {
+      setTransactionCount(0);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [currentMacro]);
 
-  if (!macroInfo) {
+  const handleMacroComplete = useCallback(async () => {
+    if (!macroChainConfig) {
+      return;
+    }
+
+    const { nextMacros, onChainComplete } = macroChainConfig;
+    
+    if (nextMacros && nextMacros.length > 0) {
+      // Move to next macro in chain
+      const [nextMacro, ...remainingMacros] = nextMacros;
+      const nextChainConfig: MacroChainConfig = {
+        currentMacro: nextMacro,
+        nextMacros: remainingMacros,
+        onChainComplete,
+      };
+      
+      if (onMacroChainAdvance) {
+        onMacroChainAdvance(nextChainConfig);
+      }
+    } else {
+      // Chain complete
+      if (onChainComplete) {
+        await onChainComplete();
+      }
+      onClose();
+    }
+  }, [macroChainConfig, onClose, onMacroChainAdvance]);
+
+  const handleContinue = useCallback(async () => {
+    if (!currentMacro || !macroChainConfig) {
+      return;
+    }
+
+    try {
+      // Generate transactions for current macro
+      const transactions = await currentMacro.generateTransactions();
+      
+      if (transactions.length === 0) {
+        // No transactions needed, move to next macro immediately
+        await handleMacroComplete();
+        return;
+      }
+
+      // Start transaction chain for current macro
+      onStartTransactionChain(transactions, currentMacro.name, handleMacroComplete);
+    } catch (error) {
+      // Handle error - could show an alert or refresh
+      await handleRefresh();
+    }
+  }, [currentMacro, macroChainConfig, onStartTransactionChain, handleMacroComplete, handleRefresh]);
+
+  // Load initial transaction count when visible
+  useEffect(() => {
+    if (currentMacro && visible && !isRefreshing && transactionCount === null) {
+      currentMacro.generateTransactions().then(transactions => {
+        setTransactionCount(transactions.length);
+      }).catch(() => {
+        setTransactionCount(0);
+      });
+    }
+  }, [currentMacro, visible, isRefreshing, transactionCount]);
+
+  // Reset transaction count when macro changes
+  useEffect(() => {
+    setTransactionCount(null);
+  }, [currentMacro?.id]);
+
+  if (!currentMacro) {
     return null;
   }
 
@@ -72,30 +167,30 @@ export default function MacroIntroModal(props: Props): Node {
       <View style={ModalStyles.overlay}>
         <Card style={[ModalStyles.modalCard, { backgroundColor: themeData.cardColor }]}>
           <View style={[ModalStyles.header, { borderBottomColor: QUARTER_COLOR }]}>
-            <ZulipText style={[ModalStyles.title, { color: themeData.color }]} text={macroInfo.name} />
+            <ZulipText style={[ModalStyles.title, { color: themeData.color }]} text={currentMacro.name} />
             <CloseButton onPress={onClose} />
           </View>
 
           <ZulipText
             style={[TandaPayStyles.body, { color: themeData.color, marginBottom: 24 }]}
-            text={macroInfo.description}
+            text={currentMacro.description}
           />
 
-          {transactionCount !== undefined && transactionCount > 0 && (
+          {transactionCount != null && transactionCount > 0 && (
             <ZulipText
               style={styles.transactionInfo}
               text={`This macro will execute ${transactionCount} transaction${transactionCount === 1 ? '' : 's'}.`}
             />
           )}
 
-          {transactionCount !== undefined && transactionCount === 0 && isRefreshing !== true && (
+          {transactionCount != null && transactionCount === 0 && !isRefreshing && (
             <ZulipText
               style={styles.transactionInfo}
               text="No transactions needed - the community is already in the desired state."
             />
           )}
 
-          {isRefreshing === true && (
+          {isRefreshing && (
             <ZulipText
               style={styles.loadingText}
               text="Loading macro data..."

@@ -43,7 +43,7 @@ export function useAutoReorg(): {|
   +getTransactions: () => Promise<WriteTransaction[]>,
   +refresh: () => void,
   +reset: () => void,
-|}  {
+|} {
   const [state, setState] = useState<UseAutoReorgState>({
     loading: false,
     result: null,
@@ -108,7 +108,7 @@ export function useAutoReorg(): {|
       if (reassignments.transactions.length > 0) {
         // Calculate the maximum subgroup ID needed from reassignments
         const maxSubgroupIdNeeded = Math.max(
-          ...reassignments.transactions.map(tx => tx.subgroupId)
+          ...reassignments.transactions.map(tx => tx.subgroupId),
         );
 
         // Count current subgroups from the subgroup data
@@ -120,10 +120,10 @@ export function useAutoReorg(): {|
 
         // Get transaction templates
         const assignMemberTransaction = getAllWriteTransactions().find(
-          tx => tx.functionName === 'assignMemberToSubgroup'
+          tx => tx.functionName === 'assignMemberToSubgroup',
         );
         const createSubgroupTransaction = getAllWriteTransactions().find(
-          tx => tx.functionName === 'createSubgroup'
+          tx => tx.functionName === 'createSubgroup',
         );
 
         if (!assignMemberTransaction) {
@@ -146,7 +146,9 @@ export function useAutoReorg(): {|
         // Add assignment transactions
         const assignmentTransactions = reassignments.transactions.map(txData => ({
           ...assignMemberTransaction,
-          displayName: `Assign ${txData.memberWalletAddress.slice(0, 8)}... to Subgroup ${txData.subgroupId}`,
+          displayName: `Assign ${txData.memberWalletAddress.slice(0, 8)}... to Subgroup ${
+            txData.subgroupId
+          }`,
           // $FlowFixMe - Adding prefilledParams to WriteTransaction
           prefilledParams: {
             memberWalletAddress: txData.memberWalletAddress,

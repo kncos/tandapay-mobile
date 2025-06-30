@@ -3,6 +3,9 @@
 import { useState, useCallback } from 'react';
 import CommunityInfoManager from '../../data-managers/CommunityInfoManager';
 import { ExpectedSuccessorCounts } from '../../constants';
+import { getAllWriteTransactions } from '../../tandapay-writer/writeTransactionObjects';
+
+import type { WriteTransaction } from '../../tandapay-writer/writeTransactionObjects';
 
 /**
  * Result types for the Define Successor List macro
@@ -11,6 +14,7 @@ export type DefineSuccessorListResult = {|
   +success: boolean,
   +successorCount?: number,
   +communitySize?: number,
+  +transactions?: $ReadOnlyArray<WriteTransaction>,
   +error?: string,
 |};
 
@@ -32,6 +36,7 @@ export type UseDefineSuccessorListState = {|
 export function useDefineSuccessorList(): {|
   +state: UseDefineSuccessorListState,
   +runDefineSuccessorList: () => Promise<DefineSuccessorListResult>,
+  +getTransactions: () => Promise<WriteTransaction[]>,
   +refresh: () => void,
   +reset: () => void,
 |} {
@@ -82,10 +87,32 @@ export function useDefineSuccessorList(): {|
       // Determine required successor count based on community size
       const successorCount = ExpectedSuccessorCounts.getExpectedSuccessorCount(memberCount);
 
+      // Generate guidance transactions for defining successors
+      const transactions: WriteTransaction[] = [];
+
+      if (successorCount > 0) {
+        // Get the assignSuccessor transaction template for guidance
+        const assignSuccessorTransaction = getAllWriteTransactions().find(
+          tx => tx.functionName === 'assignSuccessor' || tx.functionName === 'defineSuccessor'
+        );
+
+        if (assignSuccessorTransaction) {
+          // Create guidance transactions showing that successors need to be defined
+          for (let i = 0; i < successorCount; i++) {
+            transactions.push({
+              ...assignSuccessorTransaction,
+              displayName: `Define Successor ${i + 1} (Manual Action Required)`,
+              description: `This community of ${memberCount} members requires ${successorCount} successor${successorCount === 1 ? '' : 's'} to be defined. Please assign successor addresses manually.`,
+            });
+          }
+        }
+      }
+
       const result: DefineSuccessorListResult = {
         success: true,
         successorCount,
         communitySize: memberCount,
+        transactions,
       };
 
       setState({
@@ -112,9 +139,15 @@ export function useDefineSuccessorList(): {|
     }
   }, []);
 
+  const getTransactions = useCallback(async (): Promise<WriteTransaction[]> => {
+    const result = await runDefineSuccessorList();
+    return result.transactions ? [...result.transactions] : [];
+  }, [runDefineSuccessorList]);
+
   return {
     state,
     runDefineSuccessorList,
+    getTransactions,
     refresh,
     reset,
   };
