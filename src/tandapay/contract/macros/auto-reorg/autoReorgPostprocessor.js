@@ -48,8 +48,8 @@ export type AutoReorgTransactionData = {|
  * @returns Information about which members need reassignment
  */
 export function postprocessAutoReorgResults(
-  originalMemberData: $ReadOnlyArray<MemberInfo>,
-  originalSubgroupData: $ReadOnlyArray<SubgroupInfo>,
+  originalMemberData: Array<MemberInfo>,
+  originalSubgroupData: Array<SubgroupInfo>,
   newSubgroups: Map<number, Array<string>>
 ): PostprocessorResult {
   // Create mapping of member address -> original subgroup ID

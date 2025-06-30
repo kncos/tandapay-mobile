@@ -8,7 +8,8 @@ import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
 import Card from './Card';
 import CloseButton from './CloseButton';
-import TandaPayStyles, { TandaPayColors } from '../styles';
+import TandaPayStyles from '../styles';
+import ModalStyles from '../styles/modals';
 import { QUARTER_COLOR } from '../../styles/constants';
 import { ThemeContext } from '../../styles';
 
@@ -30,42 +31,13 @@ type Props = $ReadOnly<{|
 |}>;
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: TandaPayColors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCard: {
-    margin: 20,
-    width: '90%',
-    maxWidth: 400,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: QUARTER_COLOR,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
   transactionInfo: {
-    fontSize: 12,
+    ...TandaPayStyles.caption,
     marginBottom: 10,
     fontStyle: 'italic',
   },
   loadingText: {
-    fontSize: 12,
+    ...TandaPayStyles.caption,
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -97,15 +69,15 @@ export default function MacroIntroModal(props: Props): Node {
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <Card style={[styles.modalCard, { backgroundColor: themeData.cardColor }]}>
-          <View style={styles.header}>
-            <ZulipText style={[styles.title, { color: themeData.color }]} text={macroInfo.name} />
+      <View style={ModalStyles.overlay}>
+        <Card style={[ModalStyles.modalCard, { backgroundColor: themeData.cardColor }]}>
+          <View style={[ModalStyles.header, { borderBottomColor: QUARTER_COLOR }]}>
+            <ZulipText style={[ModalStyles.title, { color: themeData.color }]} text={macroInfo.name} />
             <CloseButton onPress={onClose} />
           </View>
 
           <ZulipText
-            style={[styles.description, { color: themeData.color }]}
+            style={[TandaPayStyles.body, { color: themeData.color, marginBottom: 24 }]}
             text={macroInfo.description}
           />
 

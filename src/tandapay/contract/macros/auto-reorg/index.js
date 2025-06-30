@@ -49,35 +49,22 @@ export type AutoReorgResult = {|
 export async function executeAutoReorg(memberInfoArray: MemberInfo[]): Promise<AutoReorgResult> {
   try {
     // Step 1: Preprocess member data to extract subgroup assignments
-    // $FlowFixMe[unclear-type] - preprocessor accepts MemberInfo or MemberInfoMinimal
-    const preprocessorResult = preprocessMembersForAutoReorg((memberInfoArray: any));
-
-    if (!preprocessorResult.success) {
-      return {
-        success: false,
-        error: preprocessorResult.error || 'Failed to preprocess member data',
-      };
-    }
+    const autoReorgParams: AutoReorgParameters = preprocessMembersForAutoReorg(memberInfoArray);
 
     // Step 2: Run the auto-reorg algorithm
-    const autoReorgParams: AutoReorgParameters = {
-      subgroups: preprocessorResult.data.subgroups,
-      needsAssigned: preprocessorResult.data.needsAssigned,
-    };
-
     const newSubgroups = autoReorg(autoReorgParams);
 
     // Step 3: Calculate statistics
-    const originalSubgroupCount = preprocessorResult.data.subgroups.size;
+    const originalSubgroupCount = autoReorgParams.subgroups.size;
     const newSubgroupCount = newSubgroups.size;
     const subgroupsChanged = Math.max(originalSubgroupCount, newSubgroupCount);
 
     // Count reassigned members by comparing original vs new assignments
     let membersReassigned = 0;
-    const originalAssignments = new Map();
+    const originalAssignments = new Map<string, number>();
 
     // Build original assignment map (member -> subgroupId)
-    for (const [subgroupId, members] of preprocessorResult.data.subgroups) {
+    for (const [subgroupId, members] of autoReorgParams.subgroups) {
       for (const member of members) {
         originalAssignments.set(member, subgroupId);
       }
@@ -94,7 +81,7 @@ export async function executeAutoReorg(memberInfoArray: MemberInfo[]): Promise<A
     }
 
     // Also count previously unassigned members
-    membersReassigned += preprocessorResult.data.needsAssigned.length;
+    membersReassigned += autoReorgParams.needsAssigned.length;
 
     return {
       success: true,
@@ -137,15 +124,7 @@ export function validateAutoReorg(memberInfoArray: MemberInfo[]): {|
 
   // Use preprocessor to validate data structure
   try {
-    // $FlowFixMe[unclear-type] - preprocessor accepts MemberInfo or MemberInfoMinimal
-    const result = preprocessMembersForAutoReorg((memberInfoArray: any));
-    if (!result.success) {
-      return {
-        canExecute: false,
-        reason: result.error || 'Invalid member data structure',
-      };
-    }
-
+    preprocessMembersForAutoReorg(memberInfoArray);
     return {
       canExecute: true,
     };

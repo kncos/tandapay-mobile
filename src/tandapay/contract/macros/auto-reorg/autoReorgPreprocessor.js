@@ -6,28 +6,9 @@
  * Converts MemberInfo array to autoReorg input format
  */
 
-// $FlowFixMe[untyped-import]
-import { ethers } from 'ethers';
 import { SubgroupConstants, InitializationStateConstants } from '../../constants';
 import type { MemberInfo } from '../../types';
 import type { AutoReorgParameters } from './autoReorgAlgorithm';
-
-// BigNumber-like type for Flow compatibility
-type BigNumberLike = {
-  toNumber(): number,
-  toString(): string,
-};
-
-// Minimum required properties for the preprocessor
-export type MemberInfoMinimal = {
-  +subgroupId: BigNumberLike,
-  +walletAddress: string,
-  // Allow additional properties for compatibility with full MemberInfo
-};
-
-export type PreprocessorResult =
-  | {| success: true, data: AutoReorgParameters |}
-  | {| success: false, error: string |};
 
 /**
  * Converts BigNumber to regular number for subgroup IDs
@@ -46,18 +27,15 @@ function bigNumberToNumber(bn: mixed): number {
 /**
  * Preprocesses member info array for auto-reorg algorithm
  *
- * @param members Array of member info (full or minimal)
- * @returns AutoReorg parameters or error
+ * @param members Array of member info
+ * @returns AutoReorg parameters or throws error
  */
 export function preprocessMembersForAutoReorg(
-  members: Array<MemberInfo | MemberInfoMinimal>
-): PreprocessorResult {
+  members: Array<MemberInfo>
+): AutoReorgParameters {
   // Step 1: Ensure minimum member count
   if (members.length < InitializationStateConstants.minCommunitySizeToExit) {
-    return {
-      success: false,
-      error: `Insufficient members for auto-reorg. Need at least ${InitializationStateConstants.minCommunitySizeToExit} members, got ${members.length}.`
-    };
+    throw new Error('Not enough members to run auto-reorg algorithm');
   }
 
   // Step 2: Build subgroups map and collect unassigned members
@@ -95,23 +73,7 @@ export function preprocessMembersForAutoReorg(
   }
 
   return {
-    success: true,
-    data: {
-      subgroups,
-      needsAssigned,
-    }
-  };
-}
-
-/**
- * Helper function to create mock member data for testing
- */
-export function createMockMember(
-  walletAddress: string,
-  subgroupId: number
-): MemberInfoMinimal {
-  return {
-    subgroupId: ethers.BigNumber.from(subgroupId),
-    walletAddress,
+    subgroups,
+    needsAssigned
   };
 }

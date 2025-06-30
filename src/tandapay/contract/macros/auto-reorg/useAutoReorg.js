@@ -1,15 +1,16 @@
 /* @flow strict-local */
 
 import { useState, useCallback } from 'react';
-import { MemberStatus, AssignmentStatus } from '../../types';
 import MemberDataManager from '../../data-managers/MemberDataManager';
 import SubgroupDataManager from '../../data-managers/SubgroupDataManager';
 import { autoReorg } from './autoReorgAlgorithm';
 import { postprocessAutoReorgResults } from './autoReorgPostprocessor';
+import { getAllWriteTransactions } from '../../tandapay-writer/writeTransactionObjects';
 
-import type { MemberInfo, SubgroupInfo } from '../../types';
-import type { AutoReorgParameters } from './autoReorgAlgorithm';
+import type { SubgroupInfo } from '../../types';
 import type { PostprocessorResult } from './autoReorgPostprocessor';
+import type { WriteTransaction } from '../../tandapay-writer/writeTransactionObjects';
+import { preprocessMembersForAutoReorg } from './autoReorgPreprocessor';
 
 /**
  * Auto-reorg result types
@@ -19,6 +20,7 @@ export type AutoReorgResult = {|
   +data?: Map<number, Array<string>>,
   +reassignments?: PostprocessorResult,
   +subgroupData?: $ReadOnlyArray<SubgroupInfo>,
+  +transactions?: $ReadOnlyArray<WriteTransaction>,
   +error?: string,
 |};
 
@@ -32,61 +34,16 @@ export type UseAutoReorgState = {|
 |};
 
 /**
- * Preprocess member and subgroup data for auto-reorg algorithm
- * Converts React Native app data structures to the format expected by autoReorgAlgorithm
- */
-function preprocessDataForAutoReorg(
-  memberData: $ReadOnlyArray<MemberInfo>,
-  subgroupData: $ReadOnlyArray<SubgroupInfo>
-): AutoReorgParameters {
-  // Create a mapping of subgroup ID to member addresses
-  const subgroups = new Map<number, Array<string>>();
-
-  // Initialize all subgroups (including empty ones)
-  for (const subgroup of subgroupData) {
-    // Convert BigNumber to number for subgroup ID
-    // $FlowFixMe[incompatible-use] - BigNumber has toString method
-    const subgroupId = parseInt(subgroup.id.toString(), 10);
-    subgroups.set(subgroupId, [...subgroup.members]);
-  }
-
-  // Members that need to be assigned to new subgroups
-  const needsAssigned: Array<string> = [];
-
-  // Process each member to determine if they need reassignment
-  for (const member of memberData) {
-    const walletAddress = member.walletAddress;
-    const memberStatus = member.memberStatus;
-    const assignmentStatus = member.assignmentStatus;
-
-    // Determine if member needs reassignment based on their status
-    const needsReassignment =
-      memberStatus === MemberStatus.PaidInvalid
-      || assignmentStatus === AssignmentStatus.AddedBySecretary
-      || assignmentStatus === AssignmentStatus.CancelledByMember
-      || assignmentStatus === AssignmentStatus.CancelledByGroupMember;
-
-    if (needsReassignment) {
-      needsAssigned.push(walletAddress);
-    }
-  }
-
-  return {
-    subgroups,
-    needsAssigned,
-  };
-}
-
-/**
  * Hook for running auto-reorg algorithm
  * Fetches member and subgroup data, preprocesses it, and runs the auto-reorg algorithm
  */
 export function useAutoReorg(): {|
   +state: UseAutoReorgState,
   +runAutoReorg: () => Promise<AutoReorgResult>,
+  +getTransactions: () => Promise<WriteTransaction[]>,
   +refresh: () => void,
   +reset: () => void,
-|} {
+|}  {
   const [state, setState] = useState<UseAutoReorgState>({
     loading: false,
     result: null,
@@ -129,45 +86,101 @@ export function useAutoReorg(): {|
         throw new Error('Failed to fetch subgroup data');
       }
 
-      // $FlowFixMe[unclear-type] - Data is validated as array above
-      const typedMemberData: $ReadOnlyArray<MemberInfo> = (memberData: any);
-      // $FlowFixMe[unclear-type] - Data is validated as array above
-      const typedSubgroupData: $ReadOnlyArray<SubgroupInfo> = (subgroupData: any);
-
       // Preprocess data for auto-reorg algorithm
-      const autoReorgParams = preprocessDataForAutoReorg(typedMemberData, typedSubgroupData);
+      // $FlowFixMe[incompatible-call]
+      const autoReorgParams = preprocessMembersForAutoReorg(memberData);
 
       // Run the actual auto-reorg algorithm
       const newSubgroups = autoReorg(autoReorgParams);
 
       // Postprocess results to determine what transactions are needed
       const reassignments = postprocessAutoReorgResults(
-        typedMemberData,
-        typedSubgroupData,
-        newSubgroups
+        // $FlowFixMe[incompatible-call]
+        memberData,
+        // $FlowFixMe[incompatible-call]
+        subgroupData,
+        newSubgroups,
       );
 
+      // Generate write transaction objects
+      const transactions: WriteTransaction[] = [];
+
+      if (reassignments.transactions.length > 0) {
+        // Calculate the maximum subgroup ID needed from reassignments
+        const maxSubgroupIdNeeded = Math.max(
+          ...reassignments.transactions.map(tx => tx.subgroupId)
+        );
+
+        // Count current subgroups from the subgroup data
+        // $FlowFixMe[incompatible-call]
+        const currentSubgroupCount = subgroupData.length;
+
+        // Calculate how many new subgroups we need to create
+        const subgroupsToCreate = Math.max(0, maxSubgroupIdNeeded - currentSubgroupCount);
+
+        // Get transaction templates
+        const assignMemberTransaction = getAllWriteTransactions().find(
+          tx => tx.functionName === 'assignMemberToSubgroup'
+        );
+        const createSubgroupTransaction = getAllWriteTransactions().find(
+          tx => tx.functionName === 'createSubgroup'
+        );
+
+        if (!assignMemberTransaction) {
+          throw new Error('assignMemberToSubgroup transaction not found');
+        }
+
+        if (subgroupsToCreate > 0 && !createSubgroupTransaction) {
+          throw new Error('createSubgroup transaction not found');
+        }
+
+        // Add create subgroup transactions if needed
+        for (let i = 0; i < subgroupsToCreate; i++) {
+          // $FlowFixMe - We've already checked that createSubgroupTransaction exists above
+          transactions.push({
+            ...createSubgroupTransaction,
+            displayName: `Create Subgroup ${currentSubgroupCount + i + 1}`,
+          });
+        }
+
+        // Add assignment transactions
+        const assignmentTransactions = reassignments.transactions.map(txData => ({
+          ...assignMemberTransaction,
+          displayName: `Assign ${txData.memberWalletAddress.slice(0, 8)}... to Subgroup ${txData.subgroupId}`,
+          // $FlowFixMe - Adding prefilledParams to WriteTransaction
+          prefilledParams: {
+            memberWalletAddress: txData.memberWalletAddress,
+            subgroupId: txData.subgroupId.toString(),
+            isReorging: txData.isReorging, // Keep as boolean, don't convert to string
+          },
+        }));
+
+        transactions.push(...assignmentTransactions);
+      }
+
       // // Pretty print the reassignments
-      // const transactionCount = reassignments.transactions.length;
+      // const transactionCount = transactions.length;
       // // eslint-disable-next-line no-console
-      // console.log(`🔄 Auto-Reorg Complete: ${transactionCount} reassignments needed`);
+      // console.log(`🔄 Auto-Reorg Complete: ${transactionCount} transactions needed`);
       // if (transactionCount > 0) {
       //   // eslint-disable-next-line no-console
-      //   console.log('📋 Required Reassignments:');
-      //   for (const transaction of reassignments.transactions) {
+      //   console.log('📋 Required Transactions:');
+      //   for (const transaction of transactions) {
       //     // eslint-disable-next-line no-console
-      //     console.log(`  ${transaction.memberWalletAddress.slice(0, 8)}... -> subgroup ${transaction.subgroupId}`);
+      //     console.log(`  ${transaction.displayName}`);
       //   }
       // } else {
       //   // eslint-disable-next-line no-console
-      //   console.log('✅ No reassignments needed - all members are optimally assigned');
+      //   console.log('✅ No transactions needed - all members are optimally assigned');
       // }
 
       const result: AutoReorgResult = {
         success: true,
         data: newSubgroups,
         reassignments,
-        subgroupData: typedSubgroupData,
+        // $FlowFixMe
+        subgroupData,
+        transactions,
       };
 
       setState({
@@ -194,9 +207,15 @@ export function useAutoReorg(): {|
     }
   }, []);
 
+  const getTransactions = useCallback(async (): Promise<WriteTransaction[]> => {
+    const result = await runAutoReorg();
+    return result.transactions ? [...result.transactions] : [];
+  }, [runAutoReorg]);
+
   return {
     state,
     runAutoReorg,
+    getTransactions,
     refresh,
     reset,
   };
