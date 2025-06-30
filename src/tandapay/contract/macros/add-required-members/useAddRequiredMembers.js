@@ -106,9 +106,9 @@ export function useAddRequiredMembers(): {|
       const transactions: WriteTransaction[] = [];
       
       if (membersNeeded > 0) {
-        // Get the addMember transaction template for guidance
+        // Get the addMemberToCommunity transaction template for guidance
         const addMemberTransaction = getAllWriteTransactions().find(
-          tx => tx.functionName === 'addMember'
+          tx => tx.functionName === 'addMemberToCommunity'
         );
         
         if (addMemberTransaction) {
