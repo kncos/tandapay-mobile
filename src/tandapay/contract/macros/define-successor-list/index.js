@@ -7,6 +7,5 @@
  */
 
 export { useDefineSuccessorList } from './useDefineSuccessorList';
-export { useDefineSuccessorListAdapter } from './defineSuccessorListAdapter';
 
 export type { DefineSuccessorListResult, UseDefineSuccessorListState } from './useDefineSuccessorList';
