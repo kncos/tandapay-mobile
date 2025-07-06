@@ -243,6 +243,15 @@ export class AlchemyTransferFetcher {
       // Update statistics
       session.updateStats(direction, result.transfers?.length || 0);
 
+      console.log('[AlchemyTransferFetcher] fetchTransfers result:', {
+        address: address.slice(0, 10) + '...',
+        direction,
+        page,
+        transferCount: result.transfers?.length || 0,
+        hasMore: result.pageKey != null,
+        pageKey: result.pageKey ? 'present' : 'none'
+      });
+
       const finalResult = {
         transfers: result.transfers || [],
         hasMore: result.pageKey != null,

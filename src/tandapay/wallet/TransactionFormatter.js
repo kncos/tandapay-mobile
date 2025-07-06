@@ -3,7 +3,19 @@
 /**
  * Transaction display formatter for transfer system
  *
- * Formats Alchemy transfer objects for display in the UI
+ * Formats Alc  // Enhanced TandaPay transaction detection
+  const isTPTransaction = isTandaPayTransaction(transferObj, tandaPayContractAddress);
+  
+  console.log('[TransactionFormatter] Transaction check:', {
+    hash: hash.slice(0, 10) + '...',
+    to: to.slice(0, 10) + '...',
+    contractAddr: contractAddress ? contractAddress.slice(0, 10) + '...' : 'none',
+    tandaPayContract: tandaPayContractAddress ? tandaPayContractAddress.slice(0, 10) + '...' : 'none',
+    isTandaPayTransaction: isTPTransaction,
+    value,
+    asset,
+    category
+  });cts for display in the UI
  */
 
 // $FlowFixMe[untyped-import] - ethers is a third-party library
@@ -97,6 +109,23 @@ export async function enhanceTransferWithTandaPayData(
 
   // Check if this is a TandaPay transaction
   const isTPTransaction = isTandaPayTransaction(transferObj, tandaPayContractAddress);
+  
+  console.log('[TransactionFormatter] Transaction check:', {
+    hash: hash.slice(0, 10) + '...',
+    to: to.slice(0, 10) + '...',
+    contractAddr: contractAddress ? contractAddress.slice(0, 10) + '...' : 'none',
+    tandaPayContract: tandaPayContractAddress ? tandaPayContractAddress.slice(0, 10) + '...' : 'none',
+    isTandaPayTransaction: isTPTransaction,
+    value,
+    asset,
+    category,
+    // Additional debug info
+    transferToAddress: transferObj?.to?.slice(0, 10) + '...' || 'missing',
+    transferFromAddress: transferObj?.from?.slice(0, 10) + '...' || 'missing',
+    hasInput: transferObj?.input ? 'yes' : 'no',
+    inputLength: transferObj?.input?.length || 0
+  });
+  
   let decodedTandaPayData: ?DecodedTandaPayTransaction = null;
   let tandaPayActionSummary: ?string = null;
 

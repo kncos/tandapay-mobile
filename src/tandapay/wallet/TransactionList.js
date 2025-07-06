@@ -155,6 +155,33 @@ export default function TransactionList({
   if (transactionState.status === 'success') {
     const { hasMore, transfers } = transactionState;
 
+    console.log('[TransactionList] Rendering transactions:', {
+      totalCount: transfers.length,
+      hasMore,
+      firstFew: transfers.slice(0, 3).map((t: any) => ({
+        hash: t?.hash?.slice(0, 10) + '...' || 'no-hash',
+        direction: t?.direction || 'unknown',
+        asset: t?.asset || 'unknown'
+      }))
+    });
+
+    // Check for duplicate keys
+    const keys = transfers.map((transaction: any, index) => {
+      const safeTransaction = {
+        hash: transaction?.hash || `transfer-${index}`,
+        direction: transaction?.direction || 'OUT',
+      };
+      return `${safeTransaction.hash}-${safeTransaction.direction}`;
+    });
+    const uniqueKeys = new Set(keys);
+    if (keys.length !== uniqueKeys.size) {
+      console.log('[TransactionList] DUPLICATE KEYS DETECTED:', {
+        totalKeys: keys.length,
+        uniqueKeys: uniqueKeys.size,
+        duplicates: keys.filter((key, index, arr) => arr.indexOf(key) !== index)
+      });
+    }
+
     return (
       <View style={{ backgroundColor: themeData.backgroundColor }}>
         {/* Transaction List */}

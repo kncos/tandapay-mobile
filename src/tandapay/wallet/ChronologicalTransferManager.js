@@ -28,6 +28,7 @@ export class ChronologicalTransferManager {
   hasMoreOutgoing: boolean;
   hasMoreIncoming: boolean;
   isInitialized: boolean;
+  isProcessing: boolean;
 
   // $FlowFixMe[unclear-type] - AlchemyTransferFetcher instance
   constructor(alchemyFetcher: any, address: string, pageSize: number = 10, bufferSize: number = 5) {
@@ -41,10 +42,11 @@ export class ChronologicalTransferManager {
     this.incomingTransfers = []; // All incoming transfers in memory
     this.combinedFeed = []; // Combined chronological feed
     this.currentPage = 0; // Current page for outgoing/incoming fetches
-    this.feedPosition = 0; // Current position in combined feed
+    this.feedPosition = 0; // Current position in the combined feed
     this.hasMoreOutgoing = true; // Whether more outgoing transfers exist
     this.hasMoreIncoming = true; // Whether more incoming transfers exist
     this.isInitialized = false; // Whether we've made initial fetch
+    this.isProcessing = false; // Lock to prevent concurrent operations
   }
 
   /**
@@ -66,24 +68,79 @@ export class ChronologicalTransferManager {
       stats?: mixed,
     |},
   |}> {
-    // If we haven't initialized or need more data, fetch it
-    if (!this.isInitialized || this._needsMoreData()) {
-      await this._fetchMorePages();
-      this._rebuildCombinedFeed();
-    }
+    console.log('[ChronologicalTransferManager] getMoreTransactions called:', {
+      isInitialized: this.isInitialized,
+      feedPosition: this.feedPosition,
+      combinedFeedLength: this.combinedFeed.length,
+      hasMoreOutgoing: this.hasMoreOutgoing,
+      hasMoreIncoming: this.hasMoreIncoming,
+      currentPage: this.currentPage,
+      isProcessing: this.isProcessing
+    });
 
-    // Check if we have any transfers left
-    const remainingTransfers = this.combinedFeed.length - this.feedPosition;
-
-    if (remainingTransfers === 0 && !this._hasMoreFromAPI()) {
+    // Prevent concurrent processing
+    if (this.isProcessing) {
+      console.log('[ChronologicalTransferManager] Already processing, returning empty result');
       return {
         transfers: [],
         metadata: {
-          message: 'All caught up!',
+          hasMore: this._hasMoreData(),
+          message: 'Processing in progress',
           currentPosition: this.feedPosition,
           totalInMemory: this.combinedFeed.length,
-          hasMore: false,
-          remainingInBuffer: 0,
+        }
+      };
+    }
+
+    try {
+      this.isProcessing = true;
+
+      // If we haven't initialized or need more data, fetch it
+      if (!this.isInitialized || this._needsMoreData()) {
+        console.log('[ChronologicalTransferManager] Fetching more pages...');
+        await this._fetchMorePages();
+        this._rebuildCombinedFeed();
+      }
+
+      // Check if we have any transfers left
+      const remainingTransfers = this.combinedFeed.length - this.feedPosition;
+
+      if (remainingTransfers === 0 && !this._hasMoreFromAPI()) {
+        return {
+          transfers: [],
+          metadata: {
+            message: 'All caught up!',
+            currentPosition: this.feedPosition,
+            totalInMemory: this.combinedFeed.length,
+            hasMore: false,
+            remainingInBuffer: 0,
+            pages: {
+              outgoing: this.currentPage,
+              incoming: this.currentPage,
+            },
+            stats: {
+              outgoingInMemory: this.outgoingTransfers.length,
+              incomingInMemory: this.incomingTransfers.length,
+            }
+          }
+        };
+      }
+
+      // Get the next batch from our combined feed
+      const startIndex = this.feedPosition;
+      const endIndex = Math.min(startIndex + this.pageSize, this.combinedFeed.length);
+      const transfers = this.combinedFeed.slice(startIndex, endIndex);
+
+      // Update position
+      this.feedPosition = endIndex;
+
+      return {
+        transfers,
+        metadata: {
+          currentPosition: this.feedPosition,
+          totalInMemory: this.combinedFeed.length,
+          hasMore: this._hasMoreData(),
+          remainingInBuffer: this.combinedFeed.length - this.feedPosition,
           pages: {
             outgoing: this.currentPage,
             incoming: this.currentPage,
@@ -91,36 +148,12 @@ export class ChronologicalTransferManager {
           stats: {
             outgoingInMemory: this.outgoingTransfers.length,
             incomingInMemory: this.incomingTransfers.length,
-          }
-        }
+          },
+        },
       };
+    } finally {
+      this.isProcessing = false;
     }
-
-    // Get the next batch from our combined feed
-    const startIndex = this.feedPosition;
-    const endIndex = Math.min(startIndex + this.pageSize, this.combinedFeed.length);
-    const transfers = this.combinedFeed.slice(startIndex, endIndex);
-
-    // Update position
-    this.feedPosition = endIndex;
-
-    return {
-      transfers,
-      metadata: {
-        currentPosition: this.feedPosition,
-        totalInMemory: this.combinedFeed.length,
-        hasMore: this._hasMoreData(),
-        remainingInBuffer: this.combinedFeed.length - this.feedPosition,
-        pages: {
-          outgoing: this.currentPage,
-          incoming: this.currentPage,
-        },
-        stats: {
-          outgoingInMemory: this.outgoingTransfers.length,
-          incomingInMemory: this.incomingTransfers.length,
-        },
-      },
-    };
   }
 
   /**
@@ -135,6 +168,7 @@ export class ChronologicalTransferManager {
     this.hasMoreOutgoing = true;
     this.hasMoreIncoming = true;
     this.isInitialized = false;
+    this.isProcessing = false;
   }
 
   /**
@@ -206,6 +240,14 @@ export class ChronologicalTransferManager {
    * @private
    */
   async _fetchMorePages() {
+    console.log('[ChronologicalTransferManager] _fetchMorePages called:', {
+      currentPage: this.currentPage,
+      hasMoreOutgoing: this.hasMoreOutgoing,
+      hasMoreIncoming: this.hasMoreIncoming,
+      outgoingCount: this.outgoingTransfers.length,
+      incomingCount: this.incomingTransfers.length
+    });
+
     const fetchPromises = [];
 
     // Fetch next outgoing page if available
@@ -229,6 +271,14 @@ export class ChronologicalTransferManager {
     }
 
     this.isInitialized = true;
+
+    console.log('[ChronologicalTransferManager] _fetchMorePages completed:', {
+      newCurrentPage: this.currentPage,
+      newOutgoingCount: this.outgoingTransfers.length,
+      newIncomingCount: this.incomingTransfers.length,
+      hasMoreOutgoing: this.hasMoreOutgoing,
+      hasMoreIncoming: this.hasMoreIncoming
+    });
   }
 
   /**
@@ -272,6 +322,8 @@ export class ChronologicalTransferManager {
    * @private
    */
   _deduplicateTransfers(transfers) {
+    console.log('[ChronologicalTransferManager] _deduplicateTransfers called with', transfers.length, 'transfers');
+
     const hashGroups = new Map();
 
     // Group by transaction hash
@@ -288,14 +340,26 @@ export class ChronologicalTransferManager {
       }
     }
 
+    console.log('[ChronologicalTransferManager] Hash groups:', {
+      uniqueHashes: hashGroups.size,
+      duplicateHashes: Array.from(hashGroups.entries()).filter(([hash, group]) => group.length > 1).length
+    });
+
     const deduplicated = [];
 
-    for (const [, transferGroup] of hashGroups) {
+    for (const [hash, transferGroup] of hashGroups) {
       if (transferGroup.length === 1) {
         // Single transfer, keep it
         deduplicated.push(transferGroup[0]);
       } else {
         // Multiple transfers with same hash - smart deduplication
+        console.log('[ChronologicalTransferManager] Processing duplicate group for hash:', hash, {
+          count: transferGroup.length,
+          directions: transferGroup.map(t => (t: any).direction),
+          assets: transferGroup.map(t => (t: any).asset),
+          categories: transferGroup.map(t => (t: any).category)
+        });
+
         const tokenTransfers = transferGroup.filter(t =>
           // $FlowFixMe[prop-missing] - Transfer object structure is dynamic
           t.category !== 'external' && t.category !== 'internal'
@@ -309,13 +373,21 @@ export class ChronologicalTransferManager {
             // $FlowFixMe[prop-missing] - Transfer object structure is dynamic
             t.value && parseFloat(t.value) > 0
           );
+          console.log('[ChronologicalTransferManager] Keeping', tokenTransfers.length, 'token transfers and', nonZeroEthTransfers.length, 'non-zero ETH transfers for hash:', hash);
           deduplicated.push(...tokenTransfers, ...nonZeroEthTransfers);
         } else {
           // No conflict, keep all
+          console.log('[ChronologicalTransferManager] No conflict, keeping all', transferGroup.length, 'transfers for hash:', hash);
           deduplicated.push(...transferGroup);
         }
       }
     }
+
+    console.log('[ChronologicalTransferManager] _deduplicateTransfers completed:', {
+      input: transfers.length,
+      output: deduplicated.length,
+      removed: transfers.length - deduplicated.length
+    });
 
     return deduplicated;
   }
@@ -325,25 +397,138 @@ export class ChronologicalTransferManager {
    * @private
    */
   _rebuildCombinedFeed() {
+    console.log('[ChronologicalTransferManager] _rebuildCombinedFeed called:', {
+      outgoingCount: this.outgoingTransfers.length,
+      incomingCount: this.incomingTransfers.length,
+      currentCombinedFeedLength: this.combinedFeed.length,
+      currentFeedPosition: this.feedPosition
+    });
+
+    // Store the current transactions that have been served to track position
+    const previouslyServedHashes = this.combinedFeed.slice(0, this.feedPosition).map(t => (t: any).hash);
+
     // Combine all transfers
     const allTransfers = [
       ...this.outgoingTransfers.map((t) => ({ ...t, direction: 'OUT' })),
       ...this.incomingTransfers.map((t) => ({ ...t, direction: 'IN' })),
     ];
 
+    console.log('[ChronologicalTransferManager] Combined transfers before deduplication:', {
+      totalCount: allTransfers.length,
+      outgoingAdded: this.outgoingTransfers.length,
+      incomingAdded: this.incomingTransfers.length,
+      previouslyServedCount: previouslyServedHashes.length
+    });
+
     // Deduplicate transfers with same hash
     const deduplicated = this._deduplicateTransfers(allTransfers);
 
-    // Sort by block number descending (most recent first)
+    console.log('[ChronologicalTransferManager] Deduplicated transfers:', {
+      beforeDeduplication: allTransfers.length,
+      afterDeduplication: deduplicated.length,
+      duplicatesRemoved: allTransfers.length - deduplicated.length
+    });
+
+    // Sort by block number descending (most recent first), then by timestamp
     deduplicated.sort((a, b) => {
       // $FlowIgnore[unclear-type]
       const blockA = parseInt((a: any).blockNum, 16) || 0;
       // $FlowIgnore[unclear-type]
       const blockB = parseInt((b: any).blockNum, 16) || 0;
-      return blockB - blockA;
+
+      // Primary sort: block number (descending)
+      if (blockB !== blockA) {
+        return blockB - blockA;
+      }
+
+      // Secondary sort: timestamp (descending) as fallback
+      // $FlowIgnore[unclear-type]
+      const timestampA = parseInt((a: any).metadata?.blockTimestamp || '0', 16) || 0;
+      // $FlowIgnore[unclear-type]
+      const timestampB = parseInt((b: any).metadata?.blockTimestamp || '0', 16) || 0;
+
+      if (timestampB !== timestampA) {
+        return timestampB - timestampA;
+      }
+
+      // Tertiary sort: transaction index within block (ascending for FIFO within block)
+      // $FlowIgnore[unclear-type]
+      const indexA = parseInt((a: any).transactionIndex || '0', 16) || 0;
+      // $FlowIgnore[unclear-type]
+      const indexB = parseInt((b: any).transactionIndex || '0', 16) || 0;
+
+      return indexA - indexB;
     });
 
+    // Log first 5 transactions for debugging
+    console.log('[ChronologicalTransferManager] First 5 sorted transactions:', deduplicated.slice(0, 5).map(t => ({
+      // $FlowIgnore[unclear-type]
+      hash: `${((t: any).hash || '').slice(0, 10)}...`,
+      // $FlowIgnore[unclear-type]
+      blockNum: (t: any).blockNum,
+      // $FlowIgnore[unclear-type]
+      blockDecimal: parseInt((t: any).blockNum, 16),
+      // $FlowIgnore[unclear-type]
+      timestamp: (t: any).metadata?.blockTimestamp,
+      // $FlowIgnore[unclear-type]
+      direction: (t: any).direction,
+      // $FlowIgnore[unclear-type]
+      asset: (t: any).asset
+    })));
+
+    // Add detailed debugging to understand what's happening with the sort and positions
+    if (previouslyServedHashes.length > 0) {
+      console.log('[ChronologicalTransferManager] Debug: Previously served hashes:', 
+        previouslyServedHashes.map(h => h.slice(0, 10) + '...'));
+      console.log('[ChronologicalTransferManager] Debug: New sorted order (first 15):', 
+        deduplicated.slice(0, 15).map((t, i) => ({
+          position: i,
+          hash: ((t: any).hash || '').slice(0, 10) + '...',
+          wasServed: previouslyServedHashes.includes((t: any).hash),
+          // $FlowIgnore[unclear-type]
+          blockDecimal: parseInt((t: any).blockNum, 16),
+          // $FlowIgnore[unclear-type]
+          direction: (t: any).direction
+        })));
+    }
+
     this.combinedFeed = deduplicated;
+
+    // Recalculate feed position based on previously served transactions
+    if (previouslyServedHashes.length > 0) {
+      let newFeedPosition = 0;
+      let servedCount = 0;
+      
+      // Find all previously served transactions in the new sorted order
+      for (let i = 0; i < this.combinedFeed.length; i++) {
+        const currentHash = (this.combinedFeed[i]: any).hash;
+        if (previouslyServedHashes.includes(currentHash)) {
+          servedCount++;
+          newFeedPosition = i + 1;
+        }
+        
+        // Stop when we've found all served transactions
+        if (servedCount >= previouslyServedHashes.length) {
+          break;
+        }
+      }
+      
+      this.feedPosition = newFeedPosition;
+      
+      console.log('[ChronologicalTransferManager] Feed position recalculated:', {
+        oldPosition: previouslyServedHashes.length,
+        newPosition: this.feedPosition,
+        positionDiff: this.feedPosition - previouslyServedHashes.length,
+        servedTransactionsFound: servedCount,
+        expectedServedCount: previouslyServedHashes.length
+      });
+    }
+
+    console.log('[ChronologicalTransferManager] _rebuildCombinedFeed completed:', {
+      newCombinedFeedLength: this.combinedFeed.length,
+      feedPosition: this.feedPosition,
+      remainingTransactions: this.combinedFeed.length - this.feedPosition
+    });
   }
 }
 

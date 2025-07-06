@@ -9,8 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-import { AlchemyTransferFetcher } from './AlchemyTransferFetcher';
-import { ChronologicalTransferManager } from './ChronologicalTransferManager';
+import SimpleTransactionManager from './SimpleTransactionManager';
 import { hasAlchemyApiKey } from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
 import type { TandaPayError } from '../errors/types';
@@ -54,6 +53,9 @@ type UseTransactionHistoryReturn = {|
   |},
 |};
 
+// Global lock to prevent multiple manager instances from running simultaneously
+let globalManagerLock = false;
+
 export default function useTransactionHistory({
   walletAddress,
   apiKeyConfigured,
@@ -64,48 +66,89 @@ export default function useTransactionHistory({
   const [loadMoreState, setLoadMoreState] = useState<LoadMoreState>({ status: 'idle' });
 
   // Use refs to maintain instances across re-renders
-  const alchemyFetcherRef = useRef<?AlchemyTransferFetcher>(null);
-  const managerRef = useRef<?ChronologicalTransferManager>(null);
+  const managerRef = useRef<?SimpleTransactionManager>(null);
   const isMountedRef = useRef<boolean>(true);
 
   // Helper function to process raw transfers into etherscan format
   const processTransfers = useCallback(async (rawTransfers: $ReadOnlyArray<Transfer>) => {
+    console.log('[useTransactionHistory] processTransfers called with', rawTransfers.length, 'transfers');
+    
     if (walletAddress == null || walletAddress === '' || !isMountedRef.current) {
       return rawTransfers;
     }
 
     try {
       const processedTransfers = await Promise.all(
-        rawTransfers.map(async (transfer) => {
+        rawTransfers.map(async (transfer, index) => {
           if (!isMountedRef.current) {
             return transfer;
           }
           try {
             const result = await convertTransferToEtherscanFormat(transfer, walletAddress, tandaPayContractAddress, network);
+            console.log('[useTransactionHistory] Processed transfer', index + 1, 'of', rawTransfers.length, ':', {
+              hash: result.hash,
+              direction: result.direction,
+              asset: result.asset,
+              isTandaPayTransaction: result.isTandaPayTransaction,
+              formattedValue: result.formattedValue
+            });
             return result;
           } catch (error) {
+            console.log('[useTransactionHistory] Failed to process transfer', index + 1, ':', error.message);
             // If processing fails, return the original transfer
             return transfer;
           }
         })
       );
-      
+
       if (!isMountedRef.current) {
         return rawTransfers;
       }
-      
+
+      console.log('[useTransactionHistory] processTransfers completed:', {
+        input: rawTransfers.length,
+        output: processedTransfers.length
+      });
+
       return processedTransfers;
     } catch (error) {
+      console.log('[useTransactionHistory] processTransfers failed:', error.message);
       // If all processing fails, return original transfers
       return rawTransfers;
     }
   }, [walletAddress, tandaPayContractAddress, network]);
+
+  // Track current manager configuration
+  const managerConfigRef = useRef<?{| address: string, network: SupportedNetwork |}>(null);
 
   // Initialize Alchemy and managers when needed
   const initializeManagers = useCallback(async () => {
     if (walletAddress == null || walletAddress === '' || !apiKeyConfigured || !isMountedRef.current) {
       return null;
     }
+
+    // Check if we already have a manager for this address and network
+    if (managerRef.current 
+        && managerConfigRef.current
+        && managerConfigRef.current.address === walletAddress
+        && managerConfigRef.current.network === network) {
+      console.log('[useTransactionHistory] Reusing existing manager for:', walletAddress.slice(0, 10) + '...');
+      return managerRef.current;
+    }
+
+    // Prevent multiple simultaneous manager creations
+    if (globalManagerLock) {
+      console.log('[useTransactionHistory] Global manager lock active, waiting...');
+      // Wait a bit and retry once
+      await new Promise(resolve => setTimeout(resolve, 150));
+      if (globalManagerLock) {
+        console.log('[useTransactionHistory] Global manager lock still active, skipping manager initialization');
+        return null;
+      }
+    }
+
+    console.log('[useTransactionHistory] Creating new manager instance for address:', walletAddress.slice(0, 10) + '...');
+    globalManagerLock = true;
 
     try {
       // Check if API key is available using our helper
@@ -117,16 +160,28 @@ export default function useTransactionHistory({
         return null;
       }
 
-      // Create fetcher with the current network
-      const alchemyFetcher = new AlchemyTransferFetcher(network);
-      const manager = new ChronologicalTransferManager(alchemyFetcher, walletAddress, 10, 5);
+      // Double-check that another instance wasn't created while we were waiting
+      if (managerRef.current && 
+          managerConfigRef.current &&
+          managerConfigRef.current.address === walletAddress &&
+          managerConfigRef.current.network === network) {
+        console.log('[useTransactionHistory] Manager was created by another call, using existing one');
+        return managerRef.current;
+      }
 
-      alchemyFetcherRef.current = alchemyFetcher;
+      // Create SimpleTransactionManager
+      const manager = new SimpleTransactionManager(walletAddress, network);
+
       managerRef.current = manager;
+      managerConfigRef.current = { address: walletAddress, network };
 
+      console.log('[useTransactionHistory] Manager creation completed successfully');
       return manager;
     } catch (error) {
+      console.log('[useTransactionHistory] Manager creation failed:', error.message);
       return null;
+    } finally {
+      globalManagerLock = false;
     }
   }, [walletAddress, apiKeyConfigured, network]);
 
@@ -136,8 +191,8 @@ export default function useTransactionHistory({
     setLoadMoreState({ status: 'idle' });
 
     // Clean up previous instances
-    alchemyFetcherRef.current = null;
     managerRef.current = null;
+    managerConfigRef.current = null;
   }, [walletAddress, apiKeyConfigured, network, tandaPayContractAddress]);
 
   // Fetch initial transactions
@@ -147,6 +202,12 @@ export default function useTransactionHistory({
     }
 
     if (!isMountedRef.current) {
+      return;
+    }
+
+    // Prevent concurrent calls
+    if (transactionState.status === 'loading') {
+      console.log('[useTransactionHistory] fetchInitialTransactions already loading, skipping');
       return;
     }
 
@@ -176,7 +237,7 @@ export default function useTransactionHistory({
       setTransactionState({
         status: 'success',
         transfers: processedTransfers,
-        hasMore: result.metadata.hasMore,
+        hasMore: result.hasMore,
       });
     } catch (error) {
       if (!isMountedRef.current) {
@@ -196,7 +257,7 @@ export default function useTransactionHistory({
         error: tandaPayError,
       });
     }
-  }, [walletAddress, initializeManagers, processTransfers]);
+  }, [walletAddress, initializeManagers, processTransfers, transactionState.status]);
 
   // Initial fetch effect
   useEffect(() => {
@@ -212,6 +273,14 @@ export default function useTransactionHistory({
 
   // Load more transactions
   const loadMore = useCallback(async () => {
+    console.log('[useTransactionHistory] loadMore called:', {
+      walletAddress: walletAddress ? walletAddress.slice(0, 10) + '...' : 'null',
+      transactionStateStatus: transactionState.status,
+      hasMore: transactionState.status === 'success' ? transactionState.hasMore : null,
+      loadMoreStateStatus: loadMoreState.status,
+      currentTransferCount: transactionState.status === 'success' ? transactionState.transfers.length : 0
+    });
+
     if (
       walletAddress == null
       || walletAddress === ''
@@ -222,17 +291,27 @@ export default function useTransactionHistory({
       || !managerRef.current
       || !isMountedRef.current
     ) {
+      console.log('[useTransactionHistory] loadMore early return due to conditions');
       return;
     }
 
+    console.log('[useTransactionHistory] loadMore proceeding with current manager');
     setLoadMoreState({ status: 'loading' });
 
     try {
-      if (managerRef.current == null) {
+      const manager = managerRef.current;
+      if (manager == null) {
         return;
       }
 
-      const result = await managerRef.current.getMoreTransactions();
+      console.log('[useTransactionHistory] Calling manager.getMoreTransactions()...');
+      const result = await manager.getMoreTransactions();
+
+      console.log('[useTransactionHistory] Got result from manager:', {
+        newTransferCount: result.transfers.length,
+        hasMore: result.hasMore,
+        metadata: result.metadata
+      });
 
       // Process the new transactions before adding them
       const processedNewTransfers = await processTransfers(result.transfers);
@@ -241,14 +320,45 @@ export default function useTransactionHistory({
         return;
       }
 
-      setTransactionState({
-        status: 'success',
-        transfers: [...transactionState.transfers, ...processedNewTransfers],
-        hasMore: result.metadata.hasMore,
+      console.log('[useTransactionHistory] Setting new transaction state:', {
+        existingCount: transactionState.transfers.length,
+        newCount: processedNewTransfers.length,
+        totalCount: transactionState.transfers.length + processedNewTransfers.length,
+        hasMore: result.hasMore
       });
 
-      setLoadMoreState(result.metadata.hasMore ? { status: 'idle' } : { status: 'complete' });
+      // Check for duplicates before adding
+      const existingHashes = new Set(transactionState.transfers.map(t => {
+        const tx = (t: any);
+        return `${tx.hash}-${tx.direction}`;
+      }));
+
+      const deduplicatedNewTransfers = processedNewTransfers.filter(t => {
+        const tx = (t: any);
+        const key = `${tx.hash}-${tx.direction}`;
+        if (existingHashes.has(key)) {
+          console.log('[useTransactionHistory] Filtering out duplicate:', key);
+          return false;
+        }
+        existingHashes.add(key);
+        return true;
+      });
+
+      console.log('[useTransactionHistory] After deduplication:', {
+        originalNewCount: processedNewTransfers.length,
+        deduplicatedCount: deduplicatedNewTransfers.length,
+        duplicatesFiltered: processedNewTransfers.length - deduplicatedNewTransfers.length
+      });
+
+      setTransactionState({
+        status: 'success',
+        transfers: [...transactionState.transfers, ...deduplicatedNewTransfers],
+        hasMore: result.hasMore,
+      });
+
+      setLoadMoreState(result.hasMore ? { status: 'idle' } : { status: 'complete' });
     } catch (error) {
+      console.log('[useTransactionHistory] loadMore error:', error.message);
       if (!isMountedRef.current) {
         return;
       }
@@ -277,7 +387,6 @@ export default function useTransactionHistory({
   useEffect(() => () => {
     // Clear refs on unmount
     isMountedRef.current = false;
-    alchemyFetcherRef.current = null;
     managerRef.current = null;
   }, []);
 

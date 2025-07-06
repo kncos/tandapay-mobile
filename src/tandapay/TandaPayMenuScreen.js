@@ -13,6 +13,8 @@ import Screen from '../common/Screen';
 import type { AppNavigationProp } from '../nav/AppNavigator'; // Or whatever navigator type is appropriate
 import NavRow from '../common/NavRow';
 import { IconSettings, IconTandaPayActions, IconTandaPayInfo, IconWallet } from '../common/Icons';
+import ZulipButton from "../common/ZulipButton";
+import { TransactionManager } from "./wallet/TransactionManagerNew";
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-menu'>,
@@ -33,6 +35,11 @@ type Props = $ReadOnly<{|
 
 export default function TandaPayMenuScreen(props: Props): Node {
   const { navigation } = props;
+  const tm = new TransactionManager(
+    'sepolia',
+    '0xA726263b90717e431EE068230bA5623469a5D5D9',
+    '0xA726263b90717e431EE068230bA5623469a5D5D9',
+  );
 
   return (
     <Screen title="TandaPay Menu">
@@ -67,6 +74,16 @@ export default function TandaPayMenuScreen(props: Props): Node {
           navigation.push('tandapay-settings');
         }}
         subtitle="Configure some stuff"
+      />
+      <ZulipButton
+        text="Test TransactionManager"
+        onPress={async () => {
+          try {
+            await tm.fetchNextPage();
+          } catch (error) {
+            console.error('Error fetching transactions:', error);
+          }
+        }}
       />
     </Screen>
   );
