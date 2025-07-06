@@ -13,8 +13,8 @@ import Screen from '../common/Screen';
 import type { AppNavigationProp } from '../nav/AppNavigator'; // Or whatever navigator type is appropriate
 import NavRow from '../common/NavRow';
 import { IconSettings, IconTandaPayActions, IconTandaPayInfo, IconWallet } from '../common/Icons';
-import ZulipButton from "../common/ZulipButton";
-import { TransactionManager } from "./wallet/TransactionManagerNew";
+import ZulipButton from '../common/ZulipButton';
+import { TransactionManager } from './wallet/TransactionManagerNew';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-menu'>,
@@ -79,9 +79,32 @@ export default function TandaPayMenuScreen(props: Props): Node {
         text="Test TransactionManager"
         onPress={async () => {
           try {
-            await tm.fetchNextPage();
+            await tm.loadMore();
           } catch (error) {
             console.error('Error fetching transactions:', error);
+          }
+        }}
+      />
+      <ZulipButton
+        text="Log Transactions"
+        onPress={() => {
+          const uniqueHashes = tm.getAllCurrentlyLoadedUniqueHashes();
+          console.log(uniqueHashes.size);
+          for (const [hash, transactions] of uniqueHashes.entries()) {
+            if (transactions.length < 2) {
+              continue;
+            }
+
+            console.log(`Transactions for hash ${hash.slice(6)}...:`);
+            transactions.forEach(tx => {
+              console.log(`  - Unique ID: ${tx.uniqueId}`);
+              console.log(`    Category: ${tx.category}`);
+              console.log(`    To: ${tx.to}`);
+              console.log(`    From: ${tx.from}`);
+              console.log(`    Value: ${tx.value}`);
+              console.log(`    Asset: ${tx.asset}`);
+            });
+            console.log('\n');
           }
         }}
       />

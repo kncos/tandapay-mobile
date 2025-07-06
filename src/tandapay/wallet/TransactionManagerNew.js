@@ -2,7 +2,6 @@
 
 import { PriorityQueue } from 'datastructures-js';
 import { ethers } from 'ethers';
-import { is } from 'date-fns/esm/locale';
 import { getAssetTransfers } from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
 
@@ -13,10 +12,12 @@ export class TransactionManager {
 
   _incomingTransactions: Array<any>;
   _outgoingTransactions: Array<any>;
+  // $FlowFixMe[value-as-type] - PriorityQueue is imported from datastructures-js
   _transactionQueue: PriorityQueue<any>;
   _nextIncomingPage: ?string;
   _nextOutgoingPage: ?string;
   _pageSize: number;
+  _lock: boolean = false;
 
   constructor(network: SupportedNetwork, walletAddress: string, tandapayContractAddress: string) {
     // ensure these parameters are provided and valid
@@ -41,7 +42,7 @@ export class TransactionManager {
     this._incomingTransactions = [];
     this._outgoingTransactions = [];
     this._transactionQueue = new PriorityQueue((a, b) => this._transactionSortKey(a, b));
-    this._pageSize = 10;
+    this._pageSize = 20;
   }
 
   _getDefaultParams() {
@@ -52,7 +53,7 @@ export class TransactionManager {
       withMetadata: true,
       excludeZeroValue: false,
       order: 'desc',
-      maxCount: this._pageSize,
+      maxCount: this._pageSize, // we use x2 because we can get 2 transactions per hash (external and log)
     };
   }
 
@@ -80,38 +81,76 @@ export class TransactionManager {
     return 0; // equal timestamps
   }
 
-  async fetchNextPage() {
-    const incoming = [];
-    // We start this as undefined. When we pass undefined to the API, it will fetch the first page.
-    // The response will contain a pageKey that we can use for the next page in subsequent calls. Once
-    // the response returns null, there are no more pages to fetch. So, undefined = first page, null = no more pages.
-    if (this._nextIncomingPage !== null) {
-      const response = await getAssetTransfers(this._network, {
-        ...this._getDefaultParams(),
-        toAddress: this._walletAddress,
-        pageKey: this._nextIncomingPage || undefined,
-      });
-      this._nextIncomingPage = response.pageKey;
-      incoming.push(...response.transfers);
+  async loadMore() {
+    // lock the transaction manager to prevent concurrent fetches
+    if (this._lock) {
+      console.warn('TransactionManager is currently locked. Please wait for the current operation to complete.');
+      return;
+      // throw new Error('TransactionManager is currently locked. Please wait for the current operation to complete.');
     }
+    this._lock = true;
 
+    // store incoming and outgoing transactions in separate arrays
+    const incoming = [];
     const outgoing = [];
-    // Same logic applies here for outgoing transactions.
-    if (this._nextOutgoingPage !== null) {
-      const response = await getAssetTransfers(this._network, {
-        ...this._getDefaultParams(),
-        fromAddress: this._walletAddress,
-        pageKey: this._nextOutgoingPage || undefined,
-      });
-      this._nextOutgoingPage = response.pageKey;
-      outgoing.push(...response.transfers);
+
+    // we'll try to fetch both incoming and outgoing transactions in parallel
+    try {
+      // nextIncomingPage is initially undefined. When we pass undefined to the API, it will fetch the first page.
+      // The response will contain a pageKey that we can use for the next page in subsequent calls. Once
+      // the response returns null, there are no more pages to fetch. So, undefined = first page, null = no more pages.
+      const incomingPromise = this._nextIncomingPage !== null
+        ? getAssetTransfers(this._network, {
+            ...this._getDefaultParams(),
+            toAddress: this._walletAddress,
+            pageKey: this._nextIncomingPage || undefined,
+          })
+        : Promise.resolve({ transfers: [], pageKey: null });
+      // same logic applies for outgoing transactions
+      const outgoingPromise = this._nextOutgoingPage !== null
+        ? getAssetTransfers(this._network, {
+            ...this._getDefaultParams(),
+            fromAddress: this._walletAddress,
+            pageKey: this._nextOutgoingPage || undefined,
+          })
+        : Promise.resolve({ transfers: [], pageKey: null });
+
+      // wait for both promises to resolve
+      const [incomingResponse, outgoingResponse] = await Promise.all([incomingPromise, outgoingPromise]);
+
+      // if either response has a null pageKey, it means there are no more pages to fetch
+      this._nextIncomingPage = incomingResponse.pageKey;
+      this._nextOutgoingPage = outgoingResponse.pageKey;
+
+      // push the transfers from both responses into their respective arrays
+      incoming.push(...incomingResponse.transfers);
+      outgoing.push(...outgoingResponse.transfers);
+    } catch (error) {
+      this._lock = false; // unlock on error
+      throw new Error(`Failed to fetch transactions: ${error.message}`);
     }
 
     // use priority queue to maintain combined feed
     incoming.forEach(tx => this._transactionQueue.enqueue(tx));
     outgoing.forEach(tx => this._transactionQueue.enqueue(tx));
 
-    // let's see how it looks
-    this._transactionQueue.toArray().forEach(tx => console.log('Transaction:', JSON.stringify(tx, null, 2), '\n\n'));
+    // console.log('=====================');
+    // this._transactionQueue.toArray().forEach(tx => console.log('Transaction:', tx.uniqueId));
+    // console.log(this._transactionQueue.size(), 'transactions in queue');
+
+    // fetches complete, unlock the transaction manager
+    this._lock = false;
+  }
+
+  getAllCurrentlyLoadedUniqueHashes(): Map<string, any[]> {
+    const uniqueHashes = new Map<string, any[]>();
+    this._transactionQueue.toArray().forEach(tx => {
+      if (!uniqueHashes.has(tx.hash)) {
+        uniqueHashes.set(tx.hash, [tx]);
+      } else {
+        uniqueHashes.get(tx.hash)?.push(tx);
+      }
+    });
+    return uniqueHashes;
   }
 }
