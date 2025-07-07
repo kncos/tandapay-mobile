@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import { getAssetTransfers } from './AlchemyApiHelper';
 import type { Transfer } from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
+import TranslationProvider from '../../boot/TranslationProvider';
 
 export type FullTransaction = {|
   hash: string | null,
@@ -17,7 +18,7 @@ export type FullTransaction = {|
   // 'deployment' for contract deployments (when `to` is null),
   // 'unknown' for any other type of transaction that doesn't fit the above categories.
   type: 'tandapay' | 'erc20' | 'eth' | 'deployment' | 'unknown',
-  value: number | null,
+  netValueChanges: Map<string, number>, // map of assets to net value changes
   transfers: Transfer[] | null, // array of transfer objects
 |};
 
@@ -191,6 +192,64 @@ export class TransactionManager {
     return this._nextIncomingPage === null && this._nextOutgoingPage === null;
   }
 
+  _calculateNetValueChanges(transfers: Transfer[]): Map<string, number> {
+    const netValueChanges = new Map<string, number>();
+    // iterate through each transfer to tally the total net changes
+    for (const transfer of transfers) {
+      if (transfer.value === null || transfer.value <= 0) {
+        continue; // skip transfers with no value
+      }
+
+      // figure out how to categorize this asset
+      const asset = (() => {
+        // use asset symbol if it is available. This should work in most cases
+        if (transfer.asset && transfer.asset !== '') {
+          return transfer.asset;
+        // TODO: later on, implement a way to check the contract address against our known tokens
+        // otherwise, if it's an ERC20 transfer, we can just mark it as an unknown erc20
+        } else if (transfer.category === 'erc20') {
+          return 'unknown-erc20';
+        // TODO: we could check the network settings later on and populate this that way
+        // if it's a native token transfer, we'll just assume it's eth
+        } else {
+          return 'ETH';
+        }
+      })();
+
+      const currentValue = netValueChanges.get(asset) || 0;
+      const transferValue = transfer.value || 0;
+      // transfer is from our wallet
+      const transferFromUs = transfer.from && transfer.from.toLowerCase() === this._walletAddress.toLowerCase();
+      // transfer is to our wallet
+      const transferToUs = transfer.to && transfer.to.toLowerCase() === this._walletAddress.toLowerCase();
+
+      // if the transaction involves us, we can calculate net changes. If it involves two other addresses,
+      // then it's probably an intermediate transfer and we can just ignore it because it doesn't change the
+      // net balance of our wallet.
+      if (transferFromUs && transferToUs) {
+        // if the transfer is both to/from us, the net change is 0, so we'll just skip it
+        continue;
+      } else if (transferFromUs) {
+        netValueChanges.set(asset, currentValue - transferValue);
+      } else if (transferToUs) {
+        netValueChanges.set(asset, currentValue + transferValue);
+      }
+    }
+
+    // we'll just delete any where the net change was 0
+    const toRemove = [];
+    for (const [asset, value] of netValueChanges) {
+      if (value === 0) {
+        toRemove.push(asset);
+      }
+    }
+    for (const asset of toRemove) {
+      netValueChanges.delete(asset);
+    }
+    // finally, return the net value changes map
+    return netValueChanges;
+  }
+
   _toFullTransaction(transfers: Transfer[]): FullTransaction {
     if (!Array.isArray(transfers)) {
       throw new Error('Transfers is not an array!');
@@ -233,7 +292,7 @@ export class TransactionManager {
         transfers: [...transfers],
         // some tandapay transactions will involve erc20 transfers, such as for paying premiums,
         // joining the community, etc. If so, then we'll include the erc20 amount
-        value: erc20transfer?.value ?? null,
+        netValueChanges: this._calculateNetValueChanges(transfers),
       };
     }
     // otherwise, if it's not a tandapay transaction, but there was an erc20transfer involved,
@@ -244,7 +303,7 @@ export class TransactionManager {
         blockNum: transfers[0].blockNum,
         type: 'erc20',
         transfers: [...transfers],
-        value: erc20transfer.value ?? null,
+        netValueChanges: this._calculateNetValueChanges(transfers),
       };
     }
     // TODO: note this will not display the value properly if value is transferred multiple times
@@ -257,7 +316,7 @@ export class TransactionManager {
         blockNum: transfers[0].blockNum,
         type: 'eth',
         transfers: [...transfers],
-        value: transfers.find(tx => hasNonZeroValue(tx))?.value ?? null,
+        netValueChanges: this._calculateNetValueChanges(transfers),
       };
     }
     // it may potentially be a contract deployment? that happens when the `to` field is null.
@@ -268,7 +327,7 @@ export class TransactionManager {
         blockNum: transfers[0].blockNum,
         type: 'deployment',
         transfers: [...transfers],
-        value: null, // no erc20 amount for deployments
+        netValueChanges: this._calculateNetValueChanges(transfers),
       };
     }
 
@@ -278,7 +337,7 @@ export class TransactionManager {
       blockNum: transfers[0].blockNum,
       type: 'unknown',
       transfers: [...transfers],
-      value: null, // no erc20 amount for unknown transactions
+      netValueChanges: this._calculateNetValueChanges(transfers),
     };
   }
 
@@ -357,10 +416,19 @@ export class TransactionManager {
       return;
     }
 
-    const hash = ft.hash ? `${ft.hash.slice(0, 6)}...` : 'N/A';
+    const hash = ft.hash ? `${ft.hash}` : 'N/A';
     const blockNum = ft.blockNum ? `Block: ${parseInt(ft.blockNum, 16)}` : 'N/A';
-    const value = ft.value !== null ? `Value: ${ft.value}` : 'Value: N/A';
+    const formatNetValueChanges = (netValueChanges: Map<string, number>) => {
+      const res: string[] = [];
+      netValueChanges.forEach((value, asset) => {
+        res.push(`${asset}: ${value}`);
+      });
 
-    console.log(`hash: ${hash}\nblockNum: ${blockNum}\ntype: ${ft.type}\nvalue: ${value}`);
+      return `{\n${res.map(s => `\t${s}`).join('\n')}\n}`;
+    };
+
+    const netValueChanges = formatNetValueChanges(ft.netValueChanges);
+
+    console.log(`hash: ${hash}\nblockNum: ${blockNum}\ntype: ${ft.type}\nvalue: ${netValueChanges}`);
   }
 }
