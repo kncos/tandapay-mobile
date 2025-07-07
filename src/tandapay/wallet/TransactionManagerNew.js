@@ -1,15 +1,24 @@
+/* eslint-disable no-console */
 // @flow
 
 import { PriorityQueue } from 'datastructures-js';
 import { ethers } from 'ethers';
 import { getAssetTransfers } from './AlchemyApiHelper';
+import type { Transfer } from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
 
 export type FullTransaction = {|
-  hash: string,
-  blockNum: string, // in hex format
-  type: 'tandapay' | 'erc20' | 'eth' | 'unknown',
-  transfers: any[], // array of transfer objects
+  hash: string | null,
+  blockNum: string | null, // in hex format
+  // type of transaction, can be one of the following:
+  // 'tandapay' for TandaPay contract interactions,
+  // 'erc20' for ERC20 token transfers,
+  // 'eth' for ETH transfers,
+  // 'deployment' for contract deployments (when `to` is null),
+  // 'unknown' for any other type of transaction that doesn't fit the above categories.
+  type: 'tandapay' | 'erc20' | 'eth' | 'deployment' | 'unknown',
+  value: number | null,
+  transfers: Transfer[] | null, // array of transfer objects
 |};
 
 export class TransactionManager {
@@ -18,13 +27,17 @@ export class TransactionManager {
   _tandapayContractAddress: string;
 
   // $FlowFixMe[value-as-type] - PriorityQueue is imported from datastructures-js
-  _transactionQueue: PriorityQueue<any>;
+  _transactionQueue: PriorityQueue<Transfer>;
   _nextIncomingPage: ?string;
   _nextOutgoingPage: ?string;
   _pageSize: number;
 
+  _pagesLoaded = 0;
+
   _inorderTransactionHashes: string[];
-  _allTransactions: Map<string, any>;
+  _allTransactions: Map<string, Transfer[]>;
+
+  _getOrderedTransactionsCache: ?Array<FullTransaction>;
 
   _lock: boolean = false;
 
@@ -50,6 +63,7 @@ export class TransactionManager {
     // Initialize any necessary properties or dependencies here
     this._transactionQueue = new PriorityQueue((a, b) => this._transactionSortKey(a, b));
     this._pageSize = 20;
+    this._pagesLoaded = 0;
 
     // this is the transaction hashes in order by timestamp. It is guaranteed that
     // each transaction hash will only appear once, and that they are ordered by timestamp.
@@ -58,7 +72,7 @@ export class TransactionManager {
     // this will store objects for all transactions we've seen so far, keyed by hash.
     // This can be used in conjunction with _inorderTransactionHashes to
     // retrieve the full transaction object for transactions in order.
-    this._allTransactions = new Map<string, any>();
+    this._allTransactions = new Map<string, Transfer[]>();
   }
 
   /**
@@ -117,8 +131,8 @@ export class TransactionManager {
     this._lock = true;
 
     // store incoming and outgoing transactions in separate arrays
-    const incoming = [];
-    const outgoing = [];
+    const incoming: Transfer[] = [];
+    const outgoing: Transfer[] = [];
 
     // we'll try to fetch both incoming and outgoing transactions in parallel
     try {
@@ -159,6 +173,8 @@ export class TransactionManager {
     // add new transactions to the queue
     incoming.forEach(tx => this._transactionQueue.enqueue(tx));
     outgoing.forEach(tx => this._transactionQueue.enqueue(tx));
+    this._pagesLoaded += 1;
+    this._dropGetOrderedTransactionsCache(); // invalidate the cache of ordered transactions
 
     // fetches complete, unlock the transaction manager
     this._lock = false;
@@ -175,8 +191,113 @@ export class TransactionManager {
     return this._nextIncomingPage === null && this._nextOutgoingPage === null;
   }
 
+  _toFullTransaction(transfers: Transfer[]): FullTransaction {
+    if (!Array.isArray(transfers)) {
+      throw new Error('Transfers is not an array!');
+    }
+
+    if (transfers.length === 0) {
+      throw new Error('Transfers array is empty!');
+    }
+
+    // we'll use this to see if erc20 funds were involved in this overall transaction
+    const erc20transfer = transfers.find(tx => tx.category === 'erc20') ?? null;
+
+    // helper for detecting tandapay transactions.
+    const isTandaPayTransaction = (tx) => {
+      if (tx.to !== null && tx.to.toLowerCase() === this._tandapayContractAddress.toLowerCase()) {
+        return true; // this transaction is to the TandaPay contract
+      }
+      if (tx.from !== null && tx.from.toLowerCase() === this._tandapayContractAddress.toLowerCase()) {
+        return true; // this transaction is from the TandaPay contract
+      }
+      return false;
+    };
+
+    // helper for checking if any economic value was transferred in this transaction.
+    const hasNonZeroValue = (tx) => {
+      if (tx.value === null || tx.value <= 0) {
+        return false;
+      } else {
+        return true;
+      }
+    };
+
+    // first we'll test if it's a tandapay transaction. If we interacted with the TandaPay contract
+    // address, that makes it a tandapay transaction.
+    if (transfers.some(tx => isTandaPayTransaction(tx))) {
+      return {
+        hash: transfers[0].hash,
+        blockNum: transfers[0].blockNum,
+        type: 'tandapay',
+        transfers: [...transfers],
+        // some tandapay transactions will involve erc20 transfers, such as for paying premiums,
+        // joining the community, etc. If so, then we'll include the erc20 amount
+        value: erc20transfer?.value ?? null,
+      };
+    }
+    // otherwise, if it's not a tandapay transaction, but there was an erc20transfer involved,
+    // that makes it an erc20 transaction. So, we'll construct that.
+    else if (erc20transfer !== null) {
+      return {
+        hash: transfers[0].hash,
+        blockNum: transfers[0].blockNum,
+        type: 'erc20',
+        transfers: [...transfers],
+        value: erc20transfer.value ?? null,
+      };
+    }
+    // TODO: note this will not display the value properly if value is transferred multiple times
+    // if it's not a tandapay or erc20 transaction, then it is either an eth transfer or unknown.
+    // we can decide that based off of the value
+    else if (transfers.some(tx => hasNonZeroValue(tx))) {
+      // if any transfer has a non-zero value, then this is an eth transaction
+      return {
+        hash: transfers[0].hash,
+        blockNum: transfers[0].blockNum,
+        type: 'eth',
+        transfers: [...transfers],
+        value: transfers.find(tx => hasNonZeroValue(tx))?.value ?? null,
+      };
+    }
+    // it may potentially be a contract deployment? that happens when the `to` field is null.
+    else if (transfers.every(tx => tx.to === null)) {
+      // if all transfers have a null `to`, then this is a contract deployment
+      return {
+        hash: transfers[0].hash,
+        blockNum: transfers[0].blockNum,
+        type: 'deployment',
+        transfers: [...transfers],
+        value: null, // no erc20 amount for deployments
+      };
+    }
+
+    // finally, if none of the above conditions are met, we consider it an unknown transaction
+    return {
+      hash: transfers[0].hash,
+      blockNum: transfers[0].blockNum,
+      type: 'unknown',
+      transfers: [...transfers],
+      value: null, // no erc20 amount for unknown transactions
+    };
+  }
+
+  _dropGetOrderedTransactionsCache() {
+    // this will drop the cache of ordered transactions, so that the next call to getOrdered
+    this._allTransactions.clear();
+    this._inorderTransactionHashes = [];
+    this._getOrderedTransactionsCache = null;
+  }
+
   // for now we will just return an array of objects with the hash and blocknum, in order
   getOrderedTransactions(): Array<FullTransaction> {
+    // if we have a cache of ordered transactions, return it. This gets invalidated
+    // when _transactionQueue is modified, so we can use this to avoid recalculating
+    if (Array.isArray(this._getOrderedTransactionsCache)) {
+      // be sure to return a copy of the cache, so that we don't modify it
+      return [...this._getOrderedTransactionsCache];
+    }
+
     // iterate over each transaction in the queue
     const transactionsArray = this._transactionQueue.toArray();
     for (const tx of transactionsArray) {
@@ -190,5 +311,56 @@ export class TransactionManager {
         this._allTransactions.get(tx.hash)?.push(tx);
       }
     }
+
+    // calculate the maximum safe index of transaction hashes we can return
+    const maxSafeIndex = (() => {
+      if (this.isAtLastPage()) {
+        return this._inorderTransactionHashes.length;
+      } else {
+        // if we are not at the last page, we can only safely return the transactions we've loaded
+        // so far. We can estimate this by multiplying the number of pages loaded by the page size.
+        // This is a conservative estimate, as we might have loaded all of the data for way more
+        // transactions than this.
+        return Math.min(
+          // conservative estimate
+          this._pagesLoaded * Math.floor(this._pageSize / 2),
+          // or the total number of transactions we've seen so far. We subtract 1 for the scenario
+          // where some of the transfers are on the next page, so the last hash we've seen might
+          // not have all of its transfers loaded yet. We prevent this from going negative as well
+          Math.max(this._inorderTransactionHashes.length - 1, 0),
+        );
+      }
+    })();
+
+    // build a list of full transactions in order up to the maxSafeIndex
+    const res: FullTransaction[] = [];
+    for (let i = 0; i < maxSafeIndex; i += 1) {
+      const hash = this._inorderTransactionHashes[i];
+      const transfers = this._allTransactions.get(hash);
+      if (!transfers || transfers.length === 0) {
+        console.warn(`Transaction with hash ${hash} had no transfers associated with it!`);
+        continue;
+      }
+
+      const fullTransaction = this._toFullTransaction(transfers);
+      res.push(fullTransaction);
+    }
+
+    // set the cache and return the result
+    this._getOrderedTransactionsCache = [...res];
+    return res;
+  }
+
+  prettyPrintFullTransaction(ft: FullTransaction): void {
+    if (!ft) {
+      console.log('No transaction data available');
+      return;
+    }
+
+    const hash = ft.hash ? `${ft.hash.slice(0, 6)}...` : 'N/A';
+    const blockNum = ft.blockNum ? `Block: ${parseInt(ft.blockNum, 16)}` : 'N/A';
+    const value = ft.value !== null ? `Value: ${ft.value}` : 'Value: N/A';
+
+    console.log(`hash: ${hash}\nblockNum: ${blockNum}\ntype: ${ft.type}\nvalue: ${value}`);
   }
 }

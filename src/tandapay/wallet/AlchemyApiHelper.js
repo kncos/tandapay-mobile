@@ -17,6 +17,85 @@ import { getAlchemyRpcUrl } from '../providers/ProviderManager';
 import { getAlchemyApiKey } from './WalletManager';
 import type { SupportedNetwork } from '../definitions';
 
+export type Transfer = {
+  category: 'external' | 'internal' | 'erc20' | 'erc721' | 'erc1155' | 'specialnft',
+  blockNum: string | null, // block number of the transfer (hex string)
+  from: string | null, // from address (hex string).
+  to: string | null, // to address (hex string). null if contract creation.
+  value: number | null, // asset transfer value. null if it's ERC721 or unknown decimals
+  asset: string | null, // ETH or the token's symbol, null if unavailable
+  uniqueId: string | null, // unique identifier for the transfer; will be a hash plus a suffix
+  hash: string | null, // transaction hash, null if unavailable
+  rawContract: {|
+    value: string | null, // raw hex transfer value. null for NFT transfers
+    address: string | null, // contract address, null for external or internal transfers
+    decimal: string | null, // contract decimal in hex. null if not known
+  |} | null,
+  metaData: {|
+    blockTimestamp: string | null, // timestamp of the block in ISO format, null if unavailable
+  |} | null,
+
+  // erc721TokenId -- omitted because we don't use it in this app
+  // erc1155Metadata -- omitted because we don't use it in this app
+  // tokenId: string | null -- for NFT tokens, we don't use it in this app
+};
+
+// TODO: review this type
+/**
+ * Response from eth_getTransactionReceipt API call
+ */
+export type TransactionReceiptResponse = {|
+  transactionHash: string,
+  transactionIndex: string,
+  blockHash: string,
+  blockNumber: string,
+  from: string,
+  to?: string,
+  gasUsed: string,
+  effectiveGasPrice?: string,
+  status?: string,
+  type?: string,
+  confirmations?: number,
+  logs?: Array<mixed>,
+|};
+
+// TODO: review this type
+/**
+ * Parameters for alchemy_getAssetTransfers API call
+ */
+export type AssetTransferParams = {|
+  fromBlock?: string,
+  toBlock?: string,
+  fromAddress?: string,
+  toAddress?: string,
+  contractAddresses?: Array<string>,
+  category: Array<string>,
+  withMetadata?: boolean,
+  excludeZeroValue?: boolean,
+  order?: string,
+  pageKey?: string,
+  maxCount?: number,
+|};
+
+// TODO: review this type
+/**
+ * Response from eth_getTransactionByHash API call
+ */
+type TransactionResponse = {|
+  hash: string,
+  nonce: string,
+  blockHash?: string,
+  blockNumber?: string,
+  transactionIndex?: string,
+  from: string,
+  to?: string,
+  value: string,
+  gasPrice?: string,
+  gas: string,
+  input: string,
+  type?: string,
+|};
+
 /**
  * Check if Alchemy API key is available
  */
@@ -62,23 +141,6 @@ async function getAlchemyProvider(network: SupportedNetwork): Promise<any> {  co
 }
 
 /**
- * Parameters for alchemy_getAssetTransfers API call
- */
-type AssetTransferParams = {|
-  fromBlock?: string,
-  toBlock?: string,
-  fromAddress?: string,
-  toAddress?: string,
-  contractAddresses?: Array<string>,
-  category: Array<string>,
-  withMetadata?: boolean,
-  excludeZeroValue?: boolean,
-  order?: string,
-  pageKey?: string,
-  maxCount?: number,
-|};
-
-/**
  * Convert numeric values to hex format for Alchemy API
  */
 function convertParamsToAlchemyFormat(params: AssetTransferParams): mixed {
@@ -93,7 +155,7 @@ function convertParamsToAlchemyFormat(params: AssetTransferParams): mixed {
   return alchemyParams;
 }
 type AssetTransferResponse = {|
-  transfers: Array<mixed>,
+  transfers: Array<Transfer>,
   pageKey?: string,
 |};
 
@@ -131,24 +193,6 @@ export async function getAssetTransfers(
 }
 
 /**
- * Response from eth_getTransactionReceipt API call
- */
-type TransactionReceiptResponse = {|
-  transactionHash: string,
-  transactionIndex: string,
-  blockHash: string,
-  blockNumber: string,
-  from: string,
-  to?: string,
-  gasUsed: string,
-  effectiveGasPrice?: string,
-  status?: string,
-  type?: string,
-  confirmations?: number,
-  logs?: Array<mixed>,
-|};
-
-/**
  * Get transaction receipt using eth_getTransactionReceipt API
  */
 export async function getTransactionReceipt(
@@ -172,24 +216,6 @@ export async function getTransactionReceipt(
     );
   }
 }
-
-/**
- * Response from eth_getTransactionByHash API call
- */
-type TransactionResponse = {|
-  hash: string,
-  nonce: string,
-  blockHash?: string,
-  blockNumber?: string,
-  transactionIndex?: string,
-  from: string,
-  to?: string,
-  value: string,
-  gasPrice?: string,
-  gas: string,
-  input: string,
-  type?: string,
-|};
 
 /**
  * Get transaction by hash using eth_getTransactionByHash API

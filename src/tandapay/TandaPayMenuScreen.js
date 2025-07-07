@@ -38,7 +38,7 @@ export default function TandaPayMenuScreen(props: Props): Node {
   const tm = new TransactionManager(
     'sepolia',
     '0xA726263b90717e431EE068230bA5623469a5D5D9',
-    '0xA726263b90717e431EE068230bA5623469a5D5D9',
+    '0x02d93c46703e2447e1cC08b457982992763B9Cc0',
   );
 
   return (
@@ -92,7 +92,10 @@ export default function TandaPayMenuScreen(props: Props): Node {
         text="Log Transactions"
         onPress={() => {
           const res = tm.getOrderedTransactions();
-          console.log(res.length);
+          for (const ft of res) {
+            tm.prettyPrintFullTransaction(ft);
+            console.log('----------------------------------');
+          }
         }}
       />
     </Screen>
