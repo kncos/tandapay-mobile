@@ -5,18 +5,27 @@ import { ethers } from 'ethers';
 import { getAssetTransfers } from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
 
+export type FullTransaction = {|
+  hash: string,
+  blockNum: string, // in hex format
+  type: 'tandapay' | 'erc20' | 'eth' | 'unknown',
+  transfers: any[], // array of transfer objects
+|};
+
 export class TransactionManager {
   _network: SupportedNetwork;
   _walletAddress: string;
   _tandapayContractAddress: string;
 
-  _incomingTransactions: Array<any>;
-  _outgoingTransactions: Array<any>;
   // $FlowFixMe[value-as-type] - PriorityQueue is imported from datastructures-js
   _transactionQueue: PriorityQueue<any>;
   _nextIncomingPage: ?string;
   _nextOutgoingPage: ?string;
   _pageSize: number;
+
+  _inorderTransactionHashes: string[];
+  _allTransactions: Map<string, any>;
+
   _lock: boolean = false;
 
   constructor(network: SupportedNetwork, walletAddress: string, tandapayContractAddress: string) {
@@ -39,12 +48,23 @@ export class TransactionManager {
     this._tandapayContractAddress = tandapayContractAddress;
 
     // Initialize any necessary properties or dependencies here
-    this._incomingTransactions = [];
-    this._outgoingTransactions = [];
     this._transactionQueue = new PriorityQueue((a, b) => this._transactionSortKey(a, b));
     this._pageSize = 20;
+
+    // this is the transaction hashes in order by timestamp. It is guaranteed that
+    // each transaction hash will only appear once, and that they are ordered by timestamp.
+    this._inorderTransactionHashes = [];
+
+    // this will store objects for all transactions we've seen so far, keyed by hash.
+    // This can be used in conjunction with _inorderTransactionHashes to
+    // retrieve the full transaction object for transactions in order.
+    this._allTransactions = new Map<string, any>();
   }
 
+  /**
+   * This method just helps us fill in some parameters that are common to all Alchemy API calls.
+   * @returns {Object} - Default parameters for the Alchemy API call.
+   */
   _getDefaultParams() {
     return {
       fromBlock: '0x0',
@@ -57,6 +77,12 @@ export class TransactionManager {
     };
   }
 
+  /**
+   * Get a sort key for two transactions based on their metadata block timestamps.
+   * @param {*} tx1 - The first transaction object.
+   * @param {*} tx2 - The second transaction object.
+   * @returns {number} - A negative number if tx1 is more recent, a positive number if tx2 is more recent, or 0 if they are equal.
+   */
   _transactionSortKey(tx1, tx2) {
     if (tx1.metadata.blockTimestamp === undefined || tx1.metadata.blockTimestamp === null) {
       throw new Error('Transaction metadata blockTimestamp is missing for tx1');
@@ -130,27 +156,39 @@ export class TransactionManager {
       throw new Error(`Failed to fetch transactions: ${error.message}`);
     }
 
-    // use priority queue to maintain combined feed
+    // add new transactions to the queue
     incoming.forEach(tx => this._transactionQueue.enqueue(tx));
     outgoing.forEach(tx => this._transactionQueue.enqueue(tx));
-
-    // console.log('=====================');
-    // this._transactionQueue.toArray().forEach(tx => console.log('Transaction:', tx.uniqueId));
-    // console.log(this._transactionQueue.size(), 'transactions in queue');
 
     // fetches complete, unlock the transaction manager
     this._lock = false;
   }
 
-  getAllCurrentlyLoadedUniqueHashes(): Map<string, any[]> {
-    const uniqueHashes = new Map<string, any[]>();
-    this._transactionQueue.toArray().forEach(tx => {
-      if (!uniqueHashes.has(tx.hash)) {
-        uniqueHashes.set(tx.hash, [tx]);
+  /**
+   * Checks if the transaction manager is at the last page of transactions. when a pageKey is null,
+   * it indicates that there are no more pages to load. When both incoming and outgoing pages are null,
+   * it means we have reached the end of both incoming and outgoing transactions, and there are
+   * no more to fetch.
+   * @returns {boolean} - Returns true if there are no more pages to load, false otherwise.
+   */
+  isAtLastPage(): boolean {
+    return this._nextIncomingPage === null && this._nextOutgoingPage === null;
+  }
+
+  // for now we will just return an array of objects with the hash and blocknum, in order
+  getOrderedTransactions(): Array<FullTransaction> {
+    // iterate over each transaction in the queue
+    const transactionsArray = this._transactionQueue.toArray();
+    for (const tx of transactionsArray) {
+      if (!this._allTransactions.has(tx.hash)) {
+        // if we haven't seen this transaction before, add it to the allTransactions map
+        this._allTransactions.set(tx.hash, [tx]);
+        // and add it to the ordered list
+        this._inorderTransactionHashes.push(tx.hash);
       } else {
-        uniqueHashes.get(tx.hash)?.push(tx);
+        // if we have seen it, push it, but it should already be in _inorderTransactionHashes
+        this._allTransactions.get(tx.hash)?.push(tx);
       }
-    });
-    return uniqueHashes;
+    }
   }
 }

@@ -79,7 +79,10 @@ export default function TandaPayMenuScreen(props: Props): Node {
         text="Test TransactionManager"
         onPress={async () => {
           try {
-            await tm.loadMore();
+            while (!tm.isAtLastPage()) {
+              await tm.loadMore();
+            }
+            console.log('All transactions loaded successfully.');
           } catch (error) {
             console.error('Error fetching transactions:', error);
           }
@@ -88,24 +91,8 @@ export default function TandaPayMenuScreen(props: Props): Node {
       <ZulipButton
         text="Log Transactions"
         onPress={() => {
-          const uniqueHashes = tm.getAllCurrentlyLoadedUniqueHashes();
-          console.log(uniqueHashes.size);
-          for (const [hash, transactions] of uniqueHashes.entries()) {
-            if (transactions.length < 2) {
-              continue;
-            }
-
-            console.log(`Transactions for hash ${hash.slice(6)}...:`);
-            transactions.forEach(tx => {
-              console.log(`  - Unique ID: ${tx.uniqueId}`);
-              console.log(`    Category: ${tx.category}`);
-              console.log(`    To: ${tx.to}`);
-              console.log(`    From: ${tx.from}`);
-              console.log(`    Value: ${tx.value}`);
-              console.log(`    Asset: ${tx.asset}`);
-            });
-            console.log('\n');
-          }
+          const res = tm.getOrderedTransactions();
+          console.log(res.length);
         }}
       />
     </Screen>
