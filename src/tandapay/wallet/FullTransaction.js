@@ -1,7 +1,7 @@
 // @flow
 
 import { ethers } from 'ethers';
-import type { Transfer } from './AlchemyApiHelper';
+import type { Transfer } from './AlchemyApiTypes';
 
 export type FullTransaction = {|
   hash: string | null,

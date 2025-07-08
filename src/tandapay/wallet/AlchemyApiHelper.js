@@ -3,9 +3,11 @@
 /**
  * Clean Alchemy API helper module
  *
- * This module provides a clean interface for Alchemy API calls using ethers.js provider
- * instead of the alchemy-sdk, which has proven to be unreliable in React Native.
+ * This module provides a clean interface for Alchemy API calls using:
+ * - ethers.js JsonRpcProvider for asset transfers (alchemy_getAssetTransfers)
+ * - Direct HTTP JSON-RPC for transaction details and batch operations
  *
+ * Supports batch requests for efficient transaction detail fetching and method name decoding.
  * All API calls use the same network stack as wallet balance fetches for maximum reliability.
  */
 
@@ -16,53 +18,13 @@ import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { getAlchemyRpcUrl } from '../providers/ProviderManager';
 import { getAlchemyApiKey } from './WalletManager';
 import type { SupportedNetwork } from '../definitions';
-
-/**
- * Response for alchemy_getAssetTransfers API call.
- * Retrieved from https://www.alchemy.com/docs/reference/sdk-getassettransfers.
- * Verified on 2025-07-08
- */
-export type Transfer = {
-  category: 'external' | 'internal' | 'erc20' | 'erc721' | 'erc1155' | 'specialnft',
-  blockNum: string | null,  // block number of the transfer (hex string)
-  from: string | null,      // from address (hex string).
-  to: string | null,        // to address (hex string). null if contract creation.
-  value: number | null,     // asset transfer value. null if it's ERC721 or unknown decimals
-  asset: string | null,     // ETH or the token's symbol, null if unavailable
-  uniqueId: string | null,  // unique identifier for the transfer; will be a hash plus a suffix
-  hash: string | null,      // transaction hash, null if unavailable
-  rawContract: {|
-    value: string | null,   // raw hex transfer value. null for NFT transfers
-    address: string | null, // contract address, null for external or internal transfers
-    decimal: string | null, // contract decimal in hex. null if not known
-  |} | null,
-  metaData: {|
-    blockTimestamp: string | null, // timestamp of the block in ISO format, null if unavailable
-  |} | null,
-
-  // erc721TokenId -- omitted because we don't use it in this app
-  // erc1155Metadata -- omitted because we don't use it in this app
-  // tokenId: string | null -- for NFT tokens, we don't use it in this app
-};
-
-/**
- * Parameters for alchemy_getAssetTransfers API call.
- * Retrieved from https://www.alchemy.com/docs/reference/sdk-getassettransfers.
- * Verified on 2025-07-08
- */
-export type AssetTransferParams = {|
-  fromBlock?: string,                 // starting block to check for transfers (hex string). 0x0 if omitted
-  toBlock?: string,                   // inclusive to block (hex string, int, or 'latest'). 'latest' if omitted
-  order?: string,                     // whether to return results in ascending or descending order. Defaults to 'ascending' if omitted
-  fromAddress?: string,               // from address to filter transfers. Defaults to a wildcard if omitted
-  toAddress?: string,                 // to address to filter transfers. Defaults to a wildcard if omitted
-  contractAddresses?: Array<string>,  // list of contract addresses to filter for. Only applies to erc20/erc721/erc1155 transfers. Defaults to all if omitted
-  category: Array<string>,            // list of transfer categories to include. Options: 'external', 'internal', 'erc20', 'erc721', 'erc1155', 'specialnft'.
-  excludeZeroValue?: boolean,         // whether to exclude transfers with zero value. Defaults to false if omitted
-  pageKey?: string,                   // page key from previous response. `null` if omitted which retrieves 1st page. Otherwise, retrieves next page
-  maxCount?: number,                  // maximum number of transfers to return per page. Defaults to `1000` if omitted.
-  withMetadata?: boolean,             // whether to include metadata in the response. Defaults to true if omitted
-|};
+import type {
+  AssetTransferParams,
+  JsonRpcRequest,
+  JsonRpcResponse,
+  SignedTransaction,
+  Transfer,
+} from './AlchemyApiTypes';
 
 /**
  * Check if Alchemy API key is available
@@ -77,10 +39,9 @@ export async function hasAlchemyApiKey(): Promise<boolean> {
 }
 
 /**
- * Get ethers.js provider configured with Alchemy RPC endpoint
+ * Get Alchemy RPC URL for network and validate API key
  */
-// $FlowFixMe[unclear-type] - ethers provider type is complex
-async function getAlchemyProvider(network: SupportedNetwork): Promise<any> {
+async function getValidatedAlchemyRpcUrl(network: SupportedNetwork): Promise<string> {
   const hasApiKey = await hasAlchemyApiKey();
   if (!hasApiKey) {
     throw TandaPayErrorHandler.createError(
@@ -91,7 +52,9 @@ async function getAlchemyProvider(network: SupportedNetwork): Promise<any> {
         details: { network }
       }
     );
-  }  const alchemyUrl = await getAlchemyRpcUrl(network);
+  }
+
+  const alchemyUrl = await getAlchemyRpcUrl(network);
   if (alchemyUrl == null || alchemyUrl === '') {
     throw TandaPayErrorHandler.createError(
       'VALIDATION_ERROR',
@@ -103,10 +66,201 @@ async function getAlchemyProvider(network: SupportedNetwork): Promise<any> {
     );
   }
 
+  return alchemyUrl;
+}
+
+/**
+ * Get ethers.js provider configured with Alchemy RPC endpoint
+ * Used for asset transfers since direct HTTP API was deprecated
+ */
+// $FlowFixMe[unclear-type] - ethers provider type is complex
+async function getAlchemyJsonRpcProvider(network: SupportedNetwork): Promise<any> {
+  const alchemyUrl = await getValidatedAlchemyRpcUrl(network);
+
   // Create provider with Alchemy RPC endpoint
   const provider = new ethers.providers.JsonRpcProvider(alchemyUrl);
 
   return provider;
+}
+
+/**
+ * Make a single JSON-RPC request to Alchemy API
+ */
+async function makeJsonRpcRequest(
+  network: SupportedNetwork,
+  method: string,
+  params: Array<mixed>
+): Promise<mixed> {
+  const rpcUrl = await getValidatedAlchemyRpcUrl(network);
+
+  const request: JsonRpcRequest = {
+    id: Date.now(),
+    jsonrpc: '2.0',
+    method,
+    params,
+  };
+
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw TandaPayErrorHandler.createError(
+      'NETWORK_ERROR',
+      `HTTP ${response.status}: ${response.statusText}`,
+      {
+        userMessage: 'Network request failed. Please check your connection.',
+        details: { network, method, status: response.status }
+      }
+    );
+  }
+
+  const result: JsonRpcResponse = await response.json();
+
+  if (result.error != null) {
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `JSON-RPC error: ${result.error.message}`,
+      {
+        userMessage: 'API request failed. Please try again.',
+        details: { network, method, error: result.error }
+      }
+    );
+  }
+
+  return result.result;
+}
+
+/**
+ * Internal helper for making a single batch request
+ */
+async function makeSingleBatchRequest(
+  network: SupportedNetwork,
+  requests: Array<{| method: string, params: Array<mixed> |}>
+): Promise<Array<mixed>> {
+  const rpcUrl = await getValidatedAlchemyRpcUrl(network);
+
+  const jsonRpcRequests: Array<JsonRpcRequest> = requests.map((req, index) => ({
+    id: index,
+    jsonrpc: '2.0',
+    method: req.method,
+    params: req.params,
+  }));
+
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(jsonRpcRequests),
+  });
+
+  if (!response.ok) {
+    throw TandaPayErrorHandler.createError(
+      'NETWORK_ERROR',
+      `HTTP ${response.status}: ${response.statusText}`,
+      {
+        userMessage: 'Network request failed. Please check your connection.',
+        details: { network, batchSize: requests.length, status: response.status }
+      }
+    );
+  }
+
+  const results: Array<JsonRpcResponse> = await response.json();
+
+  // Check for errors and extract results in order
+  return results.map((result, index) => {
+    if (result.error != null) {
+      // eslint-disable-next-line no-console
+      console.warn(`Batch request ${index} failed:`, result.error);
+      return null; // Return null for failed requests
+    }
+    return result.result;
+  });
+}
+
+/**
+ * Make a batch JSON-RPC request to Alchemy API
+ * Supports up to 1000 requests per batch for efficiency
+ */
+export async function makeBatchJsonRpcRequest(
+  network: SupportedNetwork,
+  requests: Array<{| method: string, params: Array<mixed> |}>
+): Promise<Array<mixed>> {
+  if (requests.length === 0) {
+    return [];
+  }
+
+  // Alchemy supports up to 1000 requests per batch
+  const BATCH_SIZE = 1000;
+  const results = [];
+
+  for (let i = 0; i < requests.length; i += BATCH_SIZE) {
+    const batch = requests.slice(i, i + BATCH_SIZE);
+    const batchResults = await makeSingleBatchRequest(network, batch);
+    results.push(...batchResults);
+  }
+
+  return results;
+}
+
+/**
+ * Get transaction details by hash using eth_getTransactionByHash
+ */
+export async function getTransactionByHash(
+  network: SupportedNetwork,
+  txHash: string
+): Promise<SignedTransaction | null> {
+  try {
+    const result = await makeJsonRpcRequest(network, 'eth_getTransactionByHash', [txHash]);
+    // $FlowFixMe[incompatible-return] - JSON-RPC result type
+    return result;
+  } catch (error) {
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `Failed to fetch transaction details: ${error?.message || 'Unknown error'}`,
+      {
+        userMessage: 'Failed to load transaction details. Please try again.',
+        details: { network, txHash, originalError: error }
+      }
+    );
+  }
+}
+
+/**
+ * Get multiple transaction details by hash using batch requests
+ */
+export async function getBatchTransactionsByHash(
+  network: SupportedNetwork,
+  txHashes: Array<string>
+): Promise<Array<SignedTransaction | null>> {
+  if (txHashes.length === 0) {
+    return [];
+  }
+
+  try {
+    const requests = txHashes.map(hash => ({
+      method: 'eth_getTransactionByHash',
+      params: [hash],
+    }));
+
+    const results = await makeBatchJsonRpcRequest(network, requests);
+    // $FlowFixMe[incompatible-return] - JSON-RPC batch result type
+    return results;
+  } catch (error) {
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `Failed to fetch batch transaction details: ${error?.message || 'Unknown error'}`,
+      {
+        userMessage: 'Failed to load transaction details. Please try again.',
+        details: { network, txCount: txHashes.length, originalError: error }
+      }
+    );
+  }
 }
 
 /**
@@ -129,14 +283,15 @@ type AssetTransferResponse = {|
 |};
 
 /**
- * Get asset transfers using alchemy_getAssetTransfers API
+ * Get asset transfers using alchemy_getAssetTransfers API via ethers provider
+ * Uses ethers.js since the direct HTTP API documentation was removed
  */
 export async function getAssetTransfers(
   network: SupportedNetwork,
   params: AssetTransferParams
 ): Promise<AssetTransferResponse> {
   try {
-    const provider = await getAlchemyProvider(network);
+    const provider = await getAlchemyJsonRpcProvider(network);
 
     // Convert parameters to Alchemy-compatible format
     const alchemyParams = convertParamsToAlchemyFormat(params);

@@ -80,10 +80,17 @@ export default function TandaPayMenuScreen(props: Props): Node {
         text="Test TransactionManager"
         onPress={async () => {
           try {
-            while (!tm.isAtLastPage()) {
-              await tm.loadMore();
-            }
-            console.log('All transactions loaded successfully.');
+            await tm.loadMore();
+//            let i = 0;
+//            while (!tm.isAtLastPage()) {
+//              await tm.loadMore();
+//              if (i > 10) {
+//                console.warn('Loaded more than 10 pages, stopping to avoid infinite loop.');
+//                break;
+//              }
+//              i++;
+//            }
+//            console.log('All transactions loaded successfully.');
           } catch (error) {
             console.error('Error fetching transactions:', error);
           }
@@ -96,10 +103,6 @@ export default function TandaPayMenuScreen(props: Props): Node {
           for (const ft of res) {
             console.log(prettyPrintFullTransaction(ft));
             console.log('----------------------------------');
-          }
-          const oldTp = res.find(ft => ft.hash === '0xa8838c8d42f9fa731a1fd179ebbb7745639bbc4f7b9c9f7d5a4d584a4a63814f');
-          if (oldTp) {
-            console.log(JSON.stringify(oldTp.transfers, null, 2));
           }
         }}
       />
