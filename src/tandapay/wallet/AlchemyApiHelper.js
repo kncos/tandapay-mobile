@@ -17,17 +17,22 @@ import { getAlchemyRpcUrl } from '../providers/ProviderManager';
 import { getAlchemyApiKey } from './WalletManager';
 import type { SupportedNetwork } from '../definitions';
 
+/**
+ * Response for alchemy_getAssetTransfers API call.
+ * Retrieved from https://www.alchemy.com/docs/reference/sdk-getassettransfers.
+ * Verified on 2025-07-08
+ */
 export type Transfer = {
   category: 'external' | 'internal' | 'erc20' | 'erc721' | 'erc1155' | 'specialnft',
-  blockNum: string | null, // block number of the transfer (hex string)
-  from: string | null, // from address (hex string).
-  to: string | null, // to address (hex string). null if contract creation.
-  value: number | null, // asset transfer value. null if it's ERC721 or unknown decimals
-  asset: string | null, // ETH or the token's symbol, null if unavailable
-  uniqueId: string | null, // unique identifier for the transfer; will be a hash plus a suffix
-  hash: string | null, // transaction hash, null if unavailable
+  blockNum: string | null,  // block number of the transfer (hex string)
+  from: string | null,      // from address (hex string).
+  to: string | null,        // to address (hex string). null if contract creation.
+  value: number | null,     // asset transfer value. null if it's ERC721 or unknown decimals
+  asset: string | null,     // ETH or the token's symbol, null if unavailable
+  uniqueId: string | null,  // unique identifier for the transfer; will be a hash plus a suffix
+  hash: string | null,      // transaction hash, null if unavailable
   rawContract: {|
-    value: string | null, // raw hex transfer value. null for NFT transfers
+    value: string | null,   // raw hex transfer value. null for NFT transfers
     address: string | null, // contract address, null for external or internal transfers
     decimal: string | null, // contract decimal in hex. null if not known
   |} | null,
@@ -40,60 +45,23 @@ export type Transfer = {
   // tokenId: string | null -- for NFT tokens, we don't use it in this app
 };
 
-// TODO: review this type
 /**
- * Response from eth_getTransactionReceipt API call
- */
-export type TransactionReceiptResponse = {|
-  transactionHash: string,
-  transactionIndex: string,
-  blockHash: string,
-  blockNumber: string,
-  from: string,
-  to?: string,
-  gasUsed: string,
-  effectiveGasPrice?: string,
-  status?: string,
-  type?: string,
-  confirmations?: number,
-  logs?: Array<mixed>,
-|};
-
-// TODO: review this type
-/**
- * Parameters for alchemy_getAssetTransfers API call
+ * Parameters for alchemy_getAssetTransfers API call.
+ * Retrieved from https://www.alchemy.com/docs/reference/sdk-getassettransfers.
+ * Verified on 2025-07-08
  */
 export type AssetTransferParams = {|
-  fromBlock?: string,
-  toBlock?: string,
-  fromAddress?: string,
-  toAddress?: string,
-  contractAddresses?: Array<string>,
-  category: Array<string>,
-  withMetadata?: boolean,
-  excludeZeroValue?: boolean,
-  order?: string,
-  pageKey?: string,
-  maxCount?: number,
-|};
-
-// TODO: review this type
-/**
- * Response from eth_getTransactionByHash API call
- */
-type TransactionResponse = {|
-  hash: string,
-  nonce: string,
-  blockHash?: string,
-  blockNumber?: string,
-  transactionIndex?: string,
-  from: string,
-  to?: string,
-  value: string,
-  gasPrice?: string,
-  gas: string,
-  input: string,
-  type?: string,
+  fromBlock?: string,                 // starting block to check for transfers (hex string). 0x0 if omitted
+  toBlock?: string,                   // inclusive to block (hex string, int, or 'latest'). 'latest' if omitted
+  order?: string,                     // whether to return results in ascending or descending order. Defaults to 'ascending' if omitted
+  fromAddress?: string,               // from address to filter transfers. Defaults to a wildcard if omitted
+  toAddress?: string,                 // to address to filter transfers. Defaults to a wildcard if omitted
+  contractAddresses?: Array<string>,  // list of contract addresses to filter for. Only applies to erc20/erc721/erc1155 transfers. Defaults to all if omitted
+  category: Array<string>,            // list of transfer categories to include. Options: 'external', 'internal', 'erc20', 'erc721', 'erc1155', 'specialnft'.
+  excludeZeroValue?: boolean,         // whether to exclude transfers with zero value. Defaults to false if omitted
+  pageKey?: string,                   // page key from previous response. `null` if omitted which retrieves 1st page. Otherwise, retrieves next page
+  maxCount?: number,                  // maximum number of transfers to return per page. Defaults to `1000` if omitted.
+  withMetadata?: boolean,             // whether to include metadata in the response. Defaults to true if omitted
 |};
 
 /**
@@ -112,7 +80,8 @@ export async function hasAlchemyApiKey(): Promise<boolean> {
  * Get ethers.js provider configured with Alchemy RPC endpoint
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
-async function getAlchemyProvider(network: SupportedNetwork): Promise<any> {  const hasApiKey = await hasAlchemyApiKey();
+async function getAlchemyProvider(network: SupportedNetwork): Promise<any> {
+  const hasApiKey = await hasAlchemyApiKey();
   if (!hasApiKey) {
     throw TandaPayErrorHandler.createError(
       'VALIDATION_ERROR',
@@ -187,89 +156,6 @@ export async function getAssetTransfers(
       {
         userMessage: 'Failed to load transaction history. Please check your connection and try again.',
         details: { network, params, originalError: error }
-      }
-    );
-  }
-}
-
-/**
- * Get transaction receipt using eth_getTransactionReceipt API
- */
-export async function getTransactionReceipt(
-  network: SupportedNetwork,
-  txHash: string
-): Promise<?TransactionReceiptResponse> {
-  try {
-    const provider = await getAlchemyProvider(network);
-
-    const receipt = await provider.send('eth_getTransactionReceipt', [txHash]);
-
-    return receipt;
-  } catch (error) {
-    throw TandaPayErrorHandler.createError(
-      'API_ERROR',
-      `Failed to fetch transaction receipt: ${error?.message || 'Unknown error'}`,
-      {
-        userMessage: 'Failed to load transaction details. Please check your connection and try again.',
-        details: { network, txHash, originalError: error }
-      }
-    );
-  }
-}
-
-/**
- * Get transaction by hash using eth_getTransactionByHash API
- */
-export async function getTransactionByHash(
-  network: SupportedNetwork,
-  txHash: string
-): Promise<?TransactionResponse> {
-  try {
-    const provider = await getAlchemyProvider(network);
-
-    const transaction = await provider.send('eth_getTransactionByHash', [txHash]);
-
-    return transaction;
-  } catch (error) {
-    throw TandaPayErrorHandler.createError(
-      'API_ERROR',
-      `Failed to fetch transaction: ${error?.message || 'Unknown error'}`,
-      {
-        userMessage: 'Failed to load transaction details. Please check your connection and try again.',
-        details: { network, txHash, originalError: error }
-      }
-    );
-  }
-}
-
-/**
- * Convenience function to get comprehensive transaction details
- * Combines both transaction and receipt data
- */
-export async function getTransactionDetails(
-  network: SupportedNetwork,
-  txHash: string
-): Promise<{|
-  transaction?: TransactionResponse,
-  receipt?: TransactionReceiptResponse,
-|}> {
-  try {
-    const [transaction, receipt] = await Promise.all([
-      getTransactionByHash(network, txHash),
-      getTransactionReceipt(network, txHash),
-    ]);
-
-    return {
-      transaction: transaction || undefined,
-      receipt: receipt || undefined,
-    };
-  } catch (error) {
-    throw TandaPayErrorHandler.createError(
-      'API_ERROR',
-      `Failed to fetch transaction details: ${error?.message || 'Unknown error'}`,
-      {
-        userMessage: 'Failed to load transaction details. Please check your connection and try again.',
-        details: { network, txHash, originalError: error }
       }
     );
   }
