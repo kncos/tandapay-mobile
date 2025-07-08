@@ -15,6 +15,7 @@ import NavRow from '../common/NavRow';
 import { IconSettings, IconTandaPayActions, IconTandaPayInfo, IconWallet } from '../common/Icons';
 import ZulipButton from '../common/ZulipButton';
 import { TransactionManager } from './wallet/TransactionManagerNew';
+import { prettyPrintFullTransaction } from './wallet/FullTransaction';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-menu'>,
@@ -93,8 +94,12 @@ export default function TandaPayMenuScreen(props: Props): Node {
         onPress={() => {
           const res = tm.getOrderedTransactions();
           for (const ft of res) {
-            tm.prettyPrintFullTransaction(ft);
+            console.log(prettyPrintFullTransaction(ft));
             console.log('----------------------------------');
+          }
+          const oldTp = res.find(ft => ft.hash === '0xa8838c8d42f9fa731a1fd179ebbb7745639bbc4f7b9c9f7d5a4d584a4a63814f');
+          if (oldTp) {
+            console.log(JSON.stringify(oldTp.transfers, null, 2));
           }
         }}
       />

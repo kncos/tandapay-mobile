@@ -6,21 +6,8 @@ import { ethers } from 'ethers';
 import { getAssetTransfers } from './AlchemyApiHelper';
 import type { Transfer } from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
-import TranslationProvider from '../../boot/TranslationProvider';
-
-export type FullTransaction = {|
-  hash: string | null,
-  blockNum: string | null, // in hex format
-  // type of transaction, can be one of the following:
-  // 'tandapay' for TandaPay contract interactions,
-  // 'erc20' for ERC20 token transfers,
-  // 'eth' for ETH transfers,
-  // 'deployment' for contract deployments (when `to` is null),
-  // 'unknown' for any other type of transaction that doesn't fit the above categories.
-  type: 'tandapay' | 'erc20' | 'eth' | 'deployment' | 'unknown',
-  netValueChanges: Map<string, number>, // map of assets to net value changes
-  transfers: Transfer[] | null, // array of transfer objects
-|};
+import type { FullTransaction } from './FullTransaction';
+import { toFullTransaction } from './FullTransaction';
 
 export class TransactionManager {
   _network: SupportedNetwork;
@@ -42,7 +29,7 @@ export class TransactionManager {
 
   _lock: boolean = false;
 
-  constructor(network: SupportedNetwork, walletAddress: string, tandapayContractAddress: string) {
+  constructor(network: SupportedNetwork, walletAddress: string, tandapayContractAddress: string, pageSize: number = 10) {
     // ensure these parameters are provided and valid
     if (!network || !walletAddress || !tandapayContractAddress) {
       throw new Error('Invalid parameters provided to TransactionManager constructor');
@@ -63,7 +50,9 @@ export class TransactionManager {
 
     // Initialize any necessary properties or dependencies here
     this._transactionQueue = new PriorityQueue((a, b) => this._transactionSortKey(a, b));
-    this._pageSize = 20;
+    // we use x2 since transactions can include multiple transfers (e.g., external and log transfers).
+    // makes it less likely that we have <pageSize full transactions in the queue
+    this._pageSize = pageSize * 2;
     this._pagesLoaded = 0;
 
     // this is the transaction hashes in order by timestamp. It is guaranteed that
@@ -192,155 +181,6 @@ export class TransactionManager {
     return this._nextIncomingPage === null && this._nextOutgoingPage === null;
   }
 
-  _calculateNetValueChanges(transfers: Transfer[]): Map<string, number> {
-    const netValueChanges = new Map<string, number>();
-    // iterate through each transfer to tally the total net changes
-    for (const transfer of transfers) {
-      if (transfer.value === null || transfer.value <= 0) {
-        continue; // skip transfers with no value
-      }
-
-      // figure out how to categorize this asset
-      const asset = (() => {
-        // use asset symbol if it is available. This should work in most cases
-        if (transfer.asset && transfer.asset !== '') {
-          return transfer.asset;
-        // TODO: later on, implement a way to check the contract address against our known tokens
-        // otherwise, if it's an ERC20 transfer, we can just mark it as an unknown erc20
-        } else if (transfer.category === 'erc20') {
-          return 'unknown-erc20';
-        // TODO: we could check the network settings later on and populate this that way
-        // if it's a native token transfer, we'll just assume it's eth
-        } else {
-          return 'ETH';
-        }
-      })();
-
-      const currentValue = netValueChanges.get(asset) || 0;
-      const transferValue = transfer.value || 0;
-      // transfer is from our wallet
-      const transferFromUs = transfer.from && transfer.from.toLowerCase() === this._walletAddress.toLowerCase();
-      // transfer is to our wallet
-      const transferToUs = transfer.to && transfer.to.toLowerCase() === this._walletAddress.toLowerCase();
-
-      // if the transaction involves us, we can calculate net changes. If it involves two other addresses,
-      // then it's probably an intermediate transfer and we can just ignore it because it doesn't change the
-      // net balance of our wallet.
-      if (transferFromUs && transferToUs) {
-        // if the transfer is both to/from us, the net change is 0, so we'll just skip it
-        continue;
-      } else if (transferFromUs) {
-        netValueChanges.set(asset, currentValue - transferValue);
-      } else if (transferToUs) {
-        netValueChanges.set(asset, currentValue + transferValue);
-      }
-    }
-
-    // we'll just delete any where the net change was 0
-    const toRemove = [];
-    for (const [asset, value] of netValueChanges) {
-      if (value === 0) {
-        toRemove.push(asset);
-      }
-    }
-    for (const asset of toRemove) {
-      netValueChanges.delete(asset);
-    }
-    // finally, return the net value changes map
-    return netValueChanges;
-  }
-
-  _toFullTransaction(transfers: Transfer[]): FullTransaction {
-    if (!Array.isArray(transfers)) {
-      throw new Error('Transfers is not an array!');
-    }
-
-    if (transfers.length === 0) {
-      throw new Error('Transfers array is empty!');
-    }
-
-    // we'll use this to see if erc20 funds were involved in this overall transaction
-    const erc20transfer = transfers.find(tx => tx.category === 'erc20') ?? null;
-
-    // helper for detecting tandapay transactions.
-    const isTandaPayTransaction = (tx) => {
-      if (tx.to !== null && tx.to.toLowerCase() === this._tandapayContractAddress.toLowerCase()) {
-        return true; // this transaction is to the TandaPay contract
-      }
-      if (tx.from !== null && tx.from.toLowerCase() === this._tandapayContractAddress.toLowerCase()) {
-        return true; // this transaction is from the TandaPay contract
-      }
-      return false;
-    };
-
-    // helper for checking if any economic value was transferred in this transaction.
-    const hasNonZeroValue = (tx) => {
-      if (tx.value === null || tx.value <= 0) {
-        return false;
-      } else {
-        return true;
-      }
-    };
-
-    // first we'll test if it's a tandapay transaction. If we interacted with the TandaPay contract
-    // address, that makes it a tandapay transaction.
-    if (transfers.some(tx => isTandaPayTransaction(tx))) {
-      return {
-        hash: transfers[0].hash,
-        blockNum: transfers[0].blockNum,
-        type: 'tandapay',
-        transfers: [...transfers],
-        // some tandapay transactions will involve erc20 transfers, such as for paying premiums,
-        // joining the community, etc. If so, then we'll include the erc20 amount
-        netValueChanges: this._calculateNetValueChanges(transfers),
-      };
-    }
-    // otherwise, if it's not a tandapay transaction, but there was an erc20transfer involved,
-    // that makes it an erc20 transaction. So, we'll construct that.
-    else if (erc20transfer !== null) {
-      return {
-        hash: transfers[0].hash,
-        blockNum: transfers[0].blockNum,
-        type: 'erc20',
-        transfers: [...transfers],
-        netValueChanges: this._calculateNetValueChanges(transfers),
-      };
-    }
-    // TODO: note this will not display the value properly if value is transferred multiple times
-    // if it's not a tandapay or erc20 transaction, then it is either an eth transfer or unknown.
-    // we can decide that based off of the value
-    else if (transfers.some(tx => hasNonZeroValue(tx))) {
-      // if any transfer has a non-zero value, then this is an eth transaction
-      return {
-        hash: transfers[0].hash,
-        blockNum: transfers[0].blockNum,
-        type: 'eth',
-        transfers: [...transfers],
-        netValueChanges: this._calculateNetValueChanges(transfers),
-      };
-    }
-    // it may potentially be a contract deployment? that happens when the `to` field is null.
-    else if (transfers.every(tx => tx.to === null)) {
-      // if all transfers have a null `to`, then this is a contract deployment
-      return {
-        hash: transfers[0].hash,
-        blockNum: transfers[0].blockNum,
-        type: 'deployment',
-        transfers: [...transfers],
-        netValueChanges: this._calculateNetValueChanges(transfers),
-      };
-    }
-
-    // finally, if none of the above conditions are met, we consider it an unknown transaction
-    return {
-      hash: transfers[0].hash,
-      blockNum: transfers[0].blockNum,
-      type: 'unknown',
-      transfers: [...transfers],
-      netValueChanges: this._calculateNetValueChanges(transfers),
-    };
-  }
-
   _dropGetOrderedTransactionsCache() {
     // this will drop the cache of ordered transactions, so that the next call to getOrdered
     this._allTransactions.clear();
@@ -401,34 +241,16 @@ export class TransactionManager {
         continue;
       }
 
-      const fullTransaction = this._toFullTransaction(transfers);
+      const fullTransaction = toFullTransaction({
+        walletAddress: this._walletAddress,
+        tandapayContractAddress: this._tandapayContractAddress,
+        transfers,
+      });
       res.push(fullTransaction);
     }
 
     // set the cache and return the result
     this._getOrderedTransactionsCache = [...res];
     return res;
-  }
-
-  prettyPrintFullTransaction(ft: FullTransaction): void {
-    if (!ft) {
-      console.log('No transaction data available');
-      return;
-    }
-
-    const hash = ft.hash ? `${ft.hash}` : 'N/A';
-    const blockNum = ft.blockNum ? `Block: ${parseInt(ft.blockNum, 16)}` : 'N/A';
-    const formatNetValueChanges = (netValueChanges: Map<string, number>) => {
-      const res: string[] = [];
-      netValueChanges.forEach((value, asset) => {
-        res.push(`${asset}: ${value}`);
-      });
-
-      return `{\n${res.map(s => `\t${s}`).join('\n')}\n}`;
-    };
-
-    const netValueChanges = formatNetValueChanges(ft.netValueChanges);
-
-    console.log(`hash: ${hash}\nblockNum: ${blockNum}\ntype: ${ft.type}\nvalue: ${netValueChanges}`);
   }
 }
