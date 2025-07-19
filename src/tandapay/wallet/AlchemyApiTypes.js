@@ -43,7 +43,7 @@ export type Transfer = {
     address: string | null, // contract address, null for external or internal transfers
     decimal: string | null, // contract decimal in hex. null if not known
   |} | null,
-  metaData: {|
+  metadata: {|
     blockTimestamp: string | null, // timestamp of the block in ISO format, null if unavailable
   |} | null,
 

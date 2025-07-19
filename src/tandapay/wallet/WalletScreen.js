@@ -163,10 +163,8 @@ export default function WalletScreen(props: Props): Node {
             setApiKeyConfigured(hasApiKey);
           }
 
-          // Refresh the transaction history when wallet changes
-          if (address != null && address !== '' && hasApiKey && isMounted) {
-            refresh();
-          }
+          // Don't call refresh here - this was causing infinite loops
+          // The useTransactionHistory hook will initialize itself when dependencies change
         } else if (isMounted) {
           setApiKeyConfigured(false);
         }
@@ -181,7 +179,7 @@ export default function WalletScreen(props: Props): Node {
         setLoading(false);
       }
     }
-  }, [refresh, isMounted]);
+  }, [isMounted]); // Removed refresh from dependencies to prevent infinite loops
 
   useEffect(() => {
     checkWallet();
@@ -191,6 +189,14 @@ export default function WalletScreen(props: Props): Node {
   useEffect(() => () => {
     setIsMounted(false);
   }, []);
+
+  // Trigger initial transaction load when wallet and API key are ready
+  useEffect(() => {
+    if (walletAddress != null && walletAddress !== '' && apiKeyConfigured && transactionState.status === 'idle') {
+      // Only trigger initial load if we're in idle state to avoid double loading
+      loadMore();
+    }
+  }, [walletAddress, apiKeyConfigured, transactionState.status, loadMore]);
 
   // Refresh wallet state when screen comes into focus (e.g., returning from setup)
   useFocusEffect(

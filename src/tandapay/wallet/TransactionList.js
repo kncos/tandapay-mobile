@@ -1,34 +1,25 @@
 // @flow strict-local
 
 /**
- * TransactionList component that works with the new transfer system
+ * TransactionList component that works with the new TransactionManagerNew system
  *
- * This component handles the new transfer format while maintaining compatibility
- * with the existing UI components.
+ * This component displays transaction chips using FullTransaction data and
+ * getFullTransactionChipInfo for display information.
  */
 
 import React, { useState, useContext } from 'react';
 import type { Node } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, TouchableOpacity } from 'react-native';
 
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { QUARTER_COLOR, ThemeContext } from '../../styles';
-import { formatTimestamp } from './TransactionUtils';
 import TransactionDetailsModal from './TransactionDetailsModal';
-import type { LoadMoreState } from './useTransactionHistory';
-import type { TandaPayError } from '../errors/types';
-import TandaPayStyles, { TandaPayColors } from '../styles';
-import ZulipTextButton from '../../common/ZulipTextButton';
+import type { LoadMoreState, TransactionState } from './useTransactionHistory';
+import { TandaPayColors } from '../styles';
 import type { SupportedNetwork } from '../definitions/types';
-
-type Transfer = mixed;
-
-export type TransactionState =
-  | {| status: 'idle' |}
-  | {| status: 'loading' |}
-  | {| status: 'success', transfers: $ReadOnlyArray<Transfer>, hasMore: boolean |}
-  | {| status: 'error', error: TandaPayError |};
+import type { FullTransaction } from './FullTransaction';
+import { getFullTransactionChipInfo } from './FullTransaction';
 
 type Props = {|
   walletAddress: string,
@@ -43,6 +34,34 @@ type Props = {|
   onViewTransactionInExplorer: (txHash: string) => void,
 |};
 
+// Helper function to get color based on transaction type
+const getTransactionChipColor = (transaction: FullTransaction, themeData: $ReadOnly<{|
+  backgroundColor: string,
+  cardColor: string,
+  color: string,
+  brandColor?: string,
+  dividerColor: string,
+  themeName: string,
+|}>) => {
+  switch (transaction.type) {
+    case 'tandapay':
+      return TandaPayColors.warning; // Gold/yellow for TandaPay
+    default:
+      // Check net value changes to determine if sent or received
+      if (transaction.netValueChanges && transaction.netValueChanges.size > 0) {
+        // $FlowIgnore[incompatible-use] - we check size > 0 above
+        const values = Array.from(transaction.netValueChanges.values());
+        const totalChange = values.reduce((sum, value) => sum + value, 0);
+        if (totalChange > 0) {
+          return TandaPayColors.success; // Green for received
+        } else if (totalChange < 0) {
+          return TandaPayColors.error; // Red for sent
+        }
+      }
+      return themeData.color; // Default color
+  }
+};
+
 export default function TransactionList({
   walletAddress,
   apiKeyConfigured,
@@ -55,13 +74,12 @@ export default function TransactionList({
   onViewExplorer,
   onViewTransactionInExplorer,
 }: Props): Node {
-  const [selectedTransaction, setSelectedTransaction] = useState<?mixed>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<?FullTransaction>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const themeData = useContext(ThemeContext);
 
-  const showTransactionDetails = (transfer: Transfer) => {
-    // Transactions are already processed, so we can use them directly
-    setSelectedTransaction(transfer);
+  const showTransactionDetails = (transaction: FullTransaction) => {
+    setSelectedTransaction(transaction);
     setModalVisible(true);
   };
 
@@ -119,7 +137,10 @@ export default function TransactionList({
         </ZulipText>
         <ZulipButton
           text="Try Again"
-          onPress={onRefresh}
+          onPress={() => {
+            onRefresh(); // Reset the manager
+            onLoadMore(); // Then load transactions
+          }}
         />
       </View>
     );
@@ -138,7 +159,7 @@ export default function TransactionList({
   }
 
   // Handle success state with no transactions
-  if (transactionState.status === 'success' && transactionState.transfers.length === 0) {
+  if (transactionState.status === 'success' && transactionState.transactions.length === 0) {
     return (
       <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
         <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: themeData.color }}>
@@ -153,143 +174,82 @@ export default function TransactionList({
 
   // Handle success state with transactions
   if (transactionState.status === 'success') {
-    const { hasMore, transfers } = transactionState;
-
-    console.log('[TransactionList] Rendering transactions:', {
-      totalCount: transfers.length,
-      hasMore,
-      firstFew: transfers.slice(0, 3).map((t: any) => ({
-        hash: t?.hash?.slice(0, 10) + '...' || 'no-hash',
-        direction: t?.direction || 'unknown',
-        asset: t?.asset || 'unknown'
-      }))
-    });
-
-    // Check for duplicate keys
-    const keys = transfers.map((transaction: any, index) => {
-      const safeTransaction = {
-        hash: transaction?.hash || `transfer-${index}`,
-        direction: transaction?.direction || 'OUT',
-      };
-      return `${safeTransaction.hash}-${safeTransaction.direction}`;
-    });
-    const uniqueKeys = new Set(keys);
-    if (keys.length !== uniqueKeys.size) {
-      console.log('[TransactionList] DUPLICATE KEYS DETECTED:', {
-        totalKeys: keys.length,
-        uniqueKeys: uniqueKeys.size,
-        duplicates: keys.filter((key, index, arr) => arr.indexOf(key) !== index)
-      });
-    }
+    const { hasMore, transactions } = transactionState;
+    const isLoadingMore = loadMoreState.status === 'loading';
 
     return (
       <View style={{ backgroundColor: themeData.backgroundColor }}>
         {/* Transaction List */}
-        {transfers.map((transaction, index) => {
-          // Transactions are already processed by the hook
-          // $FlowFixMe[unclear-type] - Processed transaction data
-          const etherscanTransaction = (transaction: any);
+        {transactions.map((transaction, index) => {
+          const chipInfo = getFullTransactionChipInfo(transaction);
+          const chipColor = getTransactionChipColor(transaction, themeData);
 
-          // Handle case where transaction might not be fully processed
-          const safeTransaction = {
-            hash: etherscanTransaction?.hash || `transfer-${index}`,
-            direction: etherscanTransaction?.direction || 'OUT',
-            formattedValue: etherscanTransaction?.formattedValue || '0 ETH',
-            timeStamp: etherscanTransaction?.timeStamp || etherscanTransaction?.metadata?.blockTimestamp || '0',
-            isTandaPayTransaction: etherscanTransaction?.isTandaPayTransaction || false,
-            tandaPaySummary: etherscanTransaction?.tandaPaySummary || null,
-          };
-
-          // Determine color and display content based on transaction type
-          let displayColor;
-          let displayTitle;
-          let displayAmount;
-
-          if (safeTransaction.isTandaPayTransaction) {
-            // TandaPay transaction - use warning color
-            displayColor = TandaPayColors.warning;
-            displayTitle = 'Sent TandaPay Action';
-            displayAmount = safeTransaction.tandaPaySummary != null && safeTransaction.tandaPaySummary !== ''
-              ? safeTransaction.tandaPaySummary
-              : 'Contract Call';
-          } else {
-            // Regular transaction - use existing logic
-            displayColor = safeTransaction.direction === 'IN' ? TandaPayColors.success : TandaPayColors.error;
-            displayTitle = safeTransaction.direction === 'IN' ? 'Received' : 'Sent';
-            displayAmount = safeTransaction.formattedValue;
-          }
+          // Use only hash as key since it's unique for each FullTransaction
+          const key = transaction.hash != null && transaction.hash !== '' ? transaction.hash : `tx-${index}`;
 
           return (
-            <View
-              key={`${safeTransaction.hash}-${safeTransaction.direction}`}
-              style={{ padding: 12, marginVertical: 2, backgroundColor: themeData.cardColor, borderRadius: 8 }}
+            <TouchableOpacity
+              key={key}
+              style={{
+                backgroundColor: themeData.cardColor,
+                marginHorizontal: 15,
+                marginVertical: 5,
+                padding: 15,
+                borderRadius: 8,
+                borderLeftWidth: 4,
+                borderLeftColor: chipColor,
+              }}
+              onPress={() => showTransactionDetails(transaction)}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <ZulipText style={{ fontSize: 16, color: displayColor }}>
-                    {displayTitle}
-                  </ZulipText>
-                  <ZulipText style={TandaPayStyles.descriptionCompact}>
-                    {displayAmount}
-                  </ZulipText>
-                  <ZulipText style={TandaPayStyles.descriptionCompact}>
-                    {formatTimestamp(safeTransaction.timeStamp)}
-                  </ZulipText>
-                </View>
-                <ZulipTextButton
-                  label="View"
-                  onPress={() => showTransactionDetails(transaction)}
-                />
-              </View>
-            </View>
+              {chipInfo.map((line) => (
+                <ZulipText
+                  key={line}
+                  style={{
+                    fontSize: line === chipInfo[0] ? 16 : 14,
+                    fontWeight: line === chipInfo[0] ? 'bold' : 'normal',
+                    color: line === chipInfo[0] ? chipColor : themeData.color,
+                    marginBottom: line !== chipInfo[chipInfo.length - 1] ? 4 : 0,
+                  }}
+                >
+                  {line}
+                </ZulipText>
+              ))}
+            </TouchableOpacity>
           );
         })}
 
         {/* Load More Button */}
         {hasMore && (
-          <View style={TandaPayStyles.buttonRow}>
+          <View style={{ padding: 15, alignItems: 'center' }}>
             <ZulipButton
-              style={TandaPayStyles.button}
               text="Load More"
-              progress={loadMoreState.status === 'loading'}
-              disabled={loadMoreState.status === 'loading'}
               onPress={onLoadMore}
-            />
-          </View>
-        )}
-
-        {/* All Caught Up Button */}
-        {!hasMore && transfers.length > 0 && (
-          <View style={TandaPayStyles.buttonRow}>
-            <ZulipButton
-              style={TandaPayStyles.button}
-              text="🎉 All Caught Up!"
-              secondary
-              disabled
-              onPress={() => {}}
+              progress={isLoadingMore}
             />
           </View>
         )}
 
         {/* Transaction Details Modal */}
-        {selectedTransaction != null && (
-          <TransactionDetailsModal
-            visible={modalVisible}
-            onClose={hideTransactionDetails}
-            transaction={selectedTransaction}
-            walletAddress={walletAddress}
-            network={network}
-            onViewInExplorer={onViewTransactionInExplorer}
-          />
-        )}
+        <TransactionDetailsModal
+          visible={modalVisible}
+          transaction={selectedTransaction}
+          onClose={hideTransactionDetails}
+          onViewInExplorer={(txHash) => {
+            if (txHash) {
+              onViewTransactionInExplorer(txHash);
+            }
+          }}
+        />
       </View>
     );
   }
 
-  // Default loading state
+  // Fallback (should not reach here)
   return (
     <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
-      <ActivityIndicator size="large" color={QUARTER_COLOR} />
+      <ZulipText style={{ color: themeData.color }}>
+        Unknown transaction state
+      </ZulipText>
     </View>
   );
 }

@@ -38,53 +38,59 @@ export type FullTransaction = {|
 export const getFullTransactionChipInfo = (ft: FullTransaction): string[] => {
   const lines: string[] = [];
 
-  const blockTimestamp = ft.transfers?.[0]?.metaData?.blockTimestamp;
+  const blockTimestamp = ft.transfers?.[0]?.metadata?.blockTimestamp ?? null;
   const timestamp = blockTimestamp ? new Date(blockTimestamp) : null;
 
   if (ft.type === 'tandapay') {
     lines.push('TandaPay Action');
     lines.push(ft.additionalDetails?.decodedInput?.functionName || 'Unknown Function');
-    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
     return lines;
   }
   else if (ft.type === 'self' || ft.isSelfTransaction) {
     lines.push('Self Transfer');
     lines.push(`Amount: ${ft.selfTransferAmount || 0} ${ft.selfTransferAsset || 'Unknown Asset'}`);
-    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
     return lines;
   }
   else if (ft.type === 'erc20') {
     if (ft.isErc20Transferred) {
-      const assets = ft.netValueChanges?.keys() || [];
-      if (Array.isArray(assets) && assets.length === 1) {
-        lines.push(`${assets[0]} Transferred`);
-        lines.push(`Amount: ${ft.netValueChanges?.get(assets[0]) || 0}`);
-        lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+      const anyEntry = ft.netValueChanges?.entries()?.next()?.value;
+      if (anyEntry) {
+        const [asset, value] = anyEntry;
+        lines.push(`${asset} Transferred`);
+        lines.push(`Amount: ${value}`);
+        lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
         return lines;
       }
     }
 
     lines.push('ERC20 Action');
     lines.push(`${ft.additionalDetails?.decodedInput?.functionName || 'Unknown Function'}`);
-    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
     return lines;
   }
   else if (ft.type === 'eth') {
-    const assets = ft.netValueChanges?.keys() || [];
-    if (Array.isArray(assets) && assets.length === 1) {
-      lines.push(`${assets[0]} Transferred`);
-      lines.push(`Amount: ${ft.netValueChanges?.get(assets[0]) || 0}`);
-      lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    const anyEntry = ft.netValueChanges?.entries()?.next()?.value;
+    if (anyEntry) {
+      const [asset, value] = anyEntry;
+      lines.push(`${asset} Transferred`);
+      lines.push(`Amount: ${value}`);
+      lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+      return lines;
+    } else {
+      lines.push('ETH Transfer');
+      lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
       return lines;
     }
   } else if (ft.type === 'deployment') {
     lines.push('Contract Deployment');
-    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
     return lines;
   }
 
   lines.push('Misc Transaction');
-  lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+  lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
   return lines;
 };
 
