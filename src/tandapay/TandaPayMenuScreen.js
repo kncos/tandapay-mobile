@@ -80,16 +80,18 @@ export default function TandaPayMenuScreen(props: Props): Node {
         text="Test TransactionManager"
         onPress={async () => {
           try {
-            let i = 0;
-            while (!tm.isAtLastPage()) {
-              await tm.loadMore();
-              if (i > 25) {
-                console.warn('Loaded more than 25 pages, stopping to avoid infinite loop.');
-                break;
-              }
-              i++;
-            }
-            console.log('All transactions loaded successfully.');
+//            let i = 0;
+//            while (!tm.isAtLastPage()) {
+//              await tm.loadMore();
+//              if (i > 25) {
+//                console.warn('Loaded more than 25 pages, stopping to avoid infinite loop.');
+//                break;
+//              }
+//              i++;
+//            }
+//            console.log('All transactions loaded successfully.');
+            await tm.loadMore();
+            console.log('Transactions fetched successfully.');
           } catch (error) {
             console.error('Error fetching transactions:', error);
           }

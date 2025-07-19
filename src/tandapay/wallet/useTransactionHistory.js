@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-import SimpleTransactionManager from './SimpleTransactionManager';
 import { hasAlchemyApiKey } from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
 import type { TandaPayError } from '../errors/types';

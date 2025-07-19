@@ -30,6 +30,64 @@ export type FullTransaction = {|
   }
 |};
 
+/**
+ * Get the chip info for a full transaction to display in a UI component.
+ * @param {FullTransaction} ft - The full transaction object.
+ * @returns {string[]} Array of strings representing each line for the chip info.
+ */
+export const getFullTransactionChipInfo = (ft: FullTransaction): string[] => {
+  const lines: string[] = [];
+
+  const blockTimestamp = ft.transfers?.[0]?.metaData?.blockTimestamp;
+  const timestamp = blockTimestamp ? new Date(blockTimestamp) : null;
+
+  if (ft.type === 'tandapay') {
+    lines.push('TandaPay Action');
+    lines.push(ft.additionalDetails?.decodedInput?.functionName || 'Unknown Function');
+    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    return lines;
+  }
+  else if (ft.type === 'self' || ft.isSelfTransaction) {
+    lines.push('Self Transfer');
+    lines.push(`Amount: ${ft.selfTransferAmount || 0} ${ft.selfTransferAsset || 'Unknown Asset'}`);
+    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    return lines;
+  }
+  else if (ft.type === 'erc20') {
+    if (ft.isErc20Transferred) {
+      const assets = ft.netValueChanges?.keys() || [];
+      if (Array.isArray(assets) && assets.length === 1) {
+        lines.push(`${assets[0]} Transferred`);
+        lines.push(`Amount: ${ft.netValueChanges?.get(assets[0]) || 0}`);
+        lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+        return lines;
+      }
+    }
+
+    lines.push('ERC20 Action');
+    lines.push(`${ft.additionalDetails?.decodedInput?.functionName || 'Unknown Function'}`);
+    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    return lines;
+  }
+  else if (ft.type === 'eth') {
+    const assets = ft.netValueChanges?.keys() || [];
+    if (Array.isArray(assets) && assets.length === 1) {
+      lines.push(`${assets[0]} Transferred`);
+      lines.push(`Amount: ${ft.netValueChanges?.get(assets[0]) || 0}`);
+      lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+      return lines;
+    }
+  } else if (ft.type === 'deployment') {
+    lines.push('Contract Deployment');
+    lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+    return lines;
+  }
+
+  lines.push('Misc Transaction');
+  lines.push(`Timestamp: ${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
+  return lines;
+};
+
 const isTandaPayTransaction = (tx: Transfer, tandapayContractAddress: string) => {
   if (tx.to !== null && tx.to.toLowerCase() === tandapayContractAddress.toLowerCase()) {
     return true; // this transaction is to the TandaPay contract
