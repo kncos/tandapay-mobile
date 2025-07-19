@@ -21,6 +21,7 @@ export type FullTransaction = {|
   selfTransferAsset: string | null, // asset of the self-transfer, if applicable
   isErc20Transferred: boolean, // true if this transaction involves an ERC20 token transfer
   netValueChanges: Map<string, number> | null, // map of assets to net value changes
+  transferDirection: 'sent' | 'received' | null, // overall direction of the transaction, null if no net transfer
   transfers: Transfer[] | null, // array of transfer objects
 
   // additional details for tandapay transactions
@@ -38,7 +39,9 @@ export type FullTransaction = {|
 export const getFullTransactionChipInfo = (ft: FullTransaction): string[] => {
   const lines: string[] = [];
 
-  const blockTimestamp = ft.transfers?.[0]?.metadata?.blockTimestamp ?? null;
+  const blockTimestamp = ft.transfers && ft.transfers[0] && ft.transfers[0].metadata
+    ? ft.transfers[0].metadata.blockTimestamp
+    : null;
   const timestamp = blockTimestamp ? new Date(blockTimestamp) : null;
 
   if (ft.type === 'tandapay') {
@@ -55,11 +58,14 @@ export const getFullTransactionChipInfo = (ft: FullTransaction): string[] => {
   }
   else if (ft.type === 'erc20') {
     if (ft.isErc20Transferred) {
-      const anyEntry = ft.netValueChanges?.entries()?.next()?.value;
+      const anyEntry = ft.netValueChanges ? ft.netValueChanges.entries().next().value : null;
       if (anyEntry) {
         const [asset, value] = anyEntry;
-        lines.push(`${asset} Transferred`);
-        lines.push(`Amount: ${value}`);
+        const directionText = ft.transferDirection === 'sent' ? 'Sent'
+          : ft.transferDirection === 'received' ? 'Received'
+          : 'Transferred';
+        lines.push(`${asset} ${directionText}`);
+        lines.push(`Amount: ${Math.abs(value)}`); // Show absolute value for display
         lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
         return lines;
       }
@@ -71,11 +77,14 @@ export const getFullTransactionChipInfo = (ft: FullTransaction): string[] => {
     return lines;
   }
   else if (ft.type === 'eth') {
-    const anyEntry = ft.netValueChanges?.entries()?.next()?.value;
+    const anyEntry = ft.netValueChanges ? ft.netValueChanges.entries().next().value : null;
     if (anyEntry) {
       const [asset, value] = anyEntry;
-      lines.push(`${asset} Transferred`);
-      lines.push(`Amount: ${value}`);
+      const directionText = ft.transferDirection === 'sent' ? 'Sent'
+        : ft.transferDirection === 'received' ? 'Received'
+        : 'Transferred';
+      lines.push(`${asset} ${directionText}`);
+      lines.push(`Amount: ${Math.abs(value)}`); // Show absolute value for display
       lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
       return lines;
     } else {
@@ -92,6 +101,25 @@ export const getFullTransactionChipInfo = (ft: FullTransaction): string[] => {
   lines.push('Misc Transaction');
   lines.push(`${timestamp?.toLocaleString() ?? 'Unknown Timestamp'}`);
   return lines;
+};
+
+/**
+ * Get the transfer direction for a transaction to determine color coding.
+ * This reuses the same logic that's used internally for chip text.
+ * @param {FullTransaction} ft - The full transaction object.
+ * @returns {'sent' | 'received' | 'tandapay' | null} - The transfer direction or type.
+ */
+export const getTransactionDirection = (ft: FullTransaction): 'sent' | 'received' | 'tandapay' | null => {
+  if (ft.type === 'tandapay') {
+    return 'tandapay';
+  }
+
+  // For ERC20 and ETH transactions, use the computed transferDirection
+  if ((ft.type === 'erc20' || ft.type === 'eth') && ft.transferDirection) {
+    return ft.transferDirection;
+  }
+
+  return null;
 };
 
 const isTandaPayTransaction = (tx: Transfer, tandapayContractAddress: string) => {
@@ -188,6 +216,28 @@ const calculateNetValueChanges = (walletAddress: string, transfers: Transfer[]):
   }
   // finally, return the net value changes map
   return netValueChanges;
+};
+
+/**
+ * Determine the overall transfer direction based on net value changes.
+ * Returns 'sent' if the total net change is negative (money went out),
+ * 'received' if positive (money came in), or null if no net transfer.
+ */
+const getOverallTransferDirection = (netValueChanges: Map<string, number> | null): 'sent' | 'received' | null => {
+  if (!netValueChanges || netValueChanges.size === 0) {
+    return null;
+  }
+
+  const values = Array.from(netValueChanges.values());
+  const totalChange = values.reduce((sum, value) => sum + value, 0);
+
+  if (totalChange > 0) {
+    return 'received';
+  } else if (totalChange < 0) {
+    return 'sent';
+  }
+
+  return null; // Total change is exactly 0
 };
 
 const parseDecodedInfo = (decoded: mixed | null): DecodedAbiInput | null => {
@@ -288,12 +338,16 @@ export const toFullTransaction = (params: {
   // we'll have this default to null if the size of the map was 0
   const netValueChanges = calculatedNetValueChanges > 0 ? calculateNetValueChanges(walletAddress, transfers) : null;
 
+  // Determine overall transfer direction for applicable transaction types
+  const transferDirection = getOverallTransferDirection(netValueChanges);
+
   // Base object with common fields
   const baseTransaction = {
     hash: transfers[0].hash || null,
     blockNum: transfers[0].blockNum || null,
     isErc20Transferred: isErc20,
     netValueChanges,
+    transferDirection,
     transfers,
     additionalDetails: {
       signedTransaction: signedTransaction || null,

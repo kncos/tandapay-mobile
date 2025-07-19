@@ -59,7 +59,7 @@ export default function WalletSetupScreen(props: Props): Node {
           text="To get started, you'll need to create a new wallet or import an existing one. Your wallet will be stored securely on your device."
         />
 
-        <View style={styles.buttonContainer}>
+        <View style={TandaPayStyles.buttonRow}>
           <ZulipButton
             style={TandaPayStyles.button}
             text="Create New Wallet"

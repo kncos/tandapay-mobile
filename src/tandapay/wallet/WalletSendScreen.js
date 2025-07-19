@@ -31,7 +31,7 @@ import type {
   SendTransactionCallback,
   GasEstimate,
 } from '../components/TransactionEstimateAndSend';
-import { TandaPayLayout } from '../styles';
+import TandaPayStyles, { TandaPayLayout } from '../styles';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-send'>,
@@ -325,11 +325,13 @@ export default function WalletSendScreen(props: Props): Node {
           <ZulipText style={{ textAlign: 'center', marginTop: 50, fontSize: 16 }}>
             No token selected. Please select a token in your wallet first.
           </ZulipText>
-          <ZulipButton
-            text="Go Back"
-            onPress={() => navigation.goBack()}
-            style={{ marginTop: 20 }}
-          />
+          <View style={TandaPayStyles.buttonRow}>
+            <ZulipButton
+              text="Go Back"
+              onPress={() => navigation.goBack()}
+              style={TandaPayStyles.button}
+            />
+          </View>
         </View>
       </Screen>
     );

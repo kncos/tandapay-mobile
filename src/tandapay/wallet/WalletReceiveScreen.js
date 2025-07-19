@@ -14,7 +14,7 @@ import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { getWalletAddress } from './WalletManager';
-import { TandaPayColors } from '../styles';
+import TandaPayStyles, { TandaPayColors } from '../styles';
 import { ScrollableTextBox } from '../components';
 
 type Props = $ReadOnly<{|
@@ -113,11 +113,13 @@ export default function WalletReceiveScreen(props: Props): Node {
       <Screen title="Receive">
         <View style={styles.container}>
           <ZulipText text="Unable to load wallet address" />
-          <ZulipButton
-            text="Go Back"
-            onPress={() => navigation.goBack()}
-            style={{ marginTop: 20 }}
-          />
+          <View style={TandaPayStyles.buttonRow}>
+            <ZulipButton
+              text="Go Back"
+              onPress={() => navigation.goBack()}
+              style={TandaPayStyles.button}
+            />
+          </View>
         </View>
       </Screen>
     );
@@ -138,10 +140,11 @@ export default function WalletReceiveScreen(props: Props): Node {
           label="Wallet Address"
         />
 
-        <View style={styles.buttonContainer}>
+        <View style={TandaPayStyles.buttonRow}>
           <ZulipButton
             text="Share"
             onPress={handleShareAddress}
+            style={TandaPayStyles.button}
           />
         </View>
 

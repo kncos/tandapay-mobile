@@ -16,10 +16,10 @@ import ZulipText from '../../common/ZulipText';
 import { QUARTER_COLOR, ThemeContext } from '../../styles';
 import TransactionDetailsModal from './TransactionDetailsModal';
 import type { LoadMoreState, TransactionState } from './useTransactionHistory';
-import { TandaPayColors } from '../styles';
+import TandaPayStyles, { TandaPayColors } from '../styles';
 import type { SupportedNetwork } from '../definitions/types';
 import type { FullTransaction } from './FullTransaction';
-import { getFullTransactionChipInfo } from './FullTransaction';
+import { getFullTransactionChipInfo, getTransactionDirection } from './FullTransaction';
 
 type Props = {|
   walletAddress: string,
@@ -43,22 +43,17 @@ const getTransactionChipColor = (transaction: FullTransaction, themeData: $ReadO
   dividerColor: string,
   themeName: string,
 |}>) => {
-  switch (transaction.type) {
+  const direction = getTransactionDirection(transaction);
+
+  switch (direction) {
     case 'tandapay':
       return TandaPayColors.warning; // Gold/yellow for TandaPay
+    case 'sent':
+      return TandaPayColors.error; // Red for sent
+    case 'received':
+      return TandaPayColors.success; // Green for received
     default:
-      // Check net value changes to determine if sent or received
-      if (transaction.netValueChanges && transaction.netValueChanges.size > 0) {
-        // $FlowIgnore[incompatible-use] - we check size > 0 above
-        const values = Array.from(transaction.netValueChanges.values());
-        const totalChange = values.reduce((sum, value) => sum + value, 0);
-        if (totalChange > 0) {
-          return TandaPayColors.success; // Green for received
-        } else if (totalChange < 0) {
-          return TandaPayColors.error; // Red for sent
-        }
-      }
-      return themeData.color; // Default color
+      return themeData.color; // Default color for other types
   }
 };
 
@@ -98,10 +93,13 @@ export default function TransactionList({
         <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
           Configure an Alchemy API key in wallet settings to view transaction history.
         </ZulipText>
-        <ZulipButton
-          text="Configure API Key"
-          onPress={onGoToSettings}
-        />
+        <View style={TandaPayStyles.buttonRow}>
+          <ZulipButton
+            text="Configure API Key"
+            onPress={onGoToSettings}
+            style={TandaPayStyles.button}
+          />
+        </View>
       </View>
     );
   }
@@ -116,10 +114,13 @@ export default function TransactionList({
         <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
           Please connect a wallet to view transaction history.
         </ZulipText>
-        <ZulipButton
-          text="Connect Wallet"
-          onPress={onGoToSettings}
-        />
+        <View style={TandaPayStyles.buttonRow}>
+          <ZulipButton
+            text="Connect Wallet"
+            onPress={onGoToSettings}
+            style={TandaPayStyles.button}
+          />
+        </View>
       </View>
     );
   }
@@ -135,13 +136,16 @@ export default function TransactionList({
         <ZulipText style={{ textAlign: 'center', marginBottom: 15, color: themeData.color }}>
           {error.userMessage != null && error.userMessage !== '' ? error.userMessage : 'Unable to fetch transaction history.'}
         </ZulipText>
-        <ZulipButton
-          text="Try Again"
-          onPress={() => {
-            onRefresh(); // Reset the manager
-            onLoadMore(); // Then load transactions
-          }}
-        />
+        <View style={TandaPayStyles.buttonRow}>
+          <ZulipButton
+            text="Try Again"
+            onPress={() => {
+              onRefresh(); // Reset the manager
+              onLoadMore(); // Then load transactions
+            }}
+            style={TandaPayStyles.button}
+          />
+        </View>
       </View>
     );
   }
@@ -220,11 +224,12 @@ export default function TransactionList({
 
         {/* Load More Button */}
         {hasMore && (
-          <View style={{ padding: 15, alignItems: 'center' }}>
+          <View style={TandaPayStyles.buttonRow}>
             <ZulipButton
               text="Load More"
               onPress={onLoadMore}
               progress={isLoadingMore}
+              style={TandaPayStyles.button}
             />
           </View>
         )}
