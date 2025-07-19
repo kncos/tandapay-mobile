@@ -15,7 +15,7 @@ import type { SignedTransaction, Transfer } from './AlchemyApiTypes';
 export class TransactionManager {
   _network: SupportedNetwork;
   _walletAddress: string;
-  _tandapayContractAddress: string;
+  _tandapayContractAddress: string | null;
 
   // $FlowFixMe[value-as-type] - PriorityQueue is imported from datastructures-js
   _transactionQueue: PriorityQueue<Transfer>;
@@ -35,9 +35,16 @@ export class TransactionManager {
 
   _lock: boolean = false;
 
-  constructor(network: SupportedNetwork, walletAddress: string, tandapayContractAddress: string, pageSize: number = 10) {
+  constructor(params: {|
+    network: SupportedNetwork,
+    walletAddress: string,
+    tandapayContractAddress?: string | null,
+    pageSize?: number,
+  |}) {
+    const { network, walletAddress, tandapayContractAddress, pageSize = 10 } = params;
+
     // ensure these parameters are provided and valid
-    if (!network || !walletAddress || !tandapayContractAddress) {
+    if (!network || !walletAddress) {
       throw new Error('Invalid parameters provided to TransactionManager constructor');
     }
 
@@ -45,14 +52,14 @@ export class TransactionManager {
       throw new Error('Invalid wallet address provided');
     }
 
-    if (!ethers.utils.isAddress(tandapayContractAddress)) {
-      throw new Error('Invalid TandaPay contract address provided');
-    }
+    // if (!ethers.utils.isAddress(tandapayContractAddress)) {
+    //   throw new Error('Invalid TandaPay contract address provided');
+    // }
 
     // inputs
     this._network = network;
     this._walletAddress = walletAddress;
-    this._tandapayContractAddress = tandapayContractAddress;
+    this._tandapayContractAddress = tandapayContractAddress || null;
 
     // Initialize any necessary properties or dependencies here
     this._transactionQueue = new PriorityQueue((a, b) => this._transactionSortKey(a, b));

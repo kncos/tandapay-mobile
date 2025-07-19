@@ -309,7 +309,7 @@ const decodeErc20TransactionInput = (input: string): mixed | null => {
 
 export const toFullTransaction = (params: {
   walletAddress: string,
-  tandapayContractAddress: string,
+  tandapayContractAddress: string | null,
   transfers: Transfer[],
   signedTransaction?: SignedTransaction | null,
 }): FullTransaction => {
@@ -322,9 +322,9 @@ export const toFullTransaction = (params: {
   if (!walletAddress || ethers.utils.isAddress(walletAddress) === false) {
     throw new Error('invalid walletAddress provided!');
   }
-  if (!tandapayContractAddress || ethers.utils.isAddress(tandapayContractAddress) === false) {
-    throw new Error('invalid tandapayContractAddress provided!');
-  }
+//  if (!tandapayContractAddress || ethers.utils.isAddress(tandapayContractAddress) === false) {
+//    throw new Error('invalid tandapayContractAddress provided!');
+//  }
 
   const tandapayDecoded = decodeTandaPayTransactionInput(signedTransaction?.input || '');
   const erc20Decoded = decodeErc20TransactionInput(signedTransaction?.input || '');
@@ -332,7 +332,7 @@ export const toFullTransaction = (params: {
   const decodedInput = parseDecodedInfo(rawDecoded);
 
   // test if it's a tandapay transaction
-  const isTandaPay = transfers.some(tx => isTandaPayTransaction(tx, tandapayContractAddress)) || tandapayDecoded != null;
+  const isTandaPay = tandapayContractAddress && transfers.some(tx => isTandaPayTransaction(tx, tandapayContractAddress)) || tandapayDecoded != null;
   const isErc20 = transfers.some(tx => isErc20Transaction(tx)) || erc20Decoded != null;
   const calculatedNetValueChanges = calculateNetValueChanges(walletAddress, transfers).size;
   // we'll have this default to null if the size of the map was 0

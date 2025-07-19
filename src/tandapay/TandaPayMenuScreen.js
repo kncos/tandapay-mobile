@@ -18,7 +18,7 @@ import { TransactionManager } from './wallet/TransactionManagerNew';
 import {
   getFullTransactionChipInfo,
   prettyPrintFullTransaction,
-} from "./wallet/FullTransaction";
+} from './wallet/FullTransaction';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-menu'>,
@@ -39,11 +39,11 @@ type Props = $ReadOnly<{|
 
 export default function TandaPayMenuScreen(props: Props): Node {
   const { navigation } = props;
-  const tm = new TransactionManager(
-    'sepolia',
-    '0xA726263b90717e431EE068230bA5623469a5D5D9',
-    '0x02d93c46703e2447e1cC08b457982992763B9Cc0',
-  );
+  const tm = new TransactionManager({
+    network: 'sepolia',
+    walletAddress: '0xA726263b90717e431EE068230bA5623469a5D5D9',
+    tandapayContractAddress: '0x02d93c46703e2447e1cC08b457982992763B9Cc0',
+  });
 
   return (
     <Screen title="TandaPay Menu">

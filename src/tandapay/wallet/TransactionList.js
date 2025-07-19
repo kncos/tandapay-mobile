@@ -253,7 +253,7 @@ export default function TransactionList({
   return (
     <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
       <ZulipText style={{ color: themeData.color }}>
-        Unknown transaction state
+        {transactionState.status}
       </ZulipText>
     </View>
   );
