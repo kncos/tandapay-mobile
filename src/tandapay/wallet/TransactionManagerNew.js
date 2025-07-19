@@ -3,16 +3,14 @@
 
 import { PriorityQueue } from 'datastructures-js';
 import { ethers } from 'ethers';
-import { getAssetTransfers } from './AlchemyApiHelper';
+import {
+  getAssetTransfers,
+  getBatchTransactionsByHash,
+} from './AlchemyApiHelper';
 import type { SupportedNetwork } from '../definitions';
 import type { FullTransaction } from './FullTransaction';
 import { toFullTransaction } from './FullTransaction';
 import type { SignedTransaction, Transfer } from './AlchemyApiTypes';
-
-export type TransactionData = {|
-  details: SignedTransaction | null,
-  transfers: Transfer[],
-|};
 
 export class TransactionManager {
   _network: SupportedNetwork;
@@ -28,7 +26,10 @@ export class TransactionManager {
   _pagesLoaded = 0;
 
   _inorderTransactionHashes: string[];
-  _allTransactions: Map<string, TransactionData>;
+  _allTransactions: Map<string, Transfer[]>;
+
+  // stored separately so we actually don't invalidate this cache
+  _allSignedTransactions: Map<string, SignedTransaction>;
 
   _getOrderedTransactionsCache: ?Array<FullTransaction>;
 
@@ -67,7 +68,8 @@ export class TransactionManager {
     // this will store objects for all transactions we've seen so far, keyed by hash.
     // This can be used in conjunction with _inorderTransactionHashes to
     // retrieve the full transaction object for transactions in order.
-    this._allTransactions = new Map<string, TransactionData>();
+    this._allTransactions = new Map<string, Transfer[]>();
+    this._allSignedTransactions = new Map<string, SignedTransaction>();
   }
 
   /**
@@ -168,12 +170,14 @@ export class TransactionManager {
     // add new transactions to the queue
     incoming.forEach(tx => this._transactionQueue.enqueue(tx));
     outgoing.forEach(tx => this._transactionQueue.enqueue(tx));
+
+    const allTransfers = [...incoming, ...outgoing];
+    await this._populateSignedTransactions(allTransfers.filter(tx => tx.hash !== null && tx.hash !== undefined && tx.hash !== '').map(tx => tx.hash ?? ''));
+
     this._pagesLoaded += 1;
     this._dropGetOrderedTransactionsCache(); // invalidate the cache of ordered transactions
 
     // fetches complete, unlock the transaction manager
-    console.log(`Loaded ${incoming.length} incoming and ${outgoing.length} outgoing transactions.`);
-    console.log(`page key incoming: ${this._nextIncomingPage ?? 'n/a'}, page key outgoing: ${this._nextOutgoingPage ?? 'n/a'}`);
     this._lock = false;
   }
 
@@ -195,10 +199,23 @@ export class TransactionManager {
     this._getOrderedTransactionsCache = null;
   }
 
-  _supplyTransactionDetails(hashes: Array<string>): void {
-    const hashesToFetch = hashes.filter(hash => {
-      const transactionData = this._allTransactions.get(hash);
-      return transactionData && transactionData.details === null;
+  async _populateSignedTransactions(inputHashes: string[]): Promise<void> {
+    // fetch the details for each transaction in parallel
+    const hashes = inputHashes.filter(hash => hash !== null && hash !== undefined && hash !== '');
+    if (!Array.isArray(hashes) || hashes.length === 0) {
+      console.warn('No valid transaction hashes to fetch details for.');
+      return;
+    }
+
+    // filter out any hashes that we already have details for
+    const needsDetails = hashes.filter(hash => !this._allSignedTransactions.has(hash));
+    const details = await getBatchTransactionsByHash(this._network, needsDetails);
+
+    // store the details in the _allDetails map
+    details.forEach(detail => {
+      if (detail && detail.hash) {
+        this._allSignedTransactions.set(detail.hash, detail);
+      }
     });
   }
 
@@ -216,12 +233,12 @@ export class TransactionManager {
     for (const tx of transactionsArray) {
       if (!this._allTransactions.has(tx.hash)) {
         // if we haven't seen this transaction before, add it to the allTransactions map
-        this._allTransactions.set(tx.hash, { transfers: [tx], details: null });
+        this._allTransactions.set(tx.hash, [tx]);
         // and add it to the ordered list
         this._inorderTransactionHashes.push(tx.hash);
       } else {
         // if we have seen it, push it, but it should already be in _inorderTransactionHashes
-        this._allTransactions.get(tx.hash)?.transfers.push(tx);
+        this._allTransactions.get(tx.hash)?.push(tx);
       }
     }
 
@@ -250,7 +267,8 @@ export class TransactionManager {
     for (let i = 0; i < maxSafeIndex; i += 1) {
       const hash = this._inorderTransactionHashes[i];
       const transactionData = this._allTransactions.get(hash);
-      if (!transactionData || !Array.isArray(transactionData.transfers) || transactionData.transfers.length === 0) {
+      const signedTransaction = this._allSignedTransactions.get(hash);
+      if (!transactionData || !Array.isArray(transactionData) || transactionData.length === 0) {
         console.warn(`Transaction with hash ${hash} had no transfers associated with it!`);
         continue;
       }
@@ -258,7 +276,8 @@ export class TransactionManager {
       const fullTransaction = toFullTransaction({
         walletAddress: this._walletAddress,
         tandapayContractAddress: this._tandapayContractAddress,
-        transfers: transactionData.transfers,
+        transfers: transactionData,
+        signedTransaction: signedTransaction || null,
       });
       res.push(fullTransaction);
     }

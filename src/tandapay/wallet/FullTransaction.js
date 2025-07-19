@@ -1,7 +1,15 @@
 // @flow
 
 import { ethers } from 'ethers';
-import type { Transfer } from './AlchemyApiTypes';
+import type { SignedTransaction, Transfer } from './AlchemyApiTypes';
+import { TandaPayInfo } from '../contract/utils/TandaPay';
+import { Erc20Abi } from '../contract/utils/Erc20Abi';
+
+export type DecodedAbiInput = {|
+  functionName: string,
+  functionSignature: string,
+  arguments: Array<{ name: string, type: string, value: mixed }>,
+|};
 
 export type FullTransaction = {|
   hash: string | null,
@@ -14,6 +22,12 @@ export type FullTransaction = {|
   isErc20Transferred: boolean, // true if this transaction involves an ERC20 token transfer
   netValueChanges: Map<string, number> | null, // map of assets to net value changes
   transfers: Transfer[] | null, // array of transfer objects
+
+  // additional details for tandapay transactions
+  additionalDetails?: {
+    signedTransaction?: SignedTransaction | null, // the signed transaction object, if available
+    decodedInput?: DecodedAbiInput | null,
+  }
 |};
 
 const isTandaPayTransaction = (tx: Transfer, tandapayContractAddress: string) => {
@@ -112,13 +126,81 @@ const calculateNetValueChanges = (walletAddress: string, transfers: Transfer[]):
   return netValueChanges;
 };
 
+const parseDecodedInfo = (decoded: mixed | null): DecodedAbiInput | null => {
+  if (decoded == null || typeof decoded !== 'object') {
+    return null;
+  }
+
+  // $FlowFixMe[unclear-type] - validating structure at runtime
+  const decodedObj: any = decoded;
+
+  // Validate the structure we expect
+  if (!decodedObj.name
+      || !decodedObj.signature
+      || !Array.isArray(decodedObj.args)
+      || !decodedObj.functionFragment
+      || !Array.isArray(decodedObj.functionFragment.inputs)) {
+    return null;
+  }
+
+  const functionName = decodedObj.name;
+  const functionSignature = decodedObj.signature;
+  const args = decodedObj.args;
+  const inputs = decodedObj.functionFragment.inputs;
+
+  // Correlate args with inputs to create argument objects
+  const argumentsArray = [];
+  for (let i = 0; i < args.length && i < inputs.length; i++) {
+    const input = inputs[i];
+    const value = args[i];
+
+    // Validate input structure
+    if (!input.name || !input.type) {
+      continue; // Skip invalid inputs
+    }
+
+    argumentsArray.push({
+      name: input.name,
+      type: input.type,
+      value,
+    });
+  }
+
+  return {
+    functionName,
+    functionSignature,
+    arguments: argumentsArray,
+  };
+};
+
+const decodeTandaPayTransactionInput = (input: string): mixed | null => {
+  try {
+    const iface = new ethers.utils.Interface(TandaPayInfo.abi);
+    const decoded = iface.parseTransaction({ data: input });
+    return decoded;
+  } catch (error) {
+    return null; // return null if decoding fails
+  }
+};
+
+const decodeErc20TransactionInput = (input: string): mixed | null => {
+  try {
+    const iface = new ethers.utils.Interface(Erc20Abi);
+    const decoded = iface.parseTransaction({ data: input });
+    return decoded;
+  } catch (error) {
+    return null; // return null if decoding fails
+  }
+};
+
 export const toFullTransaction = (params: {
   walletAddress: string,
   tandapayContractAddress: string,
-  transfers: Transfer[]
+  transfers: Transfer[],
+  signedTransaction?: SignedTransaction | null,
 }): FullTransaction => {
   // validate parameters
-  const { walletAddress, tandapayContractAddress, transfers } = params;
+  const { walletAddress, tandapayContractAddress, transfers, signedTransaction } = params;
   // validate parameters
   if (!Array.isArray(transfers) || transfers.length === 0) {
     throw new Error('transfers must be a non-empty array!');
@@ -130,46 +212,58 @@ export const toFullTransaction = (params: {
     throw new Error('invalid tandapayContractAddress provided!');
   }
 
+  const tandapayDecoded = decodeTandaPayTransactionInput(signedTransaction?.input || '');
+  const erc20Decoded = decodeErc20TransactionInput(signedTransaction?.input || '');
+  const rawDecoded = tandapayDecoded != null ? tandapayDecoded : (erc20Decoded != null ? erc20Decoded : null);
+  const decodedInput = parseDecodedInfo(rawDecoded);
+
   // test if it's a tandapay transaction
-  const isTandaPay = transfers.some(tx => isTandaPayTransaction(tx, tandapayContractAddress));
-  const isErc20 = transfers.some(tx => isErc20Transaction(tx));
+  const isTandaPay = transfers.some(tx => isTandaPayTransaction(tx, tandapayContractAddress)) || tandapayDecoded != null;
+  const isErc20 = transfers.some(tx => isErc20Transaction(tx)) || erc20Decoded != null;
   const calculatedNetValueChanges = calculateNetValueChanges(walletAddress, transfers).size;
   // we'll have this default to null if the size of the map was 0
   const netValueChanges = calculatedNetValueChanges > 0 ? calculateNetValueChanges(walletAddress, transfers) : null;
+
+  // Base object with common fields
+  const baseTransaction = {
+    hash: transfers[0].hash || null,
+    blockNum: transfers[0].blockNum || null,
+    isErc20Transferred: isErc20,
+    netValueChanges,
+    transfers,
+    additionalDetails: {
+      signedTransaction: signedTransaction || null,
+      decodedInput: decodedInput || null,
+    },
+  };
 
   // precedence order: tandapay > deployment > self > erc20 > eth > unknown
 
   // first test if it is a tandapay transaction
   if (isTandaPay) {
-    // if it is, we can just return a full transaction object with the type set to 'tandapay'
     return {
-      hash: transfers[0].hash || null,
-      blockNum: transfers[0].blockNum || null,
+      ...baseTransaction,
       type: 'tandapay',
       isSelfTransaction: false,
-      // erc20 value can sometimes be exchanged in tandapay transactions
-      isErc20Transferred: isErc20,
       selfTransferAmount: null,
       selfTransferAsset: null,
-      netValueChanges,
-      transfers
-    };
-  // otherwise we might have a deployment transaction
-  } else if (transfers.some(tx => getTransferDirection(tx, walletAddress) === 'deployment')) {
-    return {
-      hash: transfers[0].hash || null,
-      blockNum: transfers[0].blockNum || null,
-      type: 'deployment',
-      isSelfTransaction: false,
-      isErc20Transferred: isErc20,
-      selfTransferAmount: null,
-      selfTransferAsset: null,
-      netValueChanges,
-      transfers: [...transfers]
     };
   }
+
+  // otherwise we might have a deployment transaction
+  if (transfers.some(tx => getTransferDirection(tx, walletAddress) === 'deployment')) {
+    return {
+      ...baseTransaction,
+      type: 'deployment',
+      isSelfTransaction: false,
+      selfTransferAmount: null,
+      selfTransferAsset: null,
+      transfers: [...transfers],
+    };
+  }
+
   // otherwise, we might have a self-transfer transaction
-  else if (transfers.some(tx => getTransferDirection(tx, walletAddress) === 'self')) {
+  if (transfers.some(tx => getTransferDirection(tx, walletAddress) === 'self')) {
     let selfTransferAmount = null;
     let selfTransferAsset = null;
     for (const tx of transfers) {
@@ -180,55 +274,45 @@ export const toFullTransaction = (params: {
     }
 
     return {
-      hash: transfers[0].hash || null,
-      blockNum: transfers[0].blockNum || null,
+      ...baseTransaction,
       type: 'self',
       isSelfTransaction: true,
-      isErc20Transferred: isErc20,
       selfTransferAmount,
       selfTransferAsset,
-      netValueChanges,
-      transfers: [...transfers]
+      transfers: [...transfers],
     };
+  }
+
   // if not, see if it's a general erc20 transaction
-  } else if (isErc20) {
+  if (isErc20) {
     return {
-      hash: transfers[0].hash || null,
-      blockNum: transfers[0].blockNum || null,
+      ...baseTransaction,
       type: 'erc20',
       isSelfTransaction: false,
-      isErc20Transferred: isErc20,
       selfTransferAmount: null,
       selfTransferAsset: null,
-      netValueChanges,
-      transfers
     };
+  }
+
   // if not, just see if any value was transferred in general. If so it's probably an eth transfer
-  } else if (netValueChanges) {
+  if (netValueChanges) {
     return {
-      hash: transfers[0].hash || null,
-      blockNum: transfers[0].blockNum || null,
+      ...baseTransaction,
       type: 'eth',
       isSelfTransaction: false,
-      isErc20Transferred: isErc20,
       selfTransferAmount: null,
       selfTransferAsset: null,
-      netValueChanges,
-      transfers
     };
   }
 
   // otherwise, it's some other type of transaction (unknown)
   return {
-    hash: transfers[0].hash || null,
-    blockNum: transfers[0].blockNum || null,
+    ...baseTransaction,
     type: 'unknown',
     isSelfTransaction: false,
-    isErc20Transferred: false,
     selfTransferAmount: null,
     selfTransferAsset: null,
     netValueChanges: null,
-    transfers
   };
 };
 
@@ -249,6 +333,18 @@ export const prettyPrintFullTransaction = (ft: FullTransaction, skipUnknown: boo
   messages.push(`  Self Transfer Amount: ${ft.selfTransferAmount || 0}`);
   messages.push(`  Self Transfer Asset: ${ft.selfTransferAsset ?? 'n/a'}`);
   messages.push(`  Is ERC20 Transferred: ${ft.isErc20Transferred ? 'Yes' : 'No'}`);
+  messages.push(`  Additional Details: ${ft.additionalDetails ? 'Available' : 'None'}`);
+  if (ft.additionalDetails?.decodedInput) {
+    const decoded = ft.additionalDetails.decodedInput;
+    messages.push(`      Function: ${decoded.functionName}`);
+    messages.push(`      Signature: ${decoded.functionSignature}`);
+    if (decoded.arguments.length > 0) {
+      messages.push('      Arguments:');
+      decoded.arguments.forEach((arg, index) => {
+        messages.push(`        ${index}: ${arg.name} (${arg.type}) = ${String(arg.value)}`);
+      });
+    }
+  }
 
   if (ft.netValueChanges instanceof Map) {
     messages.push('  Net Value Changes:');
