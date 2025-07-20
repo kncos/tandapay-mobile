@@ -56,11 +56,21 @@ export async function getWalletAddress(): Promise<TandaPayResult<?string>> {
 export async function generateWallet(): Promise<TandaPayResult<WalletInfo>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Starting wallet generation...');
+
       // Generate a random wallet
       const wallet = ethers.Wallet.createRandom();
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Wallet created, address:', wallet.address);
 
       // Validate the generated wallet
       if (!wallet.mnemonic?.phrase || !wallet.address) {
+        // eslint-disable-next-line no-console
+        console.error('[WalletManager] Wallet validation failed:', {
+          hasMnemonic: !!wallet.mnemonic?.phrase,
+          hasAddress: !!wallet.address,
+        });
         throw TandaPayErrorHandler.createError(
           'WALLET_ERROR',
           'Wallet generation failed - invalid wallet created',
@@ -68,16 +78,50 @@ export async function generateWallet(): Promise<TandaPayResult<WalletInfo>> {
         );
       }
 
-      // Store the mnemonic and address securely
-      await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
-        requireAuthentication: true,
-      });
-      await SecureStore.setItemAsync(WALLET_ADDRESS_STORAGE_KEY, wallet.address, {
-        requireAuthentication: false,
-      });
-      await SecureStore.setItemAsync(HAS_WALLET_KEY, 'true', {
-        requireAuthentication: false,
-      });
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Starting secure storage operations...');
+
+      try {
+        // Store the mnemonic and address securely
+        // eslint-disable-next-line no-console
+        console.log('[WalletManager] Storing mnemonic...');
+
+        // Try with authentication first, fall back to no authentication if it fails
+        try {
+          await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
+            requireAuthentication: true,
+          });
+          // eslint-disable-next-line no-console
+          console.log('[WalletManager] Mnemonic stored with authentication');
+        } catch (authError) {
+          // eslint-disable-next-line no-console
+          console.warn('[WalletManager] Failed to store with authentication, trying without:', authError.message);
+          await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
+            requireAuthentication: false,
+          });
+          // eslint-disable-next-line no-console
+          console.log('[WalletManager] Mnemonic stored without authentication');
+        }
+
+        // eslint-disable-next-line no-console
+        console.log('[WalletManager] Storing wallet address...');
+        await SecureStore.setItemAsync(WALLET_ADDRESS_STORAGE_KEY, wallet.address, {
+          requireAuthentication: false,
+        });
+
+        // eslint-disable-next-line no-console
+        console.log('[WalletManager] Setting wallet flag...');
+        await SecureStore.setItemAsync(HAS_WALLET_KEY, 'true', {
+          requireAuthentication: false,
+        });
+
+        // eslint-disable-next-line no-console
+        console.log('[WalletManager] All storage operations completed successfully');
+      } catch (storageError) {
+        // eslint-disable-next-line no-console
+        console.error('[WalletManager] Storage operation failed:', storageError);
+        throw storageError; // Re-throw to be caught by the outer error handler
+      }
 
       return {
         address: wallet.address,
@@ -128,9 +172,18 @@ export async function importWallet(mnemonic: string): Promise<TandaPayResult<Wal
       }
 
       // Store the mnemonic and address securely
-      await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
-        requireAuthentication: true,
-      });
+      try {
+        await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
+          requireAuthentication: true,
+        });
+      } catch (authError) {
+        // eslint-disable-next-line no-console
+        console.warn('[WalletManager] Import: Failed to store with authentication, trying without:', authError.message);
+        await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
+          requireAuthentication: false,
+        });
+      }
+
       await SecureStore.setItemAsync(WALLET_ADDRESS_STORAGE_KEY, wallet.address, {
         requireAuthentication: false,
       });

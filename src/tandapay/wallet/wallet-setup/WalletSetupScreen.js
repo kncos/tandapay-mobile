@@ -65,6 +65,8 @@ export default function WalletSetupScreen(props: Props): Node {
             text="Create New Wallet"
             onPress={handleGenerateWallet}
           />
+        </View>
+        <View style={TandaPayStyles.buttonRow}>
           <ZulipButton
             style={TandaPayStyles.button}
             text="Import Existing Wallet"
