@@ -43,14 +43,19 @@ const styles = StyleSheet.create({
   },
 });
 
-// Random positions to verify (3 out of 12)
-const VERIFICATION_POSITIONS = [2, 7, 11]; // 0-indexed
+// Random positions to verify (3 out of 12) - 0-indexed
+const VERIFICATION_POSITIONS = [2, 7, 10]; // 0-indexed: word 3, word 8, word 11
 
 export default function WalletVerifyScreen(props: Props): Node {
   const { navigation, route } = props;
   const { mnemonic, setupScreenCount = 3 } = route.params;
 
   const [mnemonicWords] = useState(() => mnemonic.split(' '));
+  const [selectedPosition, setSelectedPosition] = useState<?number>(VERIFICATION_POSITIONS[0]);
+
+  // Debug the mnemonic splitting
+  // eslint-disable-next-line no-console
+  console.log('Mnemonic split into words:', mnemonicWords.map((word, idx) => `${idx}: ${word}`).join(', '));
 
   const {
     shuffledWords,
@@ -67,6 +72,15 @@ export default function WalletVerifyScreen(props: Props): Node {
       selectedWords[pos] === mnemonicWords[pos]
     );
 
+    // Debug logging for verification
+    VERIFICATION_POSITIONS.forEach(pos => {
+      const selected = selectedWords[pos] != null ? selectedWords[pos] : 'EMPTY';
+      const expected = mnemonicWords[pos];
+      const isMatch = selected === expected;
+      // eslint-disable-next-line no-console
+      console.log(`Position ${pos} (word ${pos + 1}): selected="${selected}" expected="${expected}" match=${String(isMatch)}`);
+    });
+
     if (isCorrect) {
       Alert.alert(
         'Verification Successful!',
@@ -77,15 +91,22 @@ export default function WalletVerifyScreen(props: Props): Node {
             onPress: () => {
               // Pop the setup screens to return to the previous navigation state
               // This preserves the existing chat app navigation history
-              navigation.pop(setupScreenCount);
+              navigation.pop(setupScreenCount + 1);
             },
           },
         ]
       );
     } else {
+      // Build a helpful error message showing expected vs selected
+      const errorDetails = VERIFICATION_POSITIONS.map(pos => {
+        const selected = selectedWords[pos] != null ? selectedWords[pos] : 'EMPTY';
+        const expected = mnemonicWords[pos];
+        return `Word ${pos + 1}: expected "${expected}", got "${selected}"`;
+      }).join('\n');
+      
       Alert.alert(
         'Verification Failed',
-        'Some words are incorrect. Please check your recovery phrase and try again.',
+        `Some words are incorrect. Please check your recovery phrase and try again.\n\n${errorDetails}`,
         [
           {
             text: 'Try Again',
@@ -102,14 +123,24 @@ export default function WalletVerifyScreen(props: Props): Node {
     }
   };
 
+  const handleClearPositionWrapper = (position: number) => {
+    handleClearPosition(position);
+    setSelectedPosition(position); // Select the cleared position for easy re-selection
+  };
+
   const handleWordGridSelect = (word: string) => {
-    // Find the first empty position to fill
-    const emptyPosition = VERIFICATION_POSITIONS.find(pos =>
-      selectedWords[pos] == null || selectedWords[pos].length === 0
-    );
-    if (emptyPosition !== undefined) {
-      handleWordSelect(word, emptyPosition);
+    if (selectedPosition != null) {
+      handleWordSelect(word, selectedPosition);
+      // Move to next empty position
+      const nextPosition = VERIFICATION_POSITIONS.find(pos =>
+        pos !== selectedPosition && (selectedWords[pos] == null || selectedWords[pos].length === 0)
+      );
+      setSelectedPosition(nextPosition != null ? nextPosition : null);
     }
+  };
+
+  const handlePositionSelect = (position: number) => {
+    setSelectedPosition(position);
   };
 
   return (
@@ -118,13 +149,15 @@ export default function WalletVerifyScreen(props: Props): Node {
         <ZulipText style={styles.title} text="Verify Your Recovery Phrase" />
         <ZulipText
           style={styles.description}
-          text={`Please select the correct words for positions ${VERIFICATION_POSITIONS.map(p => p + 1).join(', ')} to verify you've saved your recovery phrase.`}
+          text={`Please select the correct words for positions ${VERIFICATION_POSITIONS.map(p => p + 1).join(', ')}. Tap a position to select it, then tap the correct word below.`}
         />
 
         <VerificationSection
           verificationPositions={VERIFICATION_POSITIONS}
           selectedWords={selectedWords}
-          onClearPosition={handleClearPosition}
+          selectedPosition={selectedPosition}
+          onClearPosition={handleClearPositionWrapper}
+          onPositionSelect={handlePositionSelect}
         />
 
         <WordGrid

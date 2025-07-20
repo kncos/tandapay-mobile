@@ -9,11 +9,13 @@ import VerificationRow from './VerificationRow';
 type Props = $ReadOnly<{|
   verificationPositions: $ReadOnlyArray<number>,
   selectedWords: {[number]: ?string},
+  selectedPosition: ?number,
   onClearPosition: (position: number) => void,
+  onPositionSelect: (position: number) => void,
 |}>;
 
 export default function VerificationSection(props: Props): Node {
-  const { verificationPositions, selectedWords, onClearPosition } = props;
+  const { verificationPositions, selectedWords, selectedPosition, onClearPosition, onPositionSelect } = props;
 
   return (
     <View style={{ marginBottom: 32 }}>
@@ -22,7 +24,9 @@ export default function VerificationSection(props: Props): Node {
           key={position}
           position={position}
           selectedWord={selectedWords[position]}
+          isSelected={selectedPosition === position}
           onClear={onClearPosition}
+          onSelect={onPositionSelect}
         />
       ))}
     </View>
