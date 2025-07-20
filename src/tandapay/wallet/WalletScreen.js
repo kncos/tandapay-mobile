@@ -222,6 +222,13 @@ export default function WalletScreen(props: Props): Node {
     navigation.push('wallet-settings');
   }, [navigation]);
 
+  const handleRefresh = useCallback(() => {
+    // Call the async refresh function without waiting for it
+    refresh().catch(() => {
+      // Handle errors silently - the hook will set error state
+    });
+  }, [refresh]);
+
   const handleViewTransactionInExplorer = useCallback((txHash: string) => {
     const explorerUrl = getExplorerTransactionUrl(txHash);
     if (explorerUrl != null && explorerUrl !== '') {
@@ -243,7 +250,7 @@ export default function WalletScreen(props: Props): Node {
          onLoadMore={() => {
           loadMore();
         }}
-         onRefresh={refresh}
+         onRefresh={handleRefresh}
          onGoToSettings={handleGoToSettings}
          onViewExplorer={handleViewExplorer}
          onViewTransactionInExplorer={handleViewTransactionInExplorer}
@@ -264,7 +271,7 @@ if (loading) {
   return (
     <Screen title="Wallet">
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <WalletBalanceCard walletAddress={walletAddress} />
+        <WalletBalanceCard walletAddress={walletAddress} onRefresh={handleRefresh} />
         <SendReceiveButtonRow />
         <View style={TandaPayStyles.buttonRow}>
           <ZulipButton

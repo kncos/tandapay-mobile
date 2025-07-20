@@ -37,7 +37,7 @@ type UseTransactionHistoryReturn = {|
   transactionState: TransactionState,
   loadMoreState: LoadMoreState,
   loadMore: () => Promise<void>,
-  refresh: () => void,
+  refresh: () => Promise<void>,
 |};
 
 export default function useTransactionHistory({
@@ -139,13 +139,42 @@ export default function useTransactionHistory({
     }
   }, [transactionState.status, loadMoreState.status]);
 
-  const refresh = useCallback(() => {
-    // Simply reset state and clear the manager
-    // The useEffect will handle reinitializing the manager automatically
-    setTransactionState({ status: 'idle' });
-    setLoadMoreState({ status: 'idle' });
-    managerRef.current = null;
-  }, []);
+  const refresh = useCallback(async () => {
+    // Check required conditions first
+    if (!apiKeyConfigured || walletAddress == null || walletAddress === '') {
+      return;
+    }
+
+    try {
+      // Reset the manager and states
+      managerRef.current = null;
+      setLoadMoreState({ status: 'idle' });
+      setTransactionState({ status: 'loading' });
+
+      // Create a new manager
+      managerRef.current = new TransactionManager({
+        network,
+        walletAddress,
+        tandapayContractAddress: tandapayContractAddress != null ? tandapayContractAddress : null,
+      });
+
+      // Immediately start loading
+      await loadMore();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('[useTransactionHistory] refresh failed:', error);
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      const tandaPayError = TandaPayErrorHandler.createError('API_ERROR', error.message || 'Failed to refresh transactions', {
+        userMessage: 'Failed to refresh transaction history. Please try again.',
+        details: error,
+      });
+      setTransactionState({ status: 'error', error: tandaPayError });
+    }
+  }, [apiKeyConfigured, walletAddress, network, tandapayContractAddress, loadMore]);
 
   return {
     transactionState,

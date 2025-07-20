@@ -2,7 +2,7 @@
 
 import React, { useContext, useEffect } from 'react';
 import type { Node } from 'react';
-import { View, ActivityIndicator , StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 // $FlowFixMe[untyped-import] - @react-native-picker/picker is a third-party library
 import { Picker } from '@react-native-picker/picker';
@@ -24,6 +24,7 @@ import type { Token } from '../tokens/tokenTypes';
 
 type Props = {|
   walletAddress: ?string,
+  onRefresh?: () => void,
 |};
 
 type TokenPickerProps = {|
@@ -187,7 +188,7 @@ function getFontSizeForStringLength(str: ?string, {
   return Math.max(minFontSize, Math.min(maxFontSize, scaled));
 }
 
-export default function WalletBalanceCard({ walletAddress }: Props): Node {
+export default function WalletBalanceCard({ walletAddress, onRefresh }: Props): Node {
   const dispatch = useDispatch();
   const selectedToken = useSelector(getSelectedToken);
   const availableTokens = useSelector(getAvailableTokens);
@@ -213,6 +214,16 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
 
   const handleTokenSelect = (token: Token) => {
     dispatch(selectToken(token.symbol));
+  };
+
+  const handleRefresh = () => {
+    // Refresh the balance
+    refreshBalance();
+    
+    // Call the optional callback to refresh other components (e.g., transaction list)
+    if (onRefresh) {
+      onRefresh();
+    }
   };
 
   return (
@@ -261,7 +272,7 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
             {error.retryable === true && (
               <Touchable
                 style={styles.retryButton}
-                onPress={refreshBalance}
+                onPress={handleRefresh}
                 accessibilityLabel="Retry balance fetch"
               >
                 <ZulipText style={styles.retryButtonText}>Try Again</ZulipText>
@@ -278,7 +289,7 @@ export default function WalletBalanceCard({ walletAddress }: Props): Node {
           />
           <Touchable
             style={styles.refreshButton}
-            onPress={refreshBalance}
+            onPress={handleRefresh}
             accessibilityLabel="Refresh balance"
           >
             {loading ? (
