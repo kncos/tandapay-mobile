@@ -18,8 +18,10 @@ export default {
   // Main modal card container
   modalCard: {
     margin: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    minHeight: '75%',
     width: '90%',
+    flexDirection: 'column',
   },
 
   // Modal header section
@@ -30,6 +32,7 @@ export default {
     marginBottom: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
+    flexShrink: 0,
   },
 
   // Modal title
@@ -42,6 +45,13 @@ export default {
   // Modal content area
   content: {
     flex: 1,
+    minHeight: 0, // Important for ScrollView to work properly in flex container
+  },
+
+  // Modal footer/buttons area
+  footer: {
+    flexShrink: 0,
+    marginTop: 20,
   },
 
   // Modal description text
