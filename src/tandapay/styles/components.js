@@ -130,8 +130,6 @@ const chips = Object.freeze({
 const indicators = Object.freeze({
   // Selection indicators
   selected: {
-    width: 20,
-    height: 20,
     borderRadius: 10,
     borderWidth: 2,
     borderColor: TandaPayColors.success,
@@ -139,8 +137,6 @@ const indicators = Object.freeze({
   },
 
   unselected: {
-    width: 20,
-    height: 20,
     borderRadius: 10,
     borderWidth: 2,
     borderColor: TandaPayColors.disabled,
