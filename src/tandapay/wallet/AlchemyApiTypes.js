@@ -247,3 +247,32 @@ export type SignedTransaction =
   | Signed4844Transaction
   | Signed1559Transaction
   | Signed2930Transaction;
+
+export type TransactionReceiptLog = {
+  transactionHash: string,
+  removed: boolean | null,
+  logIndex: string | null,
+  transactionIndex: string | null,
+  blockHash: string | null,
+  blockNumber: string | null,
+  address: string | null,
+  data: string | null,
+  topics: Array<string> | null,
+};
+
+export type TransactionReceipt = {
+  blockHash: string,
+  blockNumber: string,
+  contractAddress: string | null,
+  cumulativeGasUsed: string,
+  from: string,
+  gasUsed: string,
+  effectiveGasPrice: string,
+  logs: Array<TransactionReceiptLog>,
+  logsBloom: string,
+  status: string,
+  to: string,
+  transactionHash: string,
+  transactionIndex: string,
+  type: string,
+};

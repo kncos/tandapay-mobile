@@ -23,6 +23,7 @@ import type {
   JsonRpcRequest,
   JsonRpcResponse,
   SignedTransaction,
+  TransactionReceipt,
   Transfer,
 } from './AlchemyApiTypes';
 
@@ -206,6 +207,26 @@ export async function makeBatchJsonRpcRequest(
   }
 
   return results;
+}
+
+export async function getTransactionReceipt(
+  network: SupportedNetwork,
+  txHash: string
+): Promise<TransactionReceipt> {
+  try {
+    const result = await makeJsonRpcRequest(network, 'eth_getTransactionReceipt', [txHash]);
+    // $FlowFixMe[incompatible-return] - JSON-RPC result type
+    return result;
+  } catch (error) {
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `Failed to fetch transaction receipt: ${error?.message || 'Unknown error'}`,
+      {
+        userMessage: 'Failed to load transaction receipt. Please try again.',
+        details: { network, txHash, originalError: error }
+      }
+    );
+  }
 }
 
 /**

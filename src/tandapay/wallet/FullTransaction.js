@@ -11,6 +11,11 @@ export type DecodedAbiInput = {|
   arguments: Array<{ name: string, type: string, value: mixed }>,
 |};
 
+export type GasInfo = {|
+  gasUsed: string,          // gas units, hexadecimal string
+  gasPricePerUnit: string,  // gas price per unit, in gwei, hexadecimal string
+|};
+
 export type FullTransaction = {|
   hash: string | null,
   blockNum: string | null, // in hex format
@@ -28,7 +33,8 @@ export type FullTransaction = {|
   additionalDetails?: {
     signedTransaction?: SignedTransaction | null, // the signed transaction object, if available
     decodedInput?: DecodedAbiInput | null,
-  }
+  },
+  fetchGasInfo: () => Promise<GasInfo>,
 |};
 
 /**
@@ -340,6 +346,10 @@ export const toFullTransaction = (params: {
 
   // Determine overall transfer direction for applicable transaction types
   const transferDirection = getOverallTransferDirection(netValueChanges);
+
+  const fetchGasInfo = async (): Promise<GasInfo> => {
+    
+  };
 
   // Base object with common fields
   const baseTransaction = {
