@@ -1,19 +1,21 @@
-/* eslint-disable no-console */
 // @flow
 
 import { PriorityQueue } from 'datastructures-js';
 import { ethers } from 'ethers';
 import {
-  getAssetTransfers,
-  getBatchTransactionsByHash,
+  getAssetTransfersForNetwork,
+  getBatchTransactionsByHashForNetwork,
+  isAlchemyAvailableForNetwork,
 } from './AlchemyApiHelper';
-import type { SupportedNetwork } from '../definitions';
+import type { NetworkIdentifier } from '../definitions';
+import type { PerAccountState } from '../../reduxTypes';
 import type { FullTransaction } from './FullTransaction';
 import { toFullTransaction } from './FullTransaction';
 import type { SignedTransaction, Transfer } from './AlchemyApiTypes';
 
 export class TransactionManager {
-  _network: SupportedNetwork;
+  _network: NetworkIdentifier;
+  _perAccountState: ?PerAccountState;
   _walletAddress: string;
   _tandapayContractAddress: string | null;
 
@@ -36,12 +38,13 @@ export class TransactionManager {
   _lock: boolean = false;
 
   constructor(params: {|
-    network: SupportedNetwork,
+    network: NetworkIdentifier,
+    perAccountState?: ?PerAccountState,
     walletAddress: string,
     tandapayContractAddress?: string | null,
     pageSize?: number,
   |}) {
-    const { network, walletAddress, tandapayContractAddress, pageSize = 10 } = params;
+    const { network, perAccountState, walletAddress, tandapayContractAddress, pageSize = 10 } = params;
 
     // ensure these parameters are provided and valid
     if (!network || !walletAddress) {
@@ -58,6 +61,7 @@ export class TransactionManager {
 
     // inputs
     this._network = network;
+    this._perAccountState = perAccountState;
     this._walletAddress = walletAddress;
     this._tandapayContractAddress = tandapayContractAddress || null;
 
@@ -128,11 +132,18 @@ export class TransactionManager {
   async loadMore() {
     // lock the transaction manager to prevent concurrent fetches
     if (this._lock) {
-      console.warn('TransactionManager is currently locked. Please wait for the current operation to complete.');
       return;
-      // throw new Error('TransactionManager is currently locked. Please wait for the current operation to complete.');
     }
     this._lock = true;
+
+    // Check if Alchemy is available for the current network
+    const alchemyAvailable = await isAlchemyAvailableForNetwork(this._network, this._perAccountState);
+    if (!alchemyAvailable.available) {
+      // For networks without Alchemy support, we can't fetch transaction history
+      // Unlock and return without doing anything - this will leave the manager empty
+      this._lock = false;
+      return;
+    }
 
     // store incoming and outgoing transactions in separate arrays
     const incoming: Transfer[] = [];
@@ -144,7 +155,7 @@ export class TransactionManager {
       // The response will contain a pageKey that we can use for the next page in subsequent calls. Once
       // the response returns null, there are no more pages to fetch. So, undefined = first page, null = no more pages.
       const incomingPromise = this._nextIncomingPage !== null
-        ? getAssetTransfers(this._network, {
+        ? getAssetTransfersForNetwork(this._network, this._perAccountState, {
             ...this._getDefaultParams(),
             toAddress: this._walletAddress,
             pageKey: this._nextIncomingPage || undefined,
@@ -152,7 +163,7 @@ export class TransactionManager {
         : Promise.resolve({ transfers: [], pageKey: null });
       // same logic applies for outgoing transactions
       const outgoingPromise = this._nextOutgoingPage !== null
-        ? getAssetTransfers(this._network, {
+        ? getAssetTransfersForNetwork(this._network, this._perAccountState, {
             ...this._getDefaultParams(),
             fromAddress: this._walletAddress,
             pageKey: this._nextOutgoingPage || undefined,
@@ -210,13 +221,14 @@ export class TransactionManager {
     // fetch the details for each transaction in parallel
     const hashes = inputHashes.filter(hash => hash !== null && hash !== undefined && hash !== '');
     if (!Array.isArray(hashes) || hashes.length === 0) {
-      console.warn('No valid transaction hashes to fetch details for.');
       return;
     }
 
     // filter out any hashes that we already have details for
     const needsDetails = hashes.filter(hash => !this._allSignedTransactions.has(hash));
-    const details = await getBatchTransactionsByHash(this._network, needsDetails);
+
+    // Use the new network-agnostic function
+    const details = await getBatchTransactionsByHashForNetwork(this._network, this._perAccountState, needsDetails);
 
     // store the details in the _allDetails map
     details.forEach(detail => {
@@ -276,7 +288,6 @@ export class TransactionManager {
       const transactionData = this._allTransactions.get(hash);
       const signedTransaction = this._allSignedTransactions.get(hash);
       if (!transactionData || !Array.isArray(transactionData) || transactionData.length === 0) {
-        console.warn(`Transaction with hash ${hash} had no transfers associated with it!`);
         continue;
       }
 
@@ -285,7 +296,9 @@ export class TransactionManager {
         tandapayContractAddress: this._tandapayContractAddress,
         transfers: transactionData,
         signedTransaction: signedTransaction || null,
-        network: this._network,
+        // For custom networks, we pass 'sepolia' as a fallback since toFullTransaction expects SupportedNetwork
+        // This is okay because it's only used for display purposes and the transfers data is what matters
+        network: this._network === 'custom' ? 'sepolia' : this._network,
       });
       res.push(fullTransaction);
     }

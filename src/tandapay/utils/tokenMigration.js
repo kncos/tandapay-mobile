@@ -182,3 +182,58 @@ export function updateNetworkPerformance(
     networkPerformance: performance,
   };
 }
+
+/**
+ * Update custom network tokens based on customRpcConfig
+ * This should be called when customRpcConfig changes to update the native token
+ */
+export function updateCustomNetworkTokens(
+  networkData: NetworkData,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |}
+): NetworkData {
+  // Use provided native token or default to ETH
+  const defaultNativeToken = nativeToken || {
+    symbol: 'ETH',
+    name: 'Ethereum',
+    decimals: 18,
+  };
+
+  const nativeTokenKey = defaultNativeToken.symbol;
+  const nativeTokenWithBalance: TokenWithBalance = {
+    symbol: defaultNativeToken.symbol,
+    address: null,
+    name: defaultNativeToken.name,
+    decimals: defaultNativeToken.decimals,
+    isCustom: false,
+    balance: networkData.tokens[nativeTokenKey] ? networkData.tokens[nativeTokenKey].balance : '0',
+    lastUpdated: networkData.tokens[nativeTokenKey] ? networkData.tokens[nativeTokenKey].lastUpdated : 0,
+  };
+
+  // Create new tokens map with updated native token
+  const newTokens = { ...networkData.tokens };
+
+  // Remove old native tokens (tokens with null address) if they're different
+  for (const [key, token] of Object.entries(networkData.tokens)) {
+    if (token != null && typeof token === 'object' && token.address === null && key !== nativeTokenKey) {
+      delete newTokens[key];
+    }
+  }
+
+  // Add/update the new native token
+  newTokens[nativeTokenKey] = nativeTokenWithBalance;
+
+  // Update selected token if it was the old native token
+  const currentSelectedToken = networkData.selectedToken;
+  const currentSelectedTokenData = networkData.tokens[currentSelectedToken];
+  const isCurrentSelectedNative = currentSelectedTokenData && currentSelectedTokenData.address === null;
+
+  return {
+    ...networkData,
+    tokens: newTokens,
+    selectedToken: isCurrentSelectedNative ? nativeTokenKey : currentSelectedToken,
+  };
+}

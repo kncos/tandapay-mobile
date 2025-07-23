@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useSelector, useDispatch } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
-import { switchNetwork, setCustomRpc, clearCustomRpc } from '../redux/actions';
+import { switchNetwork, clearCustomRpc, saveCustomRpcConfig } from '../redux/actions';
 import { validateCustomRpcConfig } from '../providers/ProviderManager';
 import { useBalanceInvalidation } from './useBalanceInvalidation';
 import type { NetworkIdentifier } from '../definitions/types';
@@ -16,6 +16,13 @@ type NetworkHookReturn = {|
     rpcUrl: string,
     chainId: number,
     blockExplorerUrl?: string,
+    isAlchemyUrl?: boolean,
+    multicall3Address: string,
+    nativeToken?: ?{|
+      name: string,
+      symbol: string,
+      decimals: number,
+    |},
   |},
   loading: boolean,
   switchingNetwork: ?string,
@@ -25,6 +32,12 @@ type NetworkHookReturn = {|
     rpcUrl: string,
     chainId: number,
     blockExplorerUrl?: string,
+    multicall3Address: string,
+    nativeToken?: ?{|
+      name: string,
+      symbol: string,
+      decimals: number,
+    |},
   |}) => Promise<void>,
   handleClearCustomRpc: () => void,
 |};
@@ -72,32 +85,59 @@ export function useNetworkSettings(): NetworkHookReturn {
   }, [selectedNetwork, customRpcConfig, dispatch, switchingNetwork, invalidateAllTokens]);
 
   const handleSaveCustomRpc = useCallback(async (config) => {
+    console.log('🔧 handleSaveCustomRpc called with config:', config);
     setLoading(true);
 
     try {
+      console.log('🔧 Validating custom RPC config...');
       const validationResult = validateCustomRpcConfig(config);
+      console.log('🔧 Validation result:', validationResult);
+
       if (!validationResult.success) {
-        Alert.alert('Invalid Configuration', validationResult.error.userMessage != null ? validationResult.error.userMessage : 'Please check your RPC configuration');
-        return;
+        console.log('🔧 Validation failed:', validationResult.error);
+        // Don't show alert here - let the form validation handle it
+        // The action will be dispatched but Redux validation will reject it
+        // and the form should show the error messages
       }
 
-      dispatch(setCustomRpc(validationResult.data));
+      // The validation ensures multicall3Address is present, so we can safely cast
+      const validatedConfig = {
+        name: validationResult.success ? validationResult.data.name : config.name,
+        rpcUrl: validationResult.success ? validationResult.data.rpcUrl : config.rpcUrl,
+        chainId: validationResult.success ? validationResult.data.chainId : config.chainId,
+        blockExplorerUrl: validationResult.success ? validationResult.data.blockExplorerUrl : config.blockExplorerUrl,
+        multicall3Address: validationResult.success ? (validationResult.data.multicall3Address || '') : config.multicall3Address,
+        nativeToken: validationResult.success ? validationResult.data.nativeToken : config.nativeToken,
+      };
 
-      Alert.alert(
-        'Custom RPC Saved',
-        'Your custom RPC configuration has been saved. You can now select "Custom" as your network.',
-        [
-          {
-            text: 'Switch to Custom',
-            onPress: async () => {
-              await handleNetworkSwitch('custom');
+      console.log('🔧 Config to save:', validatedConfig);
+      console.log('🔧 Dispatching saveCustomRpcConfig action...');
+
+      dispatch(saveCustomRpcConfig(validatedConfig));
+
+      // Only show success alert if initial validation passed
+      if (validationResult.success) {
+        console.log('🔧 Action dispatched, showing success alert...');
+
+        Alert.alert(
+          'Custom RPC Saved',
+          'Your custom RPC configuration has been saved. You can now select "Custom" as your network.',
+          [
+            {
+              text: 'Switch to Custom',
+              onPress: async () => {
+                await handleNetworkSwitch('custom');
+              },
             },
-          },
-          { text: 'OK' },
-        ]
-      );
+            { text: 'OK' },
+          ]
+        );
+      } else {
+        console.log('🔧 Action dispatched but validation failed - no alert shown');
+      }
     } catch (error) {
-      Alert.alert('Invalid Configuration', error.message || 'Please check your RPC configuration');
+      console.log('🔧 Unexpected error:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

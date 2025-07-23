@@ -18,6 +18,12 @@ export type TandaPaySettingsState = $ReadOnly<{|
     chainId: number,
     blockExplorerUrl?: string,
     isAlchemyUrl?: boolean,
+    multicall3Address: string, // Required for TandaPay functionality
+    nativeToken?: ?{|
+      name: string,
+      symbol: string,
+      decimals: number,
+    |}, // Optional: defaults to ETH if not provided
   |},
   // Per-network contract addresses configured by users
   contractAddresses: {|
@@ -59,17 +65,32 @@ export default (state: TandaPaySettingsState = initialState, action: Action): Ta
       return initialState;
 
     case TANDAPAY_SETTINGS_UPDATE: {
+      console.log('🔧 TANDAPAY_SETTINGS_UPDATE reducer called with action:', action);
+      console.log('🔧 Current state:', state);
+
       // Auto-detect Alchemy configuration if customRpcConfig is being updated
       let processedCustomRpcConfig = action.settings.customRpcConfig !== undefined
         ? action.settings.customRpcConfig
         : state.customRpcConfig;
 
       if (processedCustomRpcConfig != null && action.settings.customRpcConfig !== undefined) {
+        console.log('🔧 Processing custom RPC config:', processedCustomRpcConfig);
+
         const alchemyDetection = detectAlchemyConfig(processedCustomRpcConfig.rpcUrl);
         processedCustomRpcConfig = {
           ...processedCustomRpcConfig,
           isAlchemyUrl: alchemyDetection.isAlchemy,
+          // Ensure required multicall3Address is present
+          multicall3Address: processedCustomRpcConfig.multicall3Address != null
+            ? processedCustomRpcConfig.multicall3Address
+            : '',
+          // Ensure nativeToken field is handled (can be null/undefined)
+          nativeToken: processedCustomRpcConfig.nativeToken !== undefined
+            ? processedCustomRpcConfig.nativeToken
+            : undefined,
         };
+
+        console.log('🔧 Processed custom RPC config:', processedCustomRpcConfig);
       }
 
       // Build the complete settings object for validation by merging with current state
@@ -93,10 +114,14 @@ export default (state: TandaPaySettingsState = initialState, action: Action): Ta
       // Validate the complete merged settings
       const validation = validateTandaPaySettings(settingsToValidate);
 
+      console.log('🔧 Settings validation result:', validation);
+
       if (!validation.isValid) {
+        console.log('🔧 Settings validation failed, returning unchanged state');
         return state; // Return unchanged state for invalid updates
       }
 
+      console.log('🔧 Settings validation passed, returning new state:', settingsToValidate);
       // Return the validated settings
       return settingsToValidate;
     }

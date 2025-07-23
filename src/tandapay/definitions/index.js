@@ -7,7 +7,7 @@ import { mainnet } from './mainnet';
 import { polygon } from './polygon';
 import { arbitrum } from './arbitrum';
 import { sepolia } from './sepolia';
-import type { SupportedNetwork, TokenConfig } from './types';
+import type { SupportedNetwork, TokenConfig, NetworkIdentifier } from './types';
 
 export { mainnet, polygon, arbitrum, sepolia };
 
@@ -140,6 +140,32 @@ export function getTokensForNetwork(network: SupportedNetwork): Array<TokenConfi
 }
 
 /**
+ * Get tokens for a custom network with optional native token configuration
+ *
+ * @param nativeToken - Optional custom native token config, defaults to ETH
+ * @returns Array with just the native token (custom networks don't have predefined tokens)
+ */
+export function getTokensForCustomNetwork(nativeToken?: ?{|
+  name: string,
+  symbol: string,
+  decimals: number,
+|}): Array<TokenConfig> {
+  // Use provided native token or default to ETH
+  const nativeTokenConfig = nativeToken || {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    decimals: 18,
+  };
+
+  return [{
+    symbol: nativeTokenConfig.symbol,
+    name: nativeTokenConfig.name,
+    decimals: nativeTokenConfig.decimals,
+    address: null, // Native tokens don't have contract addresses
+  }];
+}
+
+/**
  * Find a token by its contract address on a specific network
  *
  * @param network - The network to search in
@@ -177,6 +203,41 @@ export function findTokenByAddress(
 }
 
 /**
+ * Find a token by address in a custom network
+ *
+ * @param address - The contract address to search for (null for native token)
+ * @param nativeToken - The custom native token configuration
+ * @returns Token configuration or null if not found (only native token supported)
+ */
+export function findTokenByAddressInCustomNetwork(
+  address: ?string,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |}
+): ?TokenConfig {
+  // Handle native token case (address is null)
+  if (address === null || address === undefined) {
+    const nativeTokenConfig = nativeToken || {
+      name: 'Ethereum',
+      symbol: 'ETH',
+      decimals: 18,
+    };
+
+    return {
+      symbol: nativeTokenConfig.symbol,
+      name: nativeTokenConfig.name,
+      decimals: nativeTokenConfig.decimals,
+      address: null,
+    };
+  }
+
+  // Custom networks don't have predefined ERC20 tokens
+  return null;
+}
+
+/**
  * Find a token by its symbol on a specific network
  *
  * @param network - The network to search in
@@ -209,6 +270,41 @@ export function findTokenBySymbol(
     }
   }
 
+  return null;
+}
+
+/**
+ * Find a token by symbol in a custom network
+ *
+ * @param symbol - The token symbol to search for
+ * @param nativeToken - The custom native token configuration
+ * @returns Token configuration or null if not found (only native token supported)
+ */
+export function findTokenBySymbolInCustomNetwork(
+  symbol: string,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |}
+): ?TokenConfig {
+  const nativeTokenConfig = nativeToken || {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    decimals: 18,
+  };
+
+  // Check if it matches the native token
+  if (nativeTokenConfig.symbol === symbol) {
+    return {
+      symbol: nativeTokenConfig.symbol,
+      name: nativeTokenConfig.name,
+      decimals: nativeTokenConfig.decimals,
+      address: null,
+    };
+  }
+
+  // Custom networks don't have predefined ERC20 tokens
   return null;
 }
 

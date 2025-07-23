@@ -17,14 +17,14 @@ import { QUARTER_COLOR, ThemeContext } from '../../styles';
 import TransactionDetailsModal from './TransactionDetailsModal';
 import type { LoadMoreState, TransactionState } from './useTransactionHistory';
 import TandaPayStyles, { TandaPayColors } from '../styles';
-import type { SupportedNetwork } from '../definitions/types';
+import type { NetworkIdentifier } from '../definitions/types';
 import type { FullTransaction } from './FullTransaction';
 import { getFullTransactionChipInfo, getTransactionDirection } from './FullTransaction';
 
 type Props = {|
   walletAddress: string,
   apiKeyConfigured: boolean,
-  network?: SupportedNetwork,
+  network?: NetworkIdentifier,
   transactionState: TransactionState,
   loadMoreState: LoadMoreState,
   onLoadMore: () => void,
@@ -83,8 +83,9 @@ export default function TransactionList({
     setSelectedTransaction(null);
   };
 
-  // Handle API key not configured state
-  if (!apiKeyConfigured) {
+  // Handle API key not configured state only for supported networks
+  // Custom networks might have API key embedded in the URL
+  if (!apiKeyConfigured && network !== 'custom') {
     return (
       <View style={{ padding: 20, alignItems: 'center', backgroundColor: themeData.backgroundColor }}>
         <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: themeData.color }}>

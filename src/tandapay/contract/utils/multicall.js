@@ -22,7 +22,7 @@ import '@ethersproject/shims';
 import { ethers } from 'ethers';
 import { getProvider } from '../../web3';
 import { getChainByNetwork } from '../../definitions';
-import { getTandaPaySelectedNetwork } from '../../redux/selectors';
+import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../../redux/selectors';
 import { tryGetActiveAccountState } from '../../../selectors';
 import TandaPayErrorHandler from '../../errors/ErrorHandler';
 import type { TandaPayResult } from '../../errors/types';
@@ -57,7 +57,12 @@ function getMulticall3Address(): ?string {
     if (perAccountState) {
       const selectedNetwork = getTandaPaySelectedNetwork(perAccountState);
 
-      if (selectedNetwork && selectedNetwork !== 'custom') {
+      if (selectedNetwork === 'custom') {
+        // For custom networks, get the multicall3 address from custom RPC config
+        const customConfig = getTandaPayCustomRpcConfig(perAccountState);
+        return customConfig?.multicall3Address || null;
+      } else if (selectedNetwork) {
+        // For built-in networks, get from chain definitions
         const chain = getChainByNetwork(selectedNetwork);
         const multicallAddress = chain.contracts.multicall3.address;
         return multicallAddress;

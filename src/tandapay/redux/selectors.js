@@ -98,9 +98,16 @@ export const getTandaPayCustomRpcConfig = (state: PerAccountState): ?{|
   chainId: number,
   blockExplorerUrl?: string,
   isAlchemyUrl?: boolean,
+  multicall3Address: string,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |},
 |} => {
   try {
-    return getTandaPaySettings(state).customRpcConfig;
+    const settings = getTandaPaySettings(state);
+    return settings.customRpcConfig;
   } catch (error) {
     return null;
   }

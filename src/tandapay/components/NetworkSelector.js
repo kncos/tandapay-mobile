@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity, ActivityIndicator , StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';
@@ -21,6 +21,13 @@ type Props = $ReadOnly<{|
     rpcUrl: string,
     chainId: number,
     blockExplorerUrl?: string,
+    isAlchemyUrl?: boolean,
+    multicall3Address: string,
+    nativeToken?: ?{|
+      name: string,
+      symbol: string,
+      decimals: number,
+    |},
   |},
 |}>;
 

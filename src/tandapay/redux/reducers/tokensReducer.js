@@ -10,6 +10,7 @@ import {
   TANDAPAY_TOKEN_INVALIDATE_BALANCE,
   TANDAPAY_SET_CONTRACT_ADDRESS,
   TANDAPAY_UPDATE_NETWORK_PERFORMANCE,
+  TANDAPAY_SETTINGS_UPDATE,
 } from '../../../actionConstants';
 import type { TokenState, Token } from '../../tokens/tokenTypes';
 import { validateCustomToken } from '../../tokens/tokenConfig';
@@ -21,6 +22,7 @@ import {
   setSelectedTokenForNetwork,
   setContractAddressForNetwork,
   updateNetworkPerformance,
+  updateCustomNetworkTokens,
 } from '../../utils/tokenMigration';
 
 // Use a function to lazily initialize the state to avoid circular dependency issues
@@ -314,6 +316,36 @@ export default (state: TokenState = getInitialState(), action: Action): TokenSta
           [network]: updateNetworkPerformance(currentNetworkData, performance),
         },
       };
+    }
+
+    case TANDAPAY_SETTINGS_UPDATE: {
+      // Update custom network tokens when customRpcConfig changes
+      if (action.type !== TANDAPAY_SETTINGS_UPDATE) {
+        return currentState;
+      }
+
+      // Check if customRpcConfig is being updated
+      if (action.settings.customRpcConfig !== undefined) {
+        const customNetworkData = currentState.perNetworkData.custom;
+        if (!customNetworkData) {
+          return currentState;
+        }
+
+        const updatedCustomNetworkData = updateCustomNetworkTokens(
+          customNetworkData,
+          action.settings.customRpcConfig?.nativeToken
+        );
+
+        return {
+          ...currentState,
+          perNetworkData: {
+            ...currentState.perNetworkData,
+            custom: updatedCustomNetworkData,
+          },
+        };
+      }
+
+      return currentState;
     }
 
     default:

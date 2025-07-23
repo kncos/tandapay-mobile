@@ -5,24 +5,57 @@ import '@ethersproject/shims';
 import { ethers } from 'ethers';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
+import type { PerAccountState } from '../../reduxTypes';
 import { getAlchemyApiKey } from '../wallet/WalletManager';
 import { getChainByNetwork, getSupportedNetworks as getSupportedNetworksFromDefinitions, type SupportedNetwork, type NetworkIdentifier } from '../definitions';
-
-// Fallback Alchemy API key for development (will be replaced with user's key when available)
-const FALLBACK_ALCHEMY_API = 'atytcJvyhx1n4LPRJXc8kQuauFC1Uro8';
+import { getTandaPayCustomRpcConfig } from '../redux/selectors';
+import { isAlchemyUrl } from './AlchemyDetection';
 
 /**
- * Dynamically get Alchemy RPC URL for any supported network with user's API key
+ * Dynamically get Alchemy RPC URL for any network (supported or custom)
+ * This function handles the logic for both supported networks and custom networks
  */
-async function getAlchemyRpcUrl(network: SupportedNetwork): Promise<?string> {
+async function getAlchemyRpcUrl(network: NetworkIdentifier, perAccountState?: ?PerAccountState): Promise<?string> {
+  // Handle custom networks
+  if (network === 'custom') {
+    // Get custom RPC config from Redux state
+    if (!perAccountState) {
+      return null;
+    }
+
+    const customRpcConfig = getTandaPayCustomRpcConfig(perAccountState);
+
+    if (!customRpcConfig || !customRpcConfig.rpcUrl) {
+      return null;
+    }
+
+    // Check if the custom RPC URL is an Alchemy endpoint
+    const isAlchemy = isAlchemyUrl(customRpcConfig.rpcUrl);
+
+    if (isAlchemy) {
+      return customRpcConfig.rpcUrl; // Return the full URL (may include API key)
+    }
+
+    return null; // Custom network is not Alchemy
+  }
+
+  // Handle supported networks
   const result = await getAlchemyApiKey();
-  const apiKey = (result.success && result.data != null && result.data.trim() !== '') ? result.data : FALLBACK_ALCHEMY_API;
 
-  const chain = getChainByNetwork(network);
+  // Only proceed if we have a valid API key
+  if (!result.success || result.data == null || result.data.trim() === '') {
+    return null;
+  }
+
+  const apiKey = result.data;
+
+  // $FlowFixMe[incompatible-cast] - we know network is not 'custom' at this point
+  const supportedNetwork = (network: SupportedNetwork);
+  const chain = getChainByNetwork(supportedNetwork);
   // $FlowFixMe[prop-missing] - alchemy property may not exist
-  const alchemyEndpoint = chain.rpcUrls.alchemy?.http[0];
+  const alchemyEndpoint = chain.rpcUrls.alchemy && chain.rpcUrls.alchemy.http[0];
 
-  if (alchemyEndpoint) {
+  if (alchemyEndpoint && apiKey != null) {
     return `${alchemyEndpoint}/${apiKey}`;
   }
 
@@ -37,6 +70,12 @@ type NetworkConfig = {|
   rpcUrl: string,
   chainId: number,
   blockExplorerUrl?: string,
+  multicall3Address?: string,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |},
 |};
 
 /**
@@ -193,11 +232,17 @@ export function validateCustomRpcConfig(config: {
   rpcUrl: string,
   chainId: number,
   blockExplorerUrl?: string,
+  multicall3Address: string,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |},
 }): TandaPayResult<NetworkConfig> {
   try {
-    if (!config.name || !config.rpcUrl || !config.chainId) {
+    if (!config.name || !config.rpcUrl || !config.chainId || !config.multicall3Address) {
       throw TandaPayErrorHandler.createValidationError(
-        'Custom RPC config must include name, rpcUrl, and chainId',
+        'Custom RPC config must include name, rpcUrl, chainId, and multicall3Address',
         'Please provide all required network configuration fields.'
       );
     }
@@ -216,7 +261,35 @@ export function validateCustomRpcConfig(config: {
       );
     }
 
-    return { success: true, data: config };
+    // Validate multicall3Address format (basic Ethereum address check)
+    if (!/^0x[a-fA-F0-9]{40}$/.test(config.multicall3Address)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Multicall3 address must be a valid Ethereum address',
+        'Please enter a valid Ethereum address for the Multicall3 contract.'
+      );
+    }
+
+    // Validate native token configuration if provided
+    if (config.nativeToken != null) {
+      if (!config.nativeToken.name || !config.nativeToken.symbol || config.nativeToken.decimals <= 0) {
+        throw TandaPayErrorHandler.createValidationError(
+          'Native token configuration is invalid',
+          'Please provide valid name, symbol, and decimals for the native token.'
+        );
+      }
+    }
+
+    // Return a properly typed NetworkConfig
+    const networkConfig: NetworkConfig = {
+      name: config.name,
+      rpcUrl: config.rpcUrl,
+      chainId: config.chainId,
+      blockExplorerUrl: config.blockExplorerUrl,
+      multicall3Address: config.multicall3Address,
+      nativeToken: config.nativeToken,
+    };
+
+    return { success: true, data: networkConfig };
   } catch (error) {
     if (error?.type) {
       return { success: false, error };

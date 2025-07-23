@@ -107,15 +107,11 @@ export default function WalletScreen(props: Props): Node {
   const navigation = useNavigation();
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const tandaPayContractAddress = useSelector(getCurrentTandaPayContractAddress);
-
-  // Filter out custom networks since Alchemy only supports specific networks
-  const supportedNetwork = selectedNetwork === 'custom' ? 'sepolia' : selectedNetwork;
-
   // Use the transaction management hook
   const { transactionState, loadMoreState, loadMore, refresh } = useTransactionHistory({
     walletAddress,
     apiKeyConfigured,
-    network: supportedNetwork,
+    network: selectedNetwork,
     tandaPayContractAddress,
   });
 
@@ -192,11 +188,16 @@ export default function WalletScreen(props: Props): Node {
 
   // Trigger initial transaction load when wallet and API key are ready
   useEffect(() => {
-    if (walletAddress != null && walletAddress !== '' && apiKeyConfigured && transactionState.status === 'idle') {
-      // Only trigger initial load if we're in idle state to avoid double loading
+    // For custom networks, we don't require apiKeyConfigured to be true
+    // The useTransactionHistory hook handles Alchemy detection internally
+    const shouldLoad = walletAddress != null && walletAddress !== ''
+      && transactionState.status === 'idle'
+      && (apiKeyConfigured || selectedNetwork === 'custom');
+
+    if (shouldLoad) {
       loadMore();
     }
-  }, [walletAddress, apiKeyConfigured, transactionState.status, loadMore]);
+  }, [walletAddress, apiKeyConfigured, transactionState.status, loadMore, selectedNetwork]);
 
   // Refresh wallet state when screen comes into focus (e.g., returning from setup)
   useFocusEffect(
@@ -244,7 +245,7 @@ export default function WalletScreen(props: Props): Node {
        <TransactionList
          walletAddress={walletAddress || ''}
          apiKeyConfigured={apiKeyConfigured}
-         network={supportedNetwork}
+         network={selectedNetwork}
          transactionState={transactionState}
          loadMoreState={loadMoreState}
          onLoadMore={() => {

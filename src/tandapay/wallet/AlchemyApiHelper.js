@@ -18,7 +18,8 @@ import { ethers } from 'ethers';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import { getAlchemyRpcUrl } from '../providers/ProviderManager';
 import { getAlchemyApiKey } from './WalletManager';
-import type { SupportedNetwork } from '../definitions';
+import type { SupportedNetwork, NetworkIdentifier } from '../definitions';
+import type { PerAccountState } from '../../reduxTypes';
 import type {
   AssetTransferParams,
   JsonRpcResponse,
@@ -36,6 +37,25 @@ export async function hasAlchemyApiKey(): Promise<boolean> {
     return result.success && result.data != null && result.data.trim() !== '';
   } catch (error) {
     return false;
+  }
+}
+
+/**
+ * Determine if Alchemy features are available for a given network
+ * This function uses the centralized getAlchemyRpcUrl logic
+ */
+export async function isAlchemyAvailableForNetwork(
+  network: NetworkIdentifier,
+  perAccountState?: ?PerAccountState
+): Promise<{| available: boolean, rpcUrl?: string |}> {
+  try {
+    const alchemyUrl = await getAlchemyRpcUrl(network, perAccountState);
+    if (alchemyUrl != null && alchemyUrl !== '') {
+      return { available: true, rpcUrl: alchemyUrl };
+    }
+    return { available: false };
+  } catch (error) {
+    return { available: false };
   }
 }
 
@@ -298,6 +318,151 @@ export async function getTransactionByHash(
       {
         userMessage: 'Failed to load transaction details. Please try again.',
         details: { network, txHash, originalError: error }
+      }
+    );
+  }
+}
+
+/**
+ * Get asset transfers for any network (supported or custom)
+ * This function handles both supported networks and custom networks with Alchemy URLs
+ */
+export async function getAssetTransfersForNetwork(
+  network: NetworkIdentifier,
+  perAccountState?: ?PerAccountState,
+  params: AssetTransferParams
+): Promise<AssetTransferResponse> {
+  try {
+    // Get Alchemy RPC URL using centralized logic
+    const alchemyUrl = await getAlchemyRpcUrl(network, perAccountState);
+    if (alchemyUrl == null || alchemyUrl === '') {
+      throw TandaPayErrorHandler.createError(
+        'VALIDATION_ERROR',
+        'Alchemy not available for this network configuration',
+        {
+          userMessage: 'Transaction history is not available for this network.',
+          details: { network }
+        }
+      );
+    }
+
+    // Create provider with the appropriate RPC URL
+    const provider = new ethers.providers.JsonRpcProvider(alchemyUrl);
+
+    // Convert parameters to Alchemy-compatible format
+    const alchemyParams = convertParamsToAlchemyFormat(params);
+
+    const response = await provider.send('alchemy_getAssetTransfers', [alchemyParams]);
+
+    const result = {
+      transfers: response.transfers || [],
+      pageKey: response.pageKey || null,
+    };
+
+    return result;
+  } catch (error) {
+    if (error?.type) {
+      throw error; // Re-throw TandaPayError
+    }
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `Failed to fetch asset transfers: ${error?.message || 'Unknown error'}`,
+      {
+        userMessage: 'Failed to load transaction history. Please check your connection and try again.',
+        details: { network, params, originalError: error }
+      }
+    );
+  }
+}
+
+/**
+ * Get multiple transaction details by hash for any network (supported or custom)
+ * Uses HTTP fetch for higher rate limits when fetching many transactions
+ */
+export async function getBatchTransactionsByHashForNetwork(
+  network: NetworkIdentifier,
+  perAccountState?: ?PerAccountState,
+  txHashes: Array<string>
+): Promise<Array<SignedTransaction | null>> {
+  if (txHashes.length === 0) {
+    return [];
+  }
+
+  try {
+    // Get Alchemy RPC URL using centralized logic
+    const alchemyUrl = await getAlchemyRpcUrl(network, perAccountState);
+    if (alchemyUrl == null || alchemyUrl === '') {
+      throw TandaPayErrorHandler.createError(
+        'VALIDATION_ERROR',
+        'Alchemy not available for this network configuration',
+        {
+          userMessage: 'Transaction details are not available for this network.',
+          details: { network }
+        }
+      );
+    }
+
+    // Create batch requests
+    const requests = txHashes.map((hash, index) => ({
+      id: index,
+      jsonrpc: '2.0',
+      method: 'eth_getTransactionByHash',
+      params: [hash],
+    }));
+
+    // Alchemy supports up to 1000 requests per batch
+    const BATCH_SIZE = 1000;
+    const allResults = [];
+
+    for (let i = 0; i < requests.length; i += BATCH_SIZE) {
+      const batch = requests.slice(i, i + BATCH_SIZE);
+
+      const response = await fetch(alchemyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(batch),
+      });
+
+      if (!response.ok) {
+        throw TandaPayErrorHandler.createError(
+          'NETWORK_ERROR',
+          `HTTP ${response.status}: ${response.statusText}`,
+          {
+            userMessage: 'Network request failed. Please check your connection.',
+            details: { network, batchSize: batch.length, status: response.status }
+          }
+        );
+      }
+
+      const batchResults: Array<JsonRpcResponse> = await response.json();
+
+      // Extract results and handle errors
+      const results = batchResults.map((result, index) => {
+        if (result.error != null) {
+          // eslint-disable-next-line no-console
+          console.warn(`Batch request ${index} failed:`, result.error);
+          return null; // Return null for failed requests
+        }
+        return result.result;
+      });
+
+      allResults.push(...results);
+    }
+
+    // $FlowFixMe[incompatible-return] - HTTP JSON-RPC batch result type
+    return allResults;
+  } catch (error) {
+    if (error?.type) {
+      throw error; // Re-throw TandaPayError
+    }
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `Failed to fetch batch transaction details: ${error?.message || 'Unknown error'}`,
+      {
+        userMessage: 'Failed to load transaction details. Please try again.',
+        details: { network, txCount: txHashes.length, originalError: error }
       }
     );
   }

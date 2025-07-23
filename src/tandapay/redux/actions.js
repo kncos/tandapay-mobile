@@ -155,6 +155,12 @@ export function setCustomRpc(config: {|
   rpcUrl: string,
   chainId: number,
   blockExplorerUrl?: string,
+  multicall3Address: string,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |},
 |}): TandaPaySettingsUpdateAction {
   return {
     type: TANDAPAY_SETTINGS_UPDATE,
@@ -166,6 +172,36 @@ export function setCustomRpc(config: {|
       },
     },
   };
+}
+
+/**
+ * Action creator for saving custom RPC configuration without switching to it
+ */
+export function saveCustomRpcConfig(config: {|
+  name: string,
+  rpcUrl: string,
+  chainId: number,
+  blockExplorerUrl?: string,
+  multicall3Address: string,
+  nativeToken?: ?{|
+    name: string,
+    symbol: string,
+    decimals: number,
+  |},
+|}): TandaPaySettingsUpdateAction {
+  const finalConfig = {
+    ...config,
+    isAlchemyUrl: isAlchemyUrl(config.rpcUrl),
+  };
+
+  const action = {
+    type: TANDAPAY_SETTINGS_UPDATE,
+    settings: {
+      customRpcConfig: finalConfig,
+    },
+  };
+
+  return action;
 }
 
 /**

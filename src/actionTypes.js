@@ -681,6 +681,12 @@ export type TandaPaySettingsUpdateAction = $ReadOnly<{|
       chainId: number,
       blockExplorerUrl?: string,
       isAlchemyUrl?: boolean,
+      multicall3Address: string,
+      nativeToken?: ?{|
+        name: string,
+        symbol: string,
+        decimals: number,
+      |},
     |},
     contractAddresses: $Shape<{|
       mainnet: ?string,
