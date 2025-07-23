@@ -112,7 +112,7 @@ export default function ContractDeploymentModal(props: Props): Node {
 
   const [selectedToken, setSelectedToken] = useState<?Token>(null);
   const [secretaryAddress, setSecretaryAddress] = useState('');
-  const [customGasLimit, setCustomGasLimit] = useState('15000000'); // 15M default
+  const [customGasLimit, setCustomGasLimit] = useState(''); // Empty by default, uses estimation
   const [isEstimating, setIsEstimating] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [gasEstimate, setGasEstimate] = useState<?{|
@@ -130,7 +130,7 @@ export default function ContractDeploymentModal(props: Props): Node {
     if (visible) {
       setSelectedToken(null);
       setSecretaryAddress('');
-      setCustomGasLimit('15000000'); // Reset to default
+      setCustomGasLimit(''); // Reset to empty (uses estimation)
       setGasEstimate(null);
       setErrorMessage(null);
       setIsEstimating(false);
@@ -140,7 +140,7 @@ export default function ContractDeploymentModal(props: Props): Node {
 
   // Validation
   const isValidSecretaryAddress = secretaryAddress.trim() === '' || /^0x[a-fA-F0-9]{40}$/.test(secretaryAddress.trim());
-  const isValidGasLimit = customGasLimit.trim() !== '' && parseInt(customGasLimit, 10) >= 1000000; // At least 1M gas
+  const isValidGasLimit = customGasLimit.trim() === '' || (customGasLimit.trim() !== '' && parseInt(customGasLimit, 10) >= 1000000); // Empty is valid (uses estimation), or at least 1M gas
   const canEstimate = selectedToken != null
     && secretaryAddress.trim() !== ''
     && isValidSecretaryAddress
@@ -152,12 +152,12 @@ export default function ContractDeploymentModal(props: Props): Node {
       // Reset all state when closing the modal
       setSelectedToken(null);
       setSecretaryAddress('');
-      setCustomGasLimit('15000000'); // Reset to default
+      setCustomGasLimit(''); // Reset to empty (uses estimation)
       setGasEstimate(null);
       setErrorMessage(null);
       setIsEstimating(false);
       setIsDeploying(false);
-      
+
       onClose();
     }
   }, [onClose, isDeploying, isEstimating]);
@@ -231,7 +231,7 @@ export default function ContractDeploymentModal(props: Props): Node {
         }
 
         const gasData = gasEstimationResult.data;
-        
+
         return {
           gasLimit: gasData.gasLimit,
           gasPrice: gasData.maxFeePerGas, // Use maxFeePerGas for display
@@ -290,17 +290,33 @@ export default function ContractDeploymentModal(props: Props): Node {
           ? selectedToken.address
           : ethers.constants.AddressZero;
 
-        // Use the custom gas limit set by user
-        const userGasLimit = ethers.BigNumber.from(customGasLimit);
+        // Use the estimated gas limit from gasEstimate, or custom if provided
+        if (!gasEstimate) {
+          throw new Error('Gas estimate is required for deployment');
+        }
 
-        // Deploy contract with explicit gas limit
-        const contract = await factory.deploy(tokenAddress, secretaryAddress.trim(), {
-          gasLimit: userGasLimit,
-        });
+        const gasLimitToUse = customGasLimit.trim() !== ''
+          ? ethers.BigNumber.from(customGasLimit)
+          : ethers.BigNumber.from(gasEstimate.gasLimit);
 
-        // Wait for deployment
+        // Deploy contract with proper EIP-1559 parameters
+        // $FlowFixMe[unclear-type] - ethers.js transaction options
+        const deployOptions: any = {
+          gasLimit: gasLimitToUse,
+        };
+
+        // Add EIP-1559 parameters if available
+        if (gasEstimate.isEIP1559) {
+          deployOptions.maxFeePerGas = ethers.utils.parseUnits(gasEstimate.gasPrice, 'gwei');
+          deployOptions.maxPriorityFeePerGas = ethers.utils.parseUnits(gasEstimate.maxPriorityFeePerGas, 'gwei');
+        } else {
+          // Legacy network
+          deployOptions.gasPrice = ethers.utils.parseUnits(gasEstimate.gasPrice, 'gwei');
+        }
+
+        const contract = await factory.deploy(tokenAddress, secretaryAddress.trim(), deployOptions);
+
         await contract.deployed();
-
         return {
           contractAddress: contract.address,
           txHash: contract.deployTransaction.hash,
@@ -343,7 +359,7 @@ export default function ContractDeploymentModal(props: Props): Node {
       TandaPayErrorHandler.handleError(deploymentResult.error, true);
       setErrorMessage(deploymentResult.error.userMessage ?? 'Contract deployment failed');
     }
-  }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit, contractAddresses, dispatch, onDeploymentComplete, onClose]);
+  }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit, gasEstimate, contractAddresses, dispatch, onDeploymentComplete, onClose]);
 
   return (
     <Modal
@@ -403,14 +419,14 @@ export default function ContractDeploymentModal(props: Props): Node {
               <NumberInput
                 value={customGasLimit}
                 onChangeText={handleGasLimitChange}
-                label="Gas Limit"
-                placeholder="15000000"
+                label="Gas Limit (Optional)"
+                placeholder="Leave empty to use estimated gas"
                 min={1000000}
                 max={50000000}
                 disabled={isDeploying || isEstimating}
               />
               <ZulipText style={styles.gasLimitHelper}>
-                Default: 15M gas. Increase if deployment fails due to insufficient gas.
+                Leave empty to use the estimated gas limit. Only set manually if deployment fails.
               </ZulipText>
             </View>
 
