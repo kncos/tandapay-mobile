@@ -8,15 +8,20 @@ import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
 import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
-import TandaPayStyles, { TandaPayColors, TandaPayLayout } from '../styles';
+import TandaPayStyles, { TandaPayColors, TandaPayLayout, TandaPayTypography } from '../styles';
+import { HALF_COLOR } from '../../styles/constants';
+import Card from '../components/Card';
+import { ScrollableTextBox } from '../components';
 import {
   hasAlchemyApiKey,
   storeAlchemyApiKey,
   getAlchemyApiKey,
   deleteAlchemyApiKey,
   deleteWallet,
+  getMnemonic,
 } from './WalletManager';
 import ApiKeyCard from './components/ApiKeyCard';
+import { mn } from "date-fns/esm/locale";
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-settings'>,
@@ -25,6 +30,9 @@ type Props = $ReadOnly<{|
 
 export default function WalletSettingsScreen(props: Props): Node {
   const [loading, setLoading] = useState(true);
+  const [mnemonicVisible, setMnemonicVisible] = useState(false);
+  const [mnemonic, setMnemonic] = useState<?string>(null);
+  const [mnemonicLoading, setMnemonicLoading] = useState(false);
 
   const handleDeleteWallet = useCallback(async () => {
     Alert.alert(
@@ -63,6 +71,48 @@ export default function WalletSettingsScreen(props: Props): Node {
     );
   }, []);
 
+  const handleRevealMnemonic = useCallback(async () => {
+    Alert.alert(
+      'Reveal Recovery Phrase',
+      'Your recovery phrase is extremely sensitive. Anyone with access to it can control your wallet. Make sure you are in a private, secure location.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'I Understand',
+          onPress: async () => {
+            setMnemonicLoading(true);
+            const result = await getMnemonic();
+            setMnemonicLoading(false);
+            
+            if (result.success && result.data != null && result.data !== '') {
+              setMnemonic(result.data);
+              setMnemonicVisible(true);
+            } else {
+              Alert.alert(
+                'Error',
+                (result.error?.userMessage != null && result.error.userMessage !== '')
+                  ? result.error.userMessage
+                  : 'Failed to retrieve recovery phrase. Please try again.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const handleCopyMnemonic = useCallback((text: string, label: string) => {
+    Alert.alert('Copied', `${label} copied to clipboard.`);
+  }, []);
+
+  const handleHideMnemonic = useCallback(() => {
+    setMnemonicVisible(false);
+    setMnemonic(null);
+  }, []);
+
   // Check if API key exists on component mount
   useEffect(() => {
     const checkApiKey = async () => {
@@ -87,6 +137,47 @@ export default function WalletSettingsScreen(props: Props): Node {
     <Screen title="Wallet Settings" canGoBack>
       <ScrollView style={TandaPayLayout.screen}>
         <View style={TandaPayLayout.scrollPadded}>
+          {/* Mnemonic Reveal Section */}
+          <View style={TandaPayLayout.section}>
+            <Card>
+              <ZulipText text="Recovery Phrase" style={TandaPayTypography.sectionTitle} />
+              <ZulipText
+                text="Your recovery phrase is the master key to your wallet. Keep it safe and never share it with anyone."
+                style={TandaPayTypography.description}
+              />
+
+              {mnemonicVisible ? (
+                <View>
+                  <ScrollableTextBox
+                    text={mnemonic || ''}
+                    label="Recovery Phrase"
+                    onCopySuccess={handleCopyMnemonic}
+                  />
+
+                  <View style={TandaPayLayout.buttonRow}>
+                    <ZulipButton
+                      text="Hide Recovery Phrase"
+                      onPress={handleHideMnemonic}
+                      style={TandaPayStyles.button}
+                      secondary
+                    />
+                  </View>
+                </View>
+              ) : (
+                <View style={TandaPayLayout.buttonRow}>
+                  <ZulipButton
+                    text="Reveal Recovery Phrase"
+                    onPress={handleRevealMnemonic}
+                    disabled={mnemonicLoading}
+                    progress={mnemonicLoading}
+                    style={TandaPayStyles.button}
+                    secondary
+                  />
+                </View>
+              )}
+            </Card>
+          </View>
+
           <View style={TandaPayLayout.section}>
             <ApiKeyCard
               title="Alchemy API Key"
