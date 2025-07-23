@@ -17,6 +17,13 @@ type Props = $ReadOnly<{|
     rpcUrl: string,
     chainId: number,
     blockExplorerUrl?: string,
+    isAlchemyUrl?: boolean,
+    multicall3Address: string,
+    nativeToken?: ?{|
+      name: string,
+      symbol: string,
+      decimals: number,
+    |},
   |},
   switchingNetwork?: ?string,
 |}>;

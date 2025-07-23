@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Node } from 'react';
 import { View, ScrollView, Alert } from 'react-native';
+import { mn } from 'date-fns/esm/locale';
 import type { RouteProp } from '../../react-navigation';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import Screen from '../../common/Screen';
@@ -21,7 +22,6 @@ import {
   getMnemonic,
 } from './WalletManager';
 import ApiKeyCard from './components/ApiKeyCard';
-import { mn } from "date-fns/esm/locale";
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'wallet-settings'>,
@@ -86,7 +86,7 @@ export default function WalletSettingsScreen(props: Props): Node {
             setMnemonicLoading(true);
             const result = await getMnemonic();
             setMnemonicLoading(false);
-            
+
             if (result.success && result.data != null && result.data !== '') {
               setMnemonic(result.data);
               setMnemonicVisible(true);

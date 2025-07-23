@@ -17,6 +17,7 @@ type Props = $ReadOnly<{|
     rpcUrl: string,
     chainId: number,
     blockExplorerUrl?: string,
+    isAlchemyUrl?: boolean,
     multicall3Address: string,
     nativeToken?: ?{|
       name: string,
@@ -139,10 +140,7 @@ export default function CustomRpcForm(props: Props): Node {
 
   // Update form fields when initialConfig changes
   useEffect(() => {
-    console.log('🔧 CustomRpcForm useEffect triggered with initialConfig:', initialConfig);
-
     if (initialConfig) {
-      console.log('🔧 CustomRpcForm populating form fields from initialConfig');
       setCustomName(initialConfig.name || '');
       setCustomRpcUrl(initialConfig.rpcUrl || '');
       setCustomChainId(initialConfig.chainId.toString() || '');
@@ -154,7 +152,6 @@ export default function CustomRpcForm(props: Props): Node {
         initialConfig.nativeToken?.decimals != null ? initialConfig.nativeToken.decimals.toString() : '18'
       );
     } else {
-      console.log('🔧 CustomRpcForm clearing form fields (no initialConfig)');
       // Clear form when no initial config
       setCustomName('');
       setCustomRpcUrl('');

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useContext } from 'react';
 import type { Node } from 'react';
-import { View, TouchableOpacity, Modal, FlatList , StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Modal, FlatList, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';

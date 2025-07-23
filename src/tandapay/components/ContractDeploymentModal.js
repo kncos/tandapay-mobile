@@ -395,6 +395,7 @@ export default function ContractDeploymentModal(props: Props): Node {
                 Token for Contract
               </ZulipText>
               <TokenPicker
+                // $FlowFixMe[prop-missing] -- this will work with TokenWithBalance because that type is just Token but with balance info
                 tokens={availableTokens}
                 selectedToken={selectedToken}
                 onTokenSelect={handleTokenSelect}

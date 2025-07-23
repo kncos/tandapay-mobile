@@ -12,10 +12,10 @@ import { useSelector } from '../../react-redux';
 import {
   getCurrentTandaPayContractAddress,
   getTandaPaySelectedNetwork,
-  getTandaPayCustomRpcConfig,
 } from '../redux/selectors';
+import { getAvailableTokens } from '../tokens/tokenSelectors';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
-import { formatTokenAmount, findTokenByAddress, findTokenByAddressInCustomNetwork } from '../definitions';
+import { formatTokenAmount, findTokenByAddress } from '../definitions';
 import ScrollableTextBox from '../components/ScrollableTextBox';
 
 import type { CommunityInfo } from '../contract/types/index';
@@ -83,23 +83,17 @@ export default function CommunityOverviewCard(props: Props): Node {
   const { communityInfo, onShowMembers, onShowSubgroups } = props;
   const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
   const selectedNetwork = useSelector(state => getTandaPaySelectedNetwork(state));
-  const customRpcConfig = useSelector(state => getTandaPayCustomRpcConfig(state));
+  const availableTokens = useSelector(state => getAvailableTokens(state));
 
   const memberCount = bigNumberToNumber(communityInfo.currentMemberCount);
   const subgroupCount = bigNumberToNumber(communityInfo.currentSubgroupCount);
 
-  // Find the payment token information using the appropriate utility
-  let paymentTokenInfo = null;
-  if (selectedNetwork === 'custom') {
-    // For custom networks, use the custom utility with native token config
-    paymentTokenInfo = findTokenByAddressInCustomNetwork(
-      communityInfo.paymentTokenAddress,
-      customRpcConfig?.nativeToken
-    );
-  } else {
-    // For built-in networks, use the standard utility
-    paymentTokenInfo = findTokenByAddress(selectedNetwork, communityInfo.paymentTokenAddress);
-  }
+  // Find the payment token information using the unified utility
+  const paymentTokenInfo = findTokenByAddress(
+    selectedNetwork,
+    communityInfo.paymentTokenAddress,
+    availableTokens
+  );
 
   // Format the token amounts using the new utility
   const formattedBasePremium = formatTokenAmount(

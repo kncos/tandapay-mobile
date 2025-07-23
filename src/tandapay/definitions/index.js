@@ -166,13 +166,13 @@ export function getTokensForCustomNetwork(nativeToken?: ?{|
 }
 
 /**
- * Find a token by its contract address on a specific network
+ * Find a token by its contract address in default/built-in tokens for a specific network
  *
  * @param network - The network to search in
  * @param address - The contract address to search for (null for native token)
  * @returns Token configuration or null if not found
  */
-export function findTokenByAddress(
+export function findDefaultTokenByAddress(
   network: SupportedNetwork,
   address: ?string
 ): ?TokenConfig {
@@ -238,13 +238,13 @@ export function findTokenByAddressInCustomNetwork(
 }
 
 /**
- * Find a token by its symbol on a specific network
+ * Find a token by its symbol in default/built-in tokens for a specific network
  *
  * @param network - The network to search in
  * @param symbol - The token symbol to search for
  * @returns Token configuration or null if not found
  */
-export function findTokenBySymbol(
+export function findDefaultTokenBySymbol(
   network: SupportedNetwork,
   symbol: string
 ): ?TokenConfig {
@@ -309,20 +309,6 @@ export function findTokenBySymbolInCustomNetwork(
 }
 
 /**
- * Check if a network supports a specific token address
- *
- * @param network - The network to check
- * @param address - The token address to check (null for native token)
- * @returns true if the token is supported on this network
- */
-export function isTokenSupportedOnNetwork(
-  network: SupportedNetwork,
-  address: ?string
-): boolean {
-  return findTokenByAddress(network, address) !== null;
-}
-
-/**
  * Get the native token configuration for a network
  *
  * @param network - The network to get the native token for
@@ -337,3 +323,200 @@ export function getNativeTokenForNetwork(network: SupportedNetwork): TokenConfig
     address: null,
   };
 }
+
+// =============================================================================
+// CUSTOM TOKEN UTILITIES
+// =============================================================================
+
+/**
+ * Find a token by its contract address in custom tokens for the current network
+ * This function expects to be called with the Redux state to access custom tokens
+ *
+ * @param address - The contract address to search for (null for native token)
+ * @param availableTokens - Array of available tokens from getAvailableTokens selector
+ * @returns Token configuration or null if not found
+ */
+export function findCustomTokenByAddress(
+  address: ?string,
+  availableTokens: $ReadOnlyArray<$ReadOnly<{
+    symbol: string,
+    name: string,
+    decimals: number,
+    address: ?string,
+    isCustom: boolean,
+    ...
+  }>>
+): ?TokenConfig {
+  // Handle native token case (address is null)
+  if (address === null || address === undefined) {
+    const nativeToken = availableTokens.find(token => token.address === null);
+    if (nativeToken) {
+      return {
+        symbol: nativeToken.symbol,
+        name: nativeToken.name,
+        decimals: nativeToken.decimals,
+        address: null,
+      };
+    }
+    return null;
+  }
+
+  // Search through available tokens (includes both default and custom)
+  for (const token of availableTokens) {
+    if (token.address != null
+        && token.address.toLowerCase() === address.toLowerCase()) {
+      return {
+        symbol: token.symbol,
+        name: token.name,
+        decimals: token.decimals,
+        address: token.address,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Find a token by its symbol in custom tokens for the current network
+ * This function expects to be called with the Redux state to access custom tokens
+ *
+ * @param symbol - The token symbol to search for
+ * @param availableTokens - Array of available tokens from getAvailableTokens selector
+ * @returns Token configuration or null if not found
+ */
+export function findCustomTokenBySymbol(
+  symbol: string,
+  availableTokens: $ReadOnlyArray<$ReadOnly<{
+    symbol: string,
+    name: string,
+    decimals: number,
+    address: ?string,
+    isCustom: boolean,
+    ...
+  }>>
+): ?TokenConfig {
+  const foundToken = availableTokens.find(token => token.symbol === symbol);
+
+  if (foundToken) {
+    return {
+      symbol: foundToken.symbol,
+      name: foundToken.name,
+      decimals: foundToken.decimals,
+      address: foundToken.address,
+    };
+  }
+
+  return null;
+}
+
+// =============================================================================
+// MAIN TOKEN UTILITIES (USES BOTH DEFAULT AND CUSTOM)
+// =============================================================================
+
+/**
+ * Find a token by its contract address on any network (default or custom tokens)
+ * First checks default tokens, then custom tokens if available
+ *
+ * @param network - The network identifier
+ * @param address - The contract address to search for (null for native token)
+ * @param availableTokens - Optional array of available tokens from Redux state
+ * @returns Token configuration or null if not found
+ */
+export function findTokenByAddress(
+  network: NetworkIdentifier,
+  address: ?string,
+  availableTokens?: $ReadOnlyArray<$ReadOnly<{
+    symbol: string,
+    name: string,
+    decimals: number,
+    address: ?string,
+    isCustom: boolean,
+    ...
+  }>>
+): ?TokenConfig {
+  // For supported networks, first try to find in default tokens
+  if (network !== 'custom') {
+    const defaultToken = findDefaultTokenByAddress(network, address);
+    if (defaultToken) {
+      return defaultToken;
+    }
+  }
+
+  // If not found in defaults (or is custom network), try custom tokens
+  if (availableTokens) {
+    const customToken = findCustomTokenByAddress(address, availableTokens);
+    if (customToken) {
+      return customToken;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Find a token by its symbol on any network (default or custom tokens)
+ * First checks default tokens, then custom tokens if available
+ *
+ * @param network - The network identifier
+ * @param symbol - The token symbol to search for
+ * @param availableTokens - Optional array of available tokens from Redux state
+ * @returns Token configuration or null if not found
+ */
+export function findTokenBySymbol(
+  network: NetworkIdentifier,
+  symbol: string,
+  availableTokens?: $ReadOnlyArray<$ReadOnly<{
+    symbol: string,
+    name: string,
+    decimals: number,
+    address: ?string,
+    isCustom: boolean,
+    ...
+  }>>
+): ?TokenConfig {
+  // For supported networks, first try to find in default tokens
+  if (network !== 'custom') {
+    const defaultToken = findDefaultTokenBySymbol(network, symbol);
+    if (defaultToken) {
+      return defaultToken;
+    }
+  }
+
+  // If not found in defaults (or is custom network), try custom tokens
+  if (availableTokens) {
+    const customToken = findCustomTokenBySymbol(symbol, availableTokens);
+    if (customToken) {
+      return customToken;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a network supports a specific token address
+ *
+ * @param network - The network to check
+ * @param address - The token address to check (null for native token)
+ * @param availableTokens - Optional array of available tokens from Redux state
+ * @returns true if the token is supported on this network
+ */
+export function isTokenSupportedOnNetwork(
+  network: NetworkIdentifier,
+  address: ?string,
+  availableTokens?: Array<{
+    symbol: string,
+    name: string,
+    decimals: number,
+    address: ?string,
+    isCustom: boolean,
+    ...
+  }>
+): boolean {
+  return findTokenByAddress(network, address, availableTokens) !== null;
+}
+
+// =============================================================================
+// LEGACY TOKEN UTILITIES (KEPT FOR BACKWARDS COMPATIBILITY)
+// =============================================================================
