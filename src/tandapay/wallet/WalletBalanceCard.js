@@ -20,7 +20,7 @@ import { useUpdateBalance } from './hooks/useUpdateBalance';
 import { TandaPayColors } from '../styles';
 import Card from '../components/Card';
 
-import type { Token } from '../tokens/tokenTypes';
+import type { TokenWithBalance } from '../tokens/tokenTypes';
 
 type Props = {|
   walletAddress: ?string,
@@ -28,9 +28,9 @@ type Props = {|
 |};
 
 type TokenPickerProps = {|
-  selectedToken: Token | null,
-  availableTokens: $ReadOnlyArray<Token>,
-  onSelect: (Token) => void,
+  selectedToken: TokenWithBalance | null,
+  availableTokens: $ReadOnlyArray<TokenWithBalance>,
+  onSelect: (TokenWithBalance) => void,
   themeData: $ReadOnly<{|
     backgroundColor: string,
     cardColor: string,
@@ -147,7 +147,9 @@ function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: To
         mode="dropdown"
         dropdownIconColor={BRAND_COLOR}
         onValueChange={symbol => {
+          console.log('TokenPicker: onValueChange called with symbol:', symbol);
           const token = availableTokens.find(t => t.symbol === symbol);
+          console.log('TokenPicker: Found token:', token);
           if (token) {
             onSelect(token);
           }
@@ -212,14 +214,15 @@ export default function WalletBalanceCard({ walletAddress, onRefresh }: Props): 
   // Use the custom hook for balance management
   const { balance, loading, error, refreshBalance } = useUpdateBalance(selectedToken, walletAddress);
 
-  const handleTokenSelect = (token: Token) => {
+  const handleTokenSelect = (token: TokenWithBalance) => {
+    console.log('WalletBalanceCard: handleTokenSelect called with:', token);
     dispatch(selectToken(token.symbol));
   };
 
   const handleRefresh = () => {
     // Refresh the balance
     refreshBalance();
-    
+
     // Call the optional callback to refresh other components (e.g., transaction list)
     if (onRefresh) {
       onRefresh();

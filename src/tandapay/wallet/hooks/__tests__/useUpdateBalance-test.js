@@ -14,7 +14,6 @@ const mockToken: Token = {
   decimals: 18,
   address: null,
   isCustom: false,
-  isDefault: true,
 };
 
 describe('useUpdateBalance migration', () => {

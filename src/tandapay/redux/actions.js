@@ -8,6 +8,7 @@ import type {
 } from '../../actionTypes';
 import type { NetworkIdentifier, SupportedNetwork } from '../definitions/types';
 import { serializeBigNumbers } from '../utils/bigNumberUtils';
+import { isAlchemyUrl } from '../providers/AlchemyDetection';
 import {
   TANDAPAY_SETTINGS_UPDATE,
   TANDAPAY_TOKEN_SELECT,
@@ -43,36 +44,47 @@ export const updateTandaPaySettings = (settings: $Shape<TandaPaySettingsState>):
  */
 export function selectToken(tokenSymbol: string): PerAccountAction {
   // $FlowFixMe[incompatible-return] - New action type not yet in union
-  return {
-    type: TANDAPAY_TOKEN_SELECT,
-    tokenSymbol,
+  return (dispatch, getState) => {
+    const state = getState();
+    const selectedNetwork = state.tandaPay?.settings?.selectedNetwork || 'sepolia';
+
+    dispatch({
+      type: TANDAPAY_TOKEN_SELECT,
+      tokenSymbol,
+      network: selectedNetwork,
+    });
   };
 }
 
 /**
  * Action to add a custom token to the user's wallet
  */
-export function addCustomToken(token: {|
-  symbol: string,
-  address: string,
-  name: string,
-  decimals?: number,
-|}): PerAccountAction {
+export function addCustomToken(
+  token: {|
+    symbol: string,
+    address: string,
+    name: string,
+    decimals?: number,
+  |},
+  network: NetworkIdentifier
+): PerAccountAction {
   // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_ADD_CUSTOM,
     token,
+    network,
   };
 }
 
 /**
  * Action to remove a custom token from the user's wallet
  */
-export function removeCustomToken(tokenSymbol: string): PerAccountAction {
+export function removeCustomToken(tokenSymbol: string, network: NetworkIdentifier): PerAccountAction {
   // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_TOKEN_REMOVE_CUSTOM,
     tokenSymbol,
+    network,
   };
 }
 
@@ -81,10 +93,16 @@ export function removeCustomToken(tokenSymbol: string): PerAccountAction {
  */
 export function updateTokenBalance(tokenSymbol: string, balance: string): PerAccountAction {
   // $FlowFixMe[incompatible-return] - New action type not yet in union
-  return {
-    type: TANDAPAY_TOKEN_UPDATE_BALANCE,
-    tokenSymbol,
-    balance,
+  return (dispatch, getState) => {
+    const state = getState();
+    const selectedNetwork = state.tandaPay?.settings?.selectedNetwork || 'sepolia';
+
+    dispatch({
+      type: TANDAPAY_TOKEN_UPDATE_BALANCE,
+      tokenSymbol,
+      balance,
+      network: selectedNetwork,
+    });
   };
 }
 
@@ -93,9 +111,15 @@ export function updateTokenBalance(tokenSymbol: string, balance: string): PerAcc
  */
 export function invalidateTokenBalance(tokenSymbol: string): PerAccountAction {
   // $FlowFixMe[incompatible-return] - New action type not yet in union
-  return {
-    type: TANDAPAY_TOKEN_INVALIDATE_BALANCE,
-    tokenSymbol,
+  return (dispatch, getState) => {
+    const state = getState();
+    const selectedNetwork = state.tandaPay?.settings?.selectedNetwork || 'sepolia';
+
+    dispatch({
+      type: TANDAPAY_TOKEN_INVALIDATE_BALANCE,
+      tokenSymbol,
+      network: selectedNetwork,
+    });
   };
 }
 
@@ -136,7 +160,10 @@ export function setCustomRpc(config: {|
     type: TANDAPAY_SETTINGS_UPDATE,
     settings: {
       selectedNetwork: 'custom',
-      customRpcConfig: config,
+      customRpcConfig: {
+        ...config,
+        isAlchemyUrl: isAlchemyUrl(config.rpcUrl),
+      },
     },
   };
 }

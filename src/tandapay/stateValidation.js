@@ -46,7 +46,7 @@ export function validateCustomRpcConfig(config: mixed): ValidationResult {
 
   // Flow-safe destructuring
   if (config != null && typeof config === 'object') {
-    const { name, rpcUrl, chainId, blockExplorerUrl } = config;
+    const { name, rpcUrl, chainId, blockExplorerUrl, isAlchemyUrl } = config;
 
     if (typeof name !== 'string' || name.trim() === '') {
       errors.push('Custom RPC name must be a non-empty string');
@@ -68,6 +68,10 @@ export function validateCustomRpcConfig(config: mixed): ValidationResult {
         || (!blockExplorerUrl.startsWith('http://') && !blockExplorerUrl.startsWith('https://')))
     ) {
       errors.push('Block explorer URL must be a valid HTTP/HTTPS URL or undefined');
+    }
+
+    if (isAlchemyUrl !== undefined && typeof isAlchemyUrl !== 'boolean') {
+      errors.push('isAlchemyUrl must be a boolean or undefined');
     }
   }
 

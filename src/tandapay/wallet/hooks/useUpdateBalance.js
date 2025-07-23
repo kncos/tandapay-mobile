@@ -6,7 +6,7 @@ import { updateTokenBalance } from '../../redux/actions';
 import { getTokenBalance, isTokenBalanceStale } from '../../tokens/tokenSelectors';
 import { fetchBalance } from '../../web3';
 import TandaPayErrorHandler from '../../errors/ErrorHandler';
-import type { Token } from '../../tokens/tokenTypes';
+import type { TokenWithBalance } from '../../tokens/tokenTypes';
 import type { TandaPayError } from '../../errors/types';
 
 export type BalanceState = {|
@@ -21,7 +21,7 @@ export type BalanceActions = {|
 |};
 
 export function useUpdateBalance(
-  token: ?Token,
+  token: ?TokenWithBalance,
   walletAddress: ?string,
 ): {| ...BalanceState, ...BalanceActions |} {
   const dispatch = useDispatch();
@@ -41,7 +41,15 @@ export function useUpdateBalance(
   );
 
   const refreshBalance = useCallback(async () => {
+    console.log('useUpdateBalance: refreshBalance called with:', {
+      token: token?.symbol,
+      walletAddress,
+      network,
+      isBalanceStale
+    });
+
     if (!token || walletAddress == null || walletAddress === '') {
+      console.log('useUpdateBalance: Missing token or wallet address, returning early');
       return;
     }
 
@@ -49,7 +57,17 @@ export function useUpdateBalance(
       setLoading(true);
       setError(null);
 
-      const result = await fetchBalance(token, walletAddress, network);
+      const result = await fetchBalance(
+        {
+          symbol: token.symbol,
+          address: token.address,
+          name: token.name,
+          decimals: token.decimals,
+          isCustom: token.isCustom,
+        },
+        walletAddress,
+        network
+      );
 
       if (result.success) {
         dispatch(updateTokenBalance(token.symbol, result.data));
@@ -82,7 +100,16 @@ export function useUpdateBalance(
   useEffect(() => {
     let isMounted = true;
 
+    console.log('useUpdateBalance: useEffect triggered with:', {
+      walletAddress,
+      token: token?.symbol,
+      isBalanceStale,
+      hasToken: !!token,
+      hasWalletAddress: walletAddress != null && walletAddress !== ''
+    });
+
     if (walletAddress == null || walletAddress === '' || !token) {
+      console.log('useUpdateBalance: Clearing balance - no wallet or token');
       // Clear balance for empty wallet or no selected token
       if (token) {
         dispatch(updateTokenBalance(token.symbol, '0'));
@@ -93,18 +120,33 @@ export function useUpdateBalance(
 
     // Only fetch if balance is stale or missing
     if (isBalanceStale) {
+      console.log('useUpdateBalance: Balance is stale, fetching...');
       setLoading(true);
       setError(null);
 
-      fetchBalance(token, walletAddress, network)
+      fetchBalance(
+        {
+          symbol: token.symbol,
+          address: token.address,
+          name: token.name,
+          decimals: token.decimals,
+          isCustom: token.isCustom,
+        },
+        walletAddress,
+        network
+      )
         .then(result => {
           if (!isMounted) {
             return;
           }
 
+          console.log('useUpdateBalance: Balance fetch result:', result);
+
           if (result.success) {
+            console.log('useUpdateBalance: Dispatching updateTokenBalance with:', token.symbol, result.data);
             dispatch(updateTokenBalance(token.symbol, result.data));
           } else {
+            console.log('useUpdateBalance: Balance fetch failed:', result.error);
             setError(result.error);
           }
           setLoading(false);

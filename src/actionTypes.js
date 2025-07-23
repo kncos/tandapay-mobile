@@ -69,6 +69,8 @@ import {
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
   TANDAPAY_TOKEN_INVALIDATE_BALANCE,
+  TANDAPAY_SET_CONTRACT_ADDRESS,
+  TANDAPAY_UPDATE_NETWORK_PERFORMANCE,
   TANDAPAY_COMMUNITY_INFO_UPDATE,
   TANDAPAY_COMMUNITY_INFO_LOADING,
   TANDAPAY_COMMUNITY_INFO_ERROR,
@@ -121,6 +123,7 @@ import type {
   UserId,
   UserStatusEvent,
 } from './types';
+import type { NetworkIdentifier } from './tandapay/definitions/types';
 
 /**
  * Dispatched by redux-persist when the stored state is loaded.
@@ -677,6 +680,7 @@ export type TandaPaySettingsUpdateAction = $ReadOnly<{|
       rpcUrl: string,
       chainId: number,
       blockExplorerUrl?: string,
+      isAlchemyUrl?: boolean,
     |},
     contractAddresses: $Shape<{|
       mainnet: ?string,
@@ -696,6 +700,7 @@ export type TandaPaySettingsUpdateAction = $ReadOnly<{|
 export type TandaPayTokenSelectAction = $ReadOnly<{|
   type: typeof TANDAPAY_TOKEN_SELECT,
   tokenSymbol: string,
+  network: NetworkIdentifier,
 |}>;
 
 export type TandaPayTokenAddCustomAction = $ReadOnly<{|
@@ -706,22 +711,42 @@ export type TandaPayTokenAddCustomAction = $ReadOnly<{|
     name: string,
     decimals?: number,
   |},
+  network: NetworkIdentifier,
 |}>;
 
 type TandaPayTokenRemoveCustomAction = $ReadOnly<{|
   type: typeof TANDAPAY_TOKEN_REMOVE_CUSTOM,
   tokenSymbol: string,
+  network: NetworkIdentifier,
 |}>;
 
 type TandaPayTokenUpdateBalanceAction = $ReadOnly<{|
   type: typeof TANDAPAY_TOKEN_UPDATE_BALANCE,
   tokenSymbol: string,
   balance: string,
+  network: NetworkIdentifier,
 |}>;
 
 type TandaPayTokenInvalidateBalanceAction = $ReadOnly<{|
   type: typeof TANDAPAY_TOKEN_INVALIDATE_BALANCE,
   tokenSymbol: string,
+  network: NetworkIdentifier,
+|}>;
+
+type TandaPaySetContractAddressAction = $ReadOnly<{|
+  type: typeof TANDAPAY_SET_CONTRACT_ADDRESS,
+  network: NetworkIdentifier,
+  contractAddress: ?string,
+|}>;
+
+type TandaPayUpdateNetworkPerformanceAction = $ReadOnly<{|
+  type: typeof TANDAPAY_UPDATE_NETWORK_PERFORMANCE,
+  network: NetworkIdentifier,
+  performance: {|
+    avgBlockTime: number,
+    gasPrice: number,
+    lastChecked: number,
+  |},
 |}>;
 
 type TandaPayCommunityInfoUpdateAction = $ReadOnly<{|
@@ -748,6 +773,8 @@ type TandaPayAction =
   | TandaPayTokenRemoveCustomAction
   | TandaPayTokenUpdateBalanceAction
   | TandaPayTokenInvalidateBalanceAction
+  | TandaPaySetContractAddressAction
+  | TandaPayUpdateNetworkPerformanceAction
   | TandaPayCommunityInfoUpdateAction
   | TandaPayCommunityInfoLoadingAction
   | TandaPayCommunityInfoErrorAction;
@@ -921,6 +948,8 @@ export function isPerAccountApplicableAction(action: Action): boolean {
     case TANDAPAY_TOKEN_REMOVE_CUSTOM:
     case TANDAPAY_TOKEN_UPDATE_BALANCE:
     case TANDAPAY_TOKEN_INVALIDATE_BALANCE:
+    case TANDAPAY_SET_CONTRACT_ADDRESS:
+    case TANDAPAY_UPDATE_NETWORK_PERFORMANCE:
     case TANDAPAY_COMMUNITY_INFO_UPDATE:
     case TANDAPAY_COMMUNITY_INFO_LOADING:
     case TANDAPAY_COMMUNITY_INFO_ERROR:

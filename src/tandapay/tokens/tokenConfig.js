@@ -27,7 +27,6 @@ export function getDefaultTokens(network: SupportedNetwork = 'sepolia'): $ReadOn
     address: null, // Native token, no contract address
     name: chain.nativeCurrency.name,
     decimals: chain.nativeCurrency.decimals,
-    isDefault: true,
     isCustom: false,
   };
 
@@ -42,7 +41,6 @@ export function getDefaultTokens(network: SupportedNetwork = 'sepolia'): $ReadOn
         address: token.address,
         name: token.name,
         decimals: token.decimals,
-        isDefault: true,
         isCustom: false,
       };
     }),
@@ -67,7 +65,6 @@ export function getAllTokens(
       address: null,
       name: 'Ethereum',
       decimals: 18,
-      isDefault: true,
       isCustom: false,
     };
     return [ethToken, ...customTokens];

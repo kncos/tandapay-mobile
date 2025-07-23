@@ -3,6 +3,7 @@ import type { ReadWrite, SubsetProperties } from '../generics';
 import { ZulipVersion } from '../utils/zulipVersion';
 import type { GlobalState } from '../types';
 import { objectFromEntries } from '../jsBackport';
+import { initializePerNetworkTokenState } from '../tandapay/utils/tokenMigration';
 
 // Like GlobalState, but making all properties optional.
 type PartialState = $ReadOnly<$Rest<GlobalState, { ... }>>;
@@ -563,18 +564,12 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
           custom: null,
         },
         networkPerformance: {
-          cacheExpirationMs: 30000, // 30 seconds default
-          rateLimitDelayMs: 100, // 100ms between calls
-          retryAttempts: 3, // 3 retry attempts
+          cacheExpirationMs: 30000,
+          rateLimitDelayMs: 100,
+          retryAttempts: 3,
         },
       },
-      tokens: {
-        selectedTokenSymbol: 'ETH',
-        defaultTokens: [], // Tokens are now dynamically loaded from chain definitions
-        customTokens: [],
-        balances: {},
-        lastUpdated: {},
-      },
+      tokens: initializePerNetworkTokenState(),
       communityInfoData: {
         data: null,
         loading: false,

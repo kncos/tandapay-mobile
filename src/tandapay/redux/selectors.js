@@ -8,11 +8,12 @@ import type { CommunityInfoDataState } from './reducers/communityInfoDataReducer
 import type { NetworkIdentifier } from '../definitions/types';
 import type { CommunityInfo } from '../contract/types/index';
 import { deserializeBigNumbers } from '../utils/bigNumberUtils';
+import { initializePerNetworkTokenState } from '../utils/tokenMigration';
 
 // Main TandaPay state selector
 export const getTandaPayState = (state: PerAccountState): TandaPayState => {
   if (!state.tandaPay) {
-    // Return default state if not initialized
+    // Return default state if not initialized - use proper token initialization
     return {
       settings: {
         selectedNetwork: 'sepolia',
@@ -30,13 +31,7 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
           retryAttempts: 3,
         },
       },
-      tokens: {
-        selectedTokenSymbol: 'ETH',
-        defaultTokens: [],
-        customTokens: [],
-        balances: {},
-        lastUpdated: {},
-      },
+      tokens: initializePerNetworkTokenState(),
       // New decoupled data structures
       communityInfoData: {
         data: null,
@@ -102,6 +97,7 @@ export const getTandaPayCustomRpcConfig = (state: PerAccountState): ?{|
   rpcUrl: string,
   chainId: number,
   blockExplorerUrl?: string,
+  isAlchemyUrl?: boolean,
 |} => {
   try {
     return getTandaPaySettings(state).customRpcConfig;
@@ -205,22 +201,92 @@ export const getTandaPayRetryAttempts = (state: PerAccountState): number => {
   }
 };
 
-// Token selectors
+// Token selectors - Updated for new perNetworkData structure
 export const getTandaPaySelectedTokenSymbol = (state: PerAccountState): string => {
   try {
     const tandaPayState = getTandaPayState(state);
-    return tandaPayState.tokens.selectedTokenSymbol || 'ETH';
+    const selectedNetwork = getTandaPaySelectedNetwork(state);
+
+    // Check if perNetworkData exists and has the selected network
+    if (tandaPayState.tokens
+        && tandaPayState.tokens.perNetworkData
+        && tandaPayState.tokens.perNetworkData[selectedNetwork]) {
+      return tandaPayState.tokens.perNetworkData[selectedNetwork].selectedToken || 'ETH';
+    }
+
+    return 'ETH';
   } catch (error) {
     return 'ETH';
   }
 };
 
-export const getTandaPayCustomTokens = (state: PerAccountState): $ReadOnlyArray<mixed> => {
+export const getTandaPayTokensForAllNetworks = (state: PerAccountState): $ReadOnly<{|
+  mainnet: $ReadOnly<{ [string]: mixed }>,
+  sepolia: $ReadOnly<{ [string]: mixed }>,
+  arbitrum: $ReadOnly<{ [string]: mixed }>,
+  polygon: $ReadOnly<{ [string]: mixed }>,
+  custom: $ReadOnly<{ [string]: mixed }>,
+|}> => {
   try {
     const tandaPayState = getTandaPayState(state);
-    return tandaPayState.tokens.customTokens || [];
+
+    // Check if perNetworkData exists
+    if (tandaPayState.tokens && tandaPayState.tokens.perNetworkData) {
+      const perNetworkData = tandaPayState.tokens.perNetworkData;
+      return {
+        mainnet: (perNetworkData.mainnet && perNetworkData.mainnet.tokens) || {},
+        sepolia: (perNetworkData.sepolia && perNetworkData.sepolia.tokens) || {},
+        arbitrum: (perNetworkData.arbitrum && perNetworkData.arbitrum.tokens) || {},
+        polygon: (perNetworkData.polygon && perNetworkData.polygon.tokens) || {},
+        custom: (perNetworkData.custom && perNetworkData.custom.tokens) || {},
+      };
+    }
+
+    return {
+      mainnet: {},
+      sepolia: {},
+      arbitrum: {},
+      polygon: {},
+      custom: {},
+    };
   } catch (error) {
-    return [];
+    return {
+      mainnet: {},
+      sepolia: {},
+      arbitrum: {},
+      polygon: {},
+      custom: {},
+    };
+  }
+};
+
+// Network-specific token selectors
+export const getTokensForNetwork = (
+  state: PerAccountState,
+  network: NetworkIdentifier
+): $ReadOnly<{ [string]: mixed }> => {
+  try {
+    const tandaPayState = getTandaPayState(state);
+
+    // Check if perNetworkData exists and has the specific network
+    if (tandaPayState.tokens
+        && tandaPayState.tokens.perNetworkData
+        && tandaPayState.tokens.perNetworkData[network]) {
+      return tandaPayState.tokens.perNetworkData[network].tokens || {};
+    }
+
+    return {};
+  } catch (error) {
+    return {};
+  }
+};
+
+export const getTokensForCurrentNetwork = (state: PerAccountState): $ReadOnly<{ [string]: mixed }> => {
+  try {
+    const selectedNetwork = getTandaPaySelectedNetwork(state);
+    return getTokensForNetwork(state, selectedNetwork);
+  } catch (error) {
+    return {};
   }
 };
 
@@ -273,5 +339,33 @@ export const isCommunityInfoStale = (state: PerAccountState, maxAgeMs: number = 
     return Date.now() - lastUpdated > maxAgeMs;
   } catch (error) {
     return true;
+  }
+};
+
+// Alchemy URL detection for custom networks
+export const isCustomNetworkAlchemyEnabled = (state: PerAccountState): boolean => {
+  try {
+    const customRpcConfig = getTandaPayCustomRpcConfig(state);
+    if (!customRpcConfig) {
+      return false;
+    }
+
+    // Check if the RPC URL contains Alchemy domain patterns
+    const { rpcUrl } = customRpcConfig;
+    return rpcUrl.includes('alchemy.com') || rpcUrl.includes('g.alchemy.com');
+  } catch (error) {
+    return false;
+  }
+};
+
+export const getCustomNetworkAlchemyUrl = (state: PerAccountState): ?string => {
+  try {
+    const customRpcConfig = getTandaPayCustomRpcConfig(state);
+    if (!customRpcConfig || !isCustomNetworkAlchemyEnabled(state)) {
+      return null;
+    }
+    return customRpcConfig.rpcUrl;
+  } catch (error) {
+    return null;
   }
 };

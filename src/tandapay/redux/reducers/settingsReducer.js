@@ -7,6 +7,7 @@ import {
   TANDAPAY_SETTINGS_UPDATE,
 } from '../../../actionConstants';
 import { validateTandaPaySettings } from '../../stateValidation';
+import { detectAlchemyConfig } from '../../providers/AlchemyDetection';
 
 // Settings-specific state
 export type TandaPaySettingsState = $ReadOnly<{|
@@ -16,6 +17,7 @@ export type TandaPaySettingsState = $ReadOnly<{|
     rpcUrl: string,
     chainId: number,
     blockExplorerUrl?: string,
+    isAlchemyUrl?: boolean,
   |},
   // Per-network contract addresses configured by users
   contractAddresses: {|
@@ -57,10 +59,23 @@ export default (state: TandaPaySettingsState = initialState, action: Action): Ta
       return initialState;
 
     case TANDAPAY_SETTINGS_UPDATE: {
+      // Auto-detect Alchemy configuration if customRpcConfig is being updated
+      let processedCustomRpcConfig = action.settings.customRpcConfig !== undefined
+        ? action.settings.customRpcConfig
+        : state.customRpcConfig;
+
+      if (processedCustomRpcConfig != null && action.settings.customRpcConfig !== undefined) {
+        const alchemyDetection = detectAlchemyConfig(processedCustomRpcConfig.rpcUrl);
+        processedCustomRpcConfig = {
+          ...processedCustomRpcConfig,
+          isAlchemyUrl: alchemyDetection.isAlchemy,
+        };
+      }
+
       // Build the complete settings object for validation by merging with current state
       const settingsToValidate = {
         selectedNetwork: action.settings.selectedNetwork != null ? action.settings.selectedNetwork : state.selectedNetwork,
-        customRpcConfig: action.settings.customRpcConfig !== undefined ? action.settings.customRpcConfig : state.customRpcConfig,
+        customRpcConfig: processedCustomRpcConfig,
         contractAddresses: action.settings.contractAddresses != null ? {
           mainnet: action.settings.contractAddresses.mainnet !== undefined ? action.settings.contractAddresses.mainnet : state.contractAddresses.mainnet,
           sepolia: action.settings.contractAddresses.sepolia !== undefined ? action.settings.contractAddresses.sepolia : state.contractAddresses.sepolia,

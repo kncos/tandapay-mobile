@@ -8,9 +8,10 @@ import { useSelector, useDispatch } from '../../react-redux';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors } from '../styles';
 import { getAvailableTokens } from './tokenSelectors';
+import { getTandaPaySelectedNetwork } from '../redux/selectors';
 import { addCustomToken, removeCustomToken } from '../redux/actions';
 import { validateCustomToken } from './tokenConfig';
-import type { Token } from './tokenTypes';
+import type { TokenWithBalance } from './tokenTypes';
 import Screen from '../../common/Screen';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -70,6 +71,7 @@ export default function TokenManagementScreen(props: Props): Node {
   const dispatch = useDispatch();
   const themeData = useContext(ThemeContext);
   const availableTokens = useSelector(getAvailableTokens);
+  const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
 
   const [symbol, setSymbol] = useState('');
   const [address, setAddress] = useState('');
@@ -106,7 +108,7 @@ export default function TokenManagementScreen(props: Props): Node {
       return;
     }
 
-    dispatch(addCustomToken(tokenData));
+    dispatch(addCustomToken(tokenData, selectedNetwork));
 
     // Clear form
     setSymbol('');
@@ -117,8 +119,8 @@ export default function TokenManagementScreen(props: Props): Node {
     Alert.alert('Success', `${tokenData.symbol} token added successfully!`);
   };
 
-  const handleRemoveToken = (token: Token) => {
-    if (token.isDefault) {
+  const handleRemoveToken = (token: TokenWithBalance) => {
+    if (!token.isCustom) {
       Alert.alert('Cannot Remove', 'Default tokens cannot be removed.');
       return;
     }
@@ -131,7 +133,7 @@ export default function TokenManagementScreen(props: Props): Node {
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: () => dispatch(removeCustomToken(token.symbol)),
+          onPress: () => dispatch(removeCustomToken(token.symbol, selectedNetwork)),
         },
       ],
     );
@@ -216,7 +218,7 @@ export default function TokenManagementScreen(props: Props): Node {
                   </ZulipText>
                 </View>
 
-                {token.isDefault ? (
+                {!token.isCustom ? (
                   <View style={customStyles.defaultBadge}>
                     <ZulipText style={customStyles.badgeText}>DEFAULT</ZulipText>
                   </View>

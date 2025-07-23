@@ -8,54 +8,92 @@ import {
   TANDAPAY_TOKEN_REMOVE_CUSTOM,
   TANDAPAY_TOKEN_UPDATE_BALANCE,
   TANDAPAY_TOKEN_INVALIDATE_BALANCE,
+  TANDAPAY_SET_CONTRACT_ADDRESS,
+  TANDAPAY_UPDATE_NETWORK_PERFORMANCE,
 } from '../../../actionConstants';
 import type { TokenState, Token } from '../../tokens/tokenTypes';
 import { validateCustomToken } from '../../tokens/tokenConfig';
+import {
+  initializePerNetworkTokenState,
+  addCustomTokenToNetwork,
+  removeTokenFromNetwork,
+  updateTokenBalance,
+  setSelectedTokenForNetwork,
+  setContractAddressForNetwork,
+  updateNetworkPerformance,
+} from '../../utils/tokenMigration';
 
-// Static default tokens for consistent object references
-// Note: Default tokens are now dynamically loaded from chain definitions
-// via getDefaultTokensFromConfig() - this array is kept empty for Redux consistency
-const defaultTokens: $ReadOnlyArray<Token> = [];
+const initialState: TokenState = initializePerNetworkTokenState();
 
-const initialState: TokenState = {
-  selectedTokenSymbol: 'ETH',
-  defaultTokens,
-  customTokens: [],
-  balances: {},
-  lastUpdated: {},
+// Helper function to ensure state always has perNetworkData
+const ensureValidState = (state: TokenState): TokenState => {
+  // If perNetworkData is missing, reinitialize the state
+  if (!state.perNetworkData || Object.keys(state.perNetworkData).length === 0) {
+    return initializePerNetworkTokenState();
+  }
+  return state;
 };
 
 // eslint-disable-next-line default-param-last
 export default (state: TokenState = initialState, action: Action): TokenState => {
+  // Ensure state is valid before processing any action
+  const currentState = ensureValidState(state);
+
   switch (action.type) {
     case RESET_ACCOUNT_DATA:
-      // Reset to initial state but preserve any custom tokens that were added
-      return {
-        ...initialState,
-        customTokens: state.customTokens,
-      };
+      // Reset to initial state but preserve network structure
+      return initialState;
 
     case TANDAPAY_TOKEN_SELECT: {
       // Type-safe access to action properties
       if (action.type !== TANDAPAY_TOKEN_SELECT) {
-        return state;
+        return currentState;
       }
+
+      console.log('tokensReducer: TANDAPAY_TOKEN_SELECT action received:', {
+        tokenSymbol: action.tokenSymbol,
+        network: action.network,
+        currentState: currentState.perNetworkData
+      });
 
       // Validate token symbol
       if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
-        return state;
+        console.log('tokensReducer: Invalid token symbol, returning unchanged state');
+        return currentState;
       }
 
-      return {
-        ...state,
-        selectedTokenSymbol: action.tokenSymbol,
+      // Get the current network from action
+      const network = action.network;
+      const currentNetworkData = currentState.perNetworkData && currentState.perNetworkData[network];
+
+      // If network data doesn't exist, return unchanged state
+      if (!currentNetworkData) {
+        console.log('tokensReducer: No network data for network:', network, 'returning unchanged state');
+        return currentState;
+      }
+
+      const newState = {
+        ...currentState,
+        perNetworkData: {
+          ...currentState.perNetworkData,
+          // $FlowFixMe[invalid-computed-prop] - NetworkIdentifier union is safe for computed properties
+          [network]: setSelectedTokenForNetwork(currentNetworkData, action.tokenSymbol),
+        },
       };
+
+      console.log('tokensReducer: Updated state:', {
+        oldSelectedToken: currentNetworkData.selectedToken,
+        newSelectedToken: action.tokenSymbol,
+        newNetworkData: newState.perNetworkData[network]
+      });
+
+      return newState;
     }
 
     case TANDAPAY_TOKEN_ADD_CUSTOM: {
       // Type-safe access to action properties
       if (action.type !== TANDAPAY_TOKEN_ADD_CUSTOM) {
-        return state;
+        return currentState;
       }
 
       // Validate the custom token before adding
@@ -63,7 +101,7 @@ export default (state: TokenState = initialState, action: Action): TokenState =>
 
       if (!validation.isValid) {
         // Return unchanged state for invalid tokens
-        return state;
+        return currentState;
       }
 
       // Create properly typed token from the validated action
@@ -72,79 +110,122 @@ export default (state: TokenState = initialState, action: Action): TokenState =>
         address: action.token.address,
         name: action.token.name,
         decimals: action.token.decimals != null ? action.token.decimals : 18,
-        isDefault: false,
         isCustom: true,
       };
 
-      // Check if token already exists (by symbol or address)
-      const existingIndex = state.customTokens.findIndex(
-        token => token.symbol === newToken.symbol || token.address === newToken.address
-      );
+      const { network } = action;
+      const currentNetworkData = currentState.perNetworkData && currentState.perNetworkData[network];
 
-      if (existingIndex >= 0) {
-        // Update existing token
-        const updatedTokens = [...state.customTokens];
-        updatedTokens[existingIndex] = newToken;
-
-        return {
-          ...state,
-          customTokens: updatedTokens,
-        };
+      // If network data doesn't exist, return unchanged state
+      if (!currentNetworkData) {
+        return currentState;
       }
 
-      // Add new token
       return {
-        ...state,
-        customTokens: [...state.customTokens, newToken],
+        ...currentState,
+        perNetworkData: {
+          ...currentState.perNetworkData,
+          // $FlowFixMe[invalid-computed-prop] - NetworkIdentifier union is safe for computed properties
+          [network]: addCustomTokenToNetwork(currentNetworkData, newToken),
+        },
       };
     }
 
     case TANDAPAY_TOKEN_REMOVE_CUSTOM: {
       // Type-safe access to action properties
       if (action.type !== TANDAPAY_TOKEN_REMOVE_CUSTOM) {
-        return state;
+        return currentState;
       }
 
-      const filteredTokens = state.customTokens.filter(
-        token => token.symbol !== action.tokenSymbol
-      );
+      const { network, tokenSymbol } = action;
+      const currentNetworkData = currentState.perNetworkData && currentState.perNetworkData[network];
 
-      // If the removed token was selected, switch to ETH
-      const newSelectedToken = state.selectedTokenSymbol === action.tokenSymbol
-        ? 'ETH'
-        : state.selectedTokenSymbol;
+      // If network data doesn't exist, return unchanged state
+      if (!currentNetworkData) {
+        return currentState;
+      }
+
+      // Find the token key by symbol
+      let tokenKey = null;
+      const tokenKeys = Object.keys(currentNetworkData.tokens);
+      for (const key of tokenKeys) {
+        if (currentNetworkData.tokens[key].symbol === tokenSymbol) {
+          tokenKey = key;
+          break;
+        }
+      }
+
+      if (tokenKey == null) {
+        return currentState;
+      }
+
+      const updatedNetworkData = removeTokenFromNetwork(currentNetworkData, tokenKey);
+
+      // If the removed token was selected, switch to the first available token
+      let finalNetworkData = updatedNetworkData;
+      if (currentNetworkData.selectedToken === tokenSymbol) {
+        const remainingTokens = Object.keys(updatedNetworkData.tokens);
+        if (remainingTokens.length > 0) {
+          const firstTokenKey = remainingTokens[0];
+          const fallbackToken = updatedNetworkData.tokens[firstTokenKey];
+          finalNetworkData = setSelectedTokenForNetwork(updatedNetworkData, fallbackToken.symbol);
+        }
+      }
 
       return {
-        ...state,
-        customTokens: filteredTokens,
-        selectedTokenSymbol: newSelectedToken,
+        ...currentState,
+        perNetworkData: {
+          ...currentState.perNetworkData,
+          // $FlowFixMe[invalid-computed-prop] - NetworkIdentifier union is safe for computed properties
+          [network]: finalNetworkData,
+        },
       };
     }
 
     case TANDAPAY_TOKEN_UPDATE_BALANCE: {
       // Type-safe access to action properties
       if (action.type !== TANDAPAY_TOKEN_UPDATE_BALANCE) {
-        return state;
+        return currentState;
       }
 
       // Validate inputs
       if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
-        return state;
+        return currentState;
       }
 
       if (typeof action.balance !== 'string') {
-        return state;
+        return currentState;
+      }
+
+      // Get the current network from action
+      const network = action.network;
+      const currentNetworkData = currentState.perNetworkData && currentState.perNetworkData[network];
+
+      // If network data doesn't exist, return unchanged state
+      if (!currentNetworkData) {
+        return currentState;
+      }
+
+      // Find the token key by symbol
+      let tokenKey = null;
+      const tokenKeys = Object.keys(currentNetworkData.tokens);
+      for (const key of tokenKeys) {
+        if (currentNetworkData.tokens[key].symbol === action.tokenSymbol) {
+          tokenKey = key;
+          break;
+        }
+      }
+
+      if (tokenKey == null) {
+        return currentState;
       }
 
       return {
-        ...state,
-        balances: {
-          ...state.balances,
-          [action.tokenSymbol]: action.balance,
-        },
-        lastUpdated: {
-          ...state.lastUpdated,
-          [action.tokenSymbol]: Date.now(),
+        ...currentState,
+        perNetworkData: {
+          ...currentState.perNetworkData,
+          // $FlowFixMe[invalid-computed-prop] - NetworkIdentifier union is safe for computed properties
+          [network]: updateTokenBalance(currentNetworkData, tokenKey, action.balance),
         },
       };
     }
@@ -152,25 +233,107 @@ export default (state: TokenState = initialState, action: Action): TokenState =>
     case TANDAPAY_TOKEN_INVALIDATE_BALANCE: {
       // Type-safe access to action properties
       if (action.type !== TANDAPAY_TOKEN_INVALIDATE_BALANCE) {
-        return state;
+        return currentState;
       }
 
       // Validate inputs
       if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
-        return state;
+        return currentState;
+      }
+
+      // Get the current network from action
+      const network = action.network;
+      const currentNetworkData = currentState.perNetworkData && currentState.perNetworkData[network];
+
+      // If network data doesn't exist, return unchanged state
+      if (!currentNetworkData) {
+        return currentState;
+      }
+
+      // Find the token key by symbol
+      let tokenKey = null;
+      const tokenKeys = Object.keys(currentNetworkData.tokens);
+      for (const key of tokenKeys) {
+        if (currentNetworkData.tokens[key].symbol === action.tokenSymbol) {
+          tokenKey = key;
+          break;
+        }
+      }
+
+      if (tokenKey == null) {
+        return currentState;
       }
 
       // Invalidate balance by setting lastUpdated to 0, which will make it stale
+      const token = currentNetworkData.tokens[tokenKey];
       return {
-        ...state,
-        lastUpdated: {
-          ...state.lastUpdated,
-          [action.tokenSymbol]: 0,
+        ...currentState,
+        perNetworkData: {
+          ...currentState.perNetworkData,
+          // $FlowFixMe[invalid-computed-prop] - NetworkIdentifier union is safe for computed properties
+          [network]: {
+            ...currentNetworkData,
+            tokens: {
+              ...currentNetworkData.tokens,
+              [tokenKey]: {
+                ...token,
+                lastUpdated: 0,
+              },
+            },
+          },
+        },
+      };
+    }
+
+    case TANDAPAY_SET_CONTRACT_ADDRESS: {
+      // Type-safe access to action properties
+      if (action.type !== TANDAPAY_SET_CONTRACT_ADDRESS) {
+        return currentState;
+      }
+
+      const { network, contractAddress } = action;
+      const currentNetworkData = currentState.perNetworkData && currentState.perNetworkData[network];
+
+      // If network data doesn't exist, return unchanged state
+      if (!currentNetworkData) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        perNetworkData: {
+          ...currentState.perNetworkData,
+          // $FlowFixMe[invalid-computed-prop] - NetworkIdentifier union is safe for computed properties
+          [network]: setContractAddressForNetwork(currentNetworkData, contractAddress),
+        },
+      };
+    }
+
+    case TANDAPAY_UPDATE_NETWORK_PERFORMANCE: {
+      // Type-safe access to action properties
+      if (action.type !== TANDAPAY_UPDATE_NETWORK_PERFORMANCE) {
+        return currentState;
+      }
+
+      const { network, performance } = action;
+      const currentNetworkData = currentState.perNetworkData && currentState.perNetworkData[network];
+
+      // If network data doesn't exist, return unchanged state
+      if (!currentNetworkData) {
+        return currentState;
+      }
+
+      return {
+        ...currentState,
+        perNetworkData: {
+          ...currentState.perNetworkData,
+          // $FlowFixMe[invalid-computed-prop] - NetworkIdentifier union is safe for computed properties
+          [network]: updateNetworkPerformance(currentNetworkData, performance),
         },
       };
     }
 
     default:
-      return state;
+      return currentState;
   }
 };
