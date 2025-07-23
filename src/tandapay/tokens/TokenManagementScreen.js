@@ -4,6 +4,8 @@ import React, { useState, useContext } from 'react';
 import type { Node } from 'react';
 import { View, Alert, StyleSheet } from 'react-native';
 
+// $FlowIgnore[untyped-import] ethers doesn't have types
+import { ethers } from 'ethers';
 import { useSelector, useDispatch } from '../../react-redux';
 import { ThemeContext } from '../../styles';
 import { TandaPayColors } from '../styles';
@@ -15,10 +17,19 @@ import type { TokenWithBalance } from './tokenTypes';
 import Screen from '../../common/Screen';
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
+import ZulipTextButton from '../../common/ZulipTextButton';
 import Input from '../../common/Input';
 import { ScrollableTextBox } from '../components';
 import type { AppNavigationProp } from '../../nav/AppNavigator';
 import type { RouteProp } from '../../react-navigation';
+
+function ErrorText({ children }: { children: string }): Node {
+  return (
+    <ZulipText style={{ color: TandaPayColors.error, fontSize: 12, marginTop: 4, marginBottom: 8 }}>
+      {children}
+    </ZulipText>
+  );
+}
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'token-management'>,
@@ -86,7 +97,7 @@ export default function TokenManagementScreen(props: Props): Node {
       decimals: parseInt(decimals, 10) || 18,
     };
 
-    const validation = validateCustomToken(tokenData);
+    const validation = validateCustomToken(tokenData, selectedNetwork);
     if (!validation.isValid) {
       Alert.alert(
         'Invalid Token',
@@ -95,7 +106,7 @@ export default function TokenManagementScreen(props: Props): Node {
       return;
     }
 
-    // Check if token already exists
+    // Check if token already exists on the current network only
     const existingToken = availableTokens.find(t =>
       t.symbol === tokenData.symbol || t.address === tokenData.address
     );
@@ -139,7 +150,12 @@ export default function TokenManagementScreen(props: Props): Node {
     );
   };
 
-  const isFormValid = symbol.trim() && address.trim() && name.trim() && decimals.trim();
+  const symbolValid = symbol.trim().length > 0;
+  const addressValid = ethers.utils.isAddress(address.trim());
+  const nameValid = name.length > 0;
+  const decimalsValid = Number.isInteger(parseInt(decimals, 10)) && parseInt(decimals, 10) >= 0;
+
+  const isFormValid = symbolValid && addressValid && nameValid && decimalsValid;
 
   return (
     <Screen title="Manage Tokens" canGoBack>
@@ -147,7 +163,10 @@ export default function TokenManagementScreen(props: Props): Node {
         {/* Add Custom Token Section */}
         <View style={customStyles.section}>
           <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>
-            Add Custom Token
+            Add Custom Token (Network:
+            {' '}
+            {selectedNetwork}
+            )
           </ZulipText>
 
           <Input
@@ -157,6 +176,9 @@ export default function TokenManagementScreen(props: Props): Node {
             onChangeText={setSymbol}
             autoCapitalize="characters"
           />
+          {symbol.length > 0 && !symbolValid && (
+            <ErrorText>Symbol is required and cannot be empty</ErrorText>
+          )}
 
           <Input
             style={customStyles.input}
@@ -165,13 +187,20 @@ export default function TokenManagementScreen(props: Props): Node {
             onChangeText={setAddress}
             autoCapitalize="none"
           />
+          {address.length > 0 && !addressValid && (
+            <ErrorText>Please enter a valid Ethereum address</ErrorText>
+          )}
 
           <Input
             style={customStyles.input}
             placeholder="Token Name (e.g., Tether USD)"
             value={name}
             onChangeText={setName}
+            autoCapitalize="none"
           />
+          {name.length > 0 && !nameValid && (
+            <ErrorText>Token name is required</ErrorText>
+          )}
 
           <Input
             style={customStyles.input}
@@ -180,6 +209,9 @@ export default function TokenManagementScreen(props: Props): Node {
             onChangeText={setDecimals}
             keyboardType="numeric"
           />
+          {decimals.length > 0 && !decimalsValid && (
+            <ErrorText>Please enter a valid number (0 or greater)</ErrorText>
+          )}
 
           <ZulipButton
             disabled={!isFormValid}
@@ -191,7 +223,9 @@ export default function TokenManagementScreen(props: Props): Node {
         {/* Token List Section */}
         <View style={customStyles.section}>
           <ZulipText style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>
-            Available Tokens
+            Available Tokens (
+            {availableTokens.length}
+            )
           </ZulipText>
 
           {availableTokens.map(token => (
@@ -223,9 +257,8 @@ export default function TokenManagementScreen(props: Props): Node {
                     <ZulipText style={customStyles.badgeText}>DEFAULT</ZulipText>
                   </View>
                 ) : (
-                  <ZulipButton
-                    style={{ backgroundColor: TandaPayColors.error }}
-                    text="Remove"
+                  <ZulipTextButton
+                    label="Remove"
                     onPress={() => handleRemoveToken(token)}
                   />
                 )}

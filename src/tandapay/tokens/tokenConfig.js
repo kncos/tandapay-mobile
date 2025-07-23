@@ -87,20 +87,27 @@ export function findTokenBySymbol(
 /**
  * Validate a custom token before adding it
  */
-export function validateCustomToken(token: {|
-  symbol: string,
-  address: string,
-  name: string,
-  decimals?: number,
-|}): {| isValid: boolean, error?: string |} {
+export function validateCustomToken(
+  token: {|
+    symbol: string,
+    address: string,
+    name: string,
+    decimals?: number,
+  |},
+  network?: NetworkIdentifier,
+): {| isValid: boolean, error?: string |} {
   // Check symbol format
   if (!token.symbol || token.symbol.length < 1 || token.symbol.length > 10) {
     return { isValid: false, error: 'Symbol must be 1-10 characters' };
   }
 
-  // Check if symbol already exists in default tokens
-  if (getDefaultTokens().some(t => t.symbol.toLowerCase() === token.symbol.toLowerCase())) {
-    return { isValid: false, error: 'Token symbol already exists in default tokens' };
+  // Check if symbol already exists in default tokens for the current network
+  // Only check default tokens for supported networks, not custom networks
+  if (network && typeof network === 'string' && network !== 'custom') {
+    const networkDefaults = getDefaultTokens(network);
+    if (networkDefaults.some(t => t.symbol.toLowerCase() === token.symbol.toLowerCase())) {
+      return { isValid: false, error: 'Token symbol already exists in default tokens for this network' };
+    }
   }
 
   // Check address format (basic Ethereum address validation)

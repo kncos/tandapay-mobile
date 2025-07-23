@@ -82,7 +82,7 @@ export default (state: TokenState = getInitialState(), action: Action): TokenSta
       }
 
       // Validate the custom token before adding
-      const validation = validateCustomToken(action.token);
+      const validation = validateCustomToken(action.token, action.network);
 
       if (!validation.isValid) {
         // Return unchanged state for invalid tokens

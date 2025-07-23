@@ -48,7 +48,10 @@ export function getNetworkData(state: PerAccountState, network: NetworkIdentifie
  */
 export function getCurrentNetworkData(state: PerAccountState): NetworkData {
   const selectedNetwork = getTandaPaySelectedNetwork(state);
-  return getNetworkData(state, selectedNetwork);
+  
+  const networkData = getNetworkData(state, selectedNetwork);
+  
+  return networkData;
 }
 
 /**
