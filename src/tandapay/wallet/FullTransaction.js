@@ -4,6 +4,8 @@ import { ethers } from 'ethers';
 import type { SignedTransaction, Transfer } from './AlchemyApiTypes';
 import { TandaPayInfo } from '../contract/utils/TandaPay';
 import { Erc20Abi } from '../contract/utils/Erc20Abi';
+import { getTransactionReceipt } from './AlchemyApiHelper';
+import type { SupportedNetwork } from '../definitions/types';
 
 export type DecodedAbiInput = {|
   functionName: string,
@@ -12,8 +14,9 @@ export type DecodedAbiInput = {|
 |};
 
 export type GasInfo = {|
-  gasUsed: string,          // gas units, hexadecimal string
-  gasPricePerUnit: string,  // gas price per unit, in gwei, hexadecimal string
+  gasUsed: string,          // gas units as decimal string
+  gasPricePerUnit: string,  // gas price per unit in gwei as decimal string
+  totalCostDisplay: string, // total cost in ETH
 |};
 
 export type FullTransaction = {|
@@ -313,14 +316,16 @@ const decodeErc20TransactionInput = (input: string): mixed | null => {
   }
 };
 
-export const toFullTransaction = (params: {
+export const toFullTransaction = (params: {|
   walletAddress: string,
   tandapayContractAddress: string | null,
   transfers: Transfer[],
   signedTransaction?: SignedTransaction | null,
-}): FullTransaction => {
+  network: SupportedNetwork,
+|}): FullTransaction => {
   // validate parameters
-  const { walletAddress, tandapayContractAddress, transfers, signedTransaction } = params;
+  // Extract params - network is used in fetchGasInfo method
+  const { walletAddress, tandapayContractAddress, transfers, signedTransaction, network } = params;
   // validate parameters
   if (!Array.isArray(transfers) || transfers.length === 0) {
     throw new Error('transfers must be a non-empty array!');
@@ -348,7 +353,44 @@ export const toFullTransaction = (params: {
   const transferDirection = getOverallTransferDirection(netValueChanges);
 
   const fetchGasInfo = async (): Promise<GasInfo> => {
-    
+    if (!transfers || transfers.length === 0 || !transfers[0].hash) {
+      throw new Error('No transaction hash available to fetch gas info');
+    }
+
+    const receipt = await getTransactionReceipt(network, transfers[0].hash);
+    if (!receipt) {
+      throw new Error('Failed to fetch transaction receipt');
+    }
+
+    try {
+      // Convert to BigNumber, handling both hex strings and existing BigNumbers
+      // $FlowFixMe[incompatible-use] - ethers.BigNumber not typed in Flow
+      const gasUsedBN = ethers.BigNumber.isBigNumber(receipt.gasUsed)
+        ? receipt.gasUsed
+        : ethers.BigNumber.from(receipt.gasUsed);
+
+      // $FlowFixMe[incompatible-use] - ethers.BigNumber not typed in Flow
+      const gasPriceBN = ethers.BigNumber.isBigNumber(receipt.effectiveGasPrice)
+        ? receipt.effectiveGasPrice
+        : ethers.BigNumber.from(receipt.effectiveGasPrice);
+
+      // Calculate total cost in ETH
+      // $FlowFixMe[incompatible-use] - ethers.BigNumber not typed in Flow
+      const totalCostBN = (gasUsedBN: any).mul((gasPriceBN: any));
+      const totalCostFull = ethers.utils.formatEther(totalCostBN);
+      // Limit to 9 decimal places for display
+      const totalCost = parseFloat(totalCostFull).toFixed(9);
+
+      return {
+        // $FlowFixMe[incompatible-use] - ethers.BigNumber not typed in Flow
+        gasUsed: gasUsedBN.toString(),
+        // $FlowFixMe[incompatible-use] - ethers.BigNumber not typed in Flow
+        gasPricePerUnit: ethers.utils.formatUnits(gasPriceBN, 'gwei'),
+        totalCostDisplay: totalCost,
+      };
+    } catch (error) {
+      throw new Error(`Failed to process gas info: ${error.message}`);
+    }
   };
 
   // Base object with common fields
@@ -363,6 +405,7 @@ export const toFullTransaction = (params: {
       signedTransaction: signedTransaction || null,
       decodedInput: decodedInput || null,
     },
+    fetchGasInfo,
   };
 
   // precedence order: tandapay > deployment > self > erc20 > eth > unknown

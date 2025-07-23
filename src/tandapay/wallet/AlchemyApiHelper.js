@@ -4,11 +4,12 @@
  * Clean Alchemy API helper module
  *
  * This module provides a clean interface for Alchemy API calls using:
- * - ethers.js JsonRpcProvider for asset transfers (alchemy_getAssetTransfers)
- * - Direct HTTP JSON-RPC for transaction details and batch operations
+ * - ethers.js JsonRpcProvider for most operations (standard rate limits)
+ * - Direct HTTP fetch for batch transaction fetching (higher rate limits)
  *
- * Supports batch requests for efficient transaction detail fetching and method name decoding.
- * All API calls use the same network stack as wallet balance fetches for maximum reliability.
+ * The getBatchTransactionsByHash method uses HTTP fetch to take advantage of
+ * higher rate limits when fetching multiple transaction details.
+ * All other methods use ethers.js provider for consistency and reliability.
  */
 
 // $FlowFixMe[untyped-import] - ethers is not typed for Flow
@@ -20,7 +21,6 @@ import { getAlchemyApiKey } from './WalletManager';
 import type { SupportedNetwork } from '../definitions';
 import type {
   AssetTransferParams,
-  JsonRpcRequest,
   JsonRpcResponse,
   SignedTransaction,
   TransactionReceipt,
@@ -72,10 +72,10 @@ async function getValidatedAlchemyRpcUrl(network: SupportedNetwork): Promise<str
 
 /**
  * Get ethers.js provider configured with Alchemy RPC endpoint
- * Used for asset transfers since direct HTTP API was deprecated
+ * Used for most operations - provides standard rate limits and ethers.js integration
  */
 // $FlowFixMe[unclear-type] - ethers provider type is complex
-async function getAlchemyJsonRpcProvider(network: SupportedNetwork): Promise<any> {
+async function getAlchemyProvider(network: SupportedNetwork): Promise<any> {
   const alchemyUrl = await getValidatedAlchemyRpcUrl(network);
 
   // Create provider with Alchemy RPC endpoint
@@ -85,175 +85,8 @@ async function getAlchemyJsonRpcProvider(network: SupportedNetwork): Promise<any
 }
 
 /**
- * Make a single JSON-RPC request to Alchemy API
- */
-async function makeJsonRpcRequest(
-  network: SupportedNetwork,
-  method: string,
-  params: Array<mixed>
-): Promise<mixed> {
-  const rpcUrl = await getValidatedAlchemyRpcUrl(network);
-
-  const request: JsonRpcRequest = {
-    id: Date.now(),
-    jsonrpc: '2.0',
-    method,
-    params,
-  };
-
-  const response = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request),
-  });
-
-  if (!response.ok) {
-    throw TandaPayErrorHandler.createError(
-      'NETWORK_ERROR',
-      `HTTP ${response.status}: ${response.statusText}`,
-      {
-        userMessage: 'Network request failed. Please check your connection.',
-        details: { network, method, status: response.status }
-      }
-    );
-  }
-
-  const result: JsonRpcResponse = await response.json();
-
-  if (result.error != null) {
-    throw TandaPayErrorHandler.createError(
-      'API_ERROR',
-      `JSON-RPC error: ${result.error.message}`,
-      {
-        userMessage: 'API request failed. Please try again.',
-        details: { network, method, error: result.error }
-      }
-    );
-  }
-
-  return result.result;
-}
-
-/**
- * Internal helper for making a single batch request
- */
-async function makeSingleBatchRequest(
-  network: SupportedNetwork,
-  requests: Array<{| method: string, params: Array<mixed> |}>
-): Promise<Array<mixed>> {
-  const rpcUrl = await getValidatedAlchemyRpcUrl(network);
-
-  const jsonRpcRequests: Array<JsonRpcRequest> = requests.map((req, index) => ({
-    id: index,
-    jsonrpc: '2.0',
-    method: req.method,
-    params: req.params,
-  }));
-
-  const response = await fetch(rpcUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(jsonRpcRequests),
-  });
-
-  if (!response.ok) {
-    throw TandaPayErrorHandler.createError(
-      'NETWORK_ERROR',
-      `HTTP ${response.status}: ${response.statusText}`,
-      {
-        userMessage: 'Network request failed. Please check your connection.',
-        details: { network, batchSize: requests.length, status: response.status }
-      }
-    );
-  }
-
-  const results: Array<JsonRpcResponse> = await response.json();
-
-  // Check for errors and extract results in order
-  return results.map((result, index) => {
-    if (result.error != null) {
-      // eslint-disable-next-line no-console
-      console.warn(`Batch request ${index} failed:`, result.error);
-      return null; // Return null for failed requests
-    }
-    return result.result;
-  });
-}
-
-/**
- * Make a batch JSON-RPC request to Alchemy API
- * Supports up to 1000 requests per batch for efficiency
- */
-export async function makeBatchJsonRpcRequest(
-  network: SupportedNetwork,
-  requests: Array<{| method: string, params: Array<mixed> |}>
-): Promise<Array<mixed>> {
-  if (requests.length === 0) {
-    return [];
-  }
-
-  // Alchemy supports up to 1000 requests per batch
-  const BATCH_SIZE = 1000;
-  const results = [];
-
-  for (let i = 0; i < requests.length; i += BATCH_SIZE) {
-    const batch = requests.slice(i, i + BATCH_SIZE);
-    const batchResults = await makeSingleBatchRequest(network, batch);
-    results.push(...batchResults);
-  }
-
-  return results;
-}
-
-export async function getTransactionReceipt(
-  network: SupportedNetwork,
-  txHash: string
-): Promise<TransactionReceipt> {
-  try {
-    const result = await makeJsonRpcRequest(network, 'eth_getTransactionReceipt', [txHash]);
-    // $FlowFixMe[incompatible-return] - JSON-RPC result type
-    return result;
-  } catch (error) {
-    throw TandaPayErrorHandler.createError(
-      'API_ERROR',
-      `Failed to fetch transaction receipt: ${error?.message || 'Unknown error'}`,
-      {
-        userMessage: 'Failed to load transaction receipt. Please try again.',
-        details: { network, txHash, originalError: error }
-      }
-    );
-  }
-}
-
-/**
- * Get transaction details by hash using eth_getTransactionByHash
- */
-export async function getTransactionByHash(
-  network: SupportedNetwork,
-  txHash: string
-): Promise<SignedTransaction | null> {
-  try {
-    const result = await makeJsonRpcRequest(network, 'eth_getTransactionByHash', [txHash]);
-    // $FlowFixMe[incompatible-return] - JSON-RPC result type
-    return result;
-  } catch (error) {
-    throw TandaPayErrorHandler.createError(
-      'API_ERROR',
-      `Failed to fetch transaction details: ${error?.message || 'Unknown error'}`,
-      {
-        userMessage: 'Failed to load transaction details. Please try again.',
-        details: { network, txHash, originalError: error }
-      }
-    );
-  }
-}
-
-/**
- * Get multiple transaction details by hash using batch requests
+ * Get multiple transaction details by hash using HTTP batch requests
+ * Uses HTTP fetch for higher rate limits when fetching many transactions
  */
 export async function getBatchTransactionsByHash(
   network: SupportedNetwork,
@@ -264,14 +97,59 @@ export async function getBatchTransactionsByHash(
   }
 
   try {
-    const requests = txHashes.map(hash => ({
+    const rpcUrl = await getValidatedAlchemyRpcUrl(network);
+
+    // Create batch requests
+    const requests = txHashes.map((hash, index) => ({
+      id: index,
+      jsonrpc: '2.0',
       method: 'eth_getTransactionByHash',
       params: [hash],
     }));
 
-    const results = await makeBatchJsonRpcRequest(network, requests);
-    // $FlowFixMe[incompatible-return] - JSON-RPC batch result type
-    return results;
+    // Alchemy supports up to 1000 requests per batch
+    const BATCH_SIZE = 1000;
+    const allResults = [];
+
+    for (let i = 0; i < requests.length; i += BATCH_SIZE) {
+      const batch = requests.slice(i, i + BATCH_SIZE);
+
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(batch),
+      });
+
+      if (!response.ok) {
+        throw TandaPayErrorHandler.createError(
+          'NETWORK_ERROR',
+          `HTTP ${response.status}: ${response.statusText}`,
+          {
+            userMessage: 'Network request failed. Please check your connection.',
+            details: { network, batchSize: batch.length, status: response.status }
+          }
+        );
+      }
+
+      const batchResults: Array<JsonRpcResponse> = await response.json();
+
+      // Extract results and handle errors
+      const results = batchResults.map((result, index) => {
+        if (result.error != null) {
+          // eslint-disable-next-line no-console
+          console.warn(`Batch request ${index} failed:`, result.error);
+          return null; // Return null for failed requests
+        }
+        return result.result;
+      });
+
+      allResults.push(...results);
+    }
+
+    // $FlowFixMe[incompatible-return] - HTTP JSON-RPC batch result type
+    return allResults;
   } catch (error) {
     throw TandaPayErrorHandler.createError(
       'API_ERROR',
@@ -312,7 +190,7 @@ export async function getAssetTransfers(
   params: AssetTransferParams
 ): Promise<AssetTransferResponse> {
   try {
-    const provider = await getAlchemyJsonRpcProvider(network);
+    const provider = await getAlchemyProvider(network);
 
     // Convert parameters to Alchemy-compatible format
     const alchemyParams = convertParamsToAlchemyFormat(params);
@@ -371,4 +249,56 @@ export function createAssetTransferParams(options: {|
   }
 
   return params;
+}
+
+/**
+ * Get transaction receipt by hash using ethers provider
+ * @param {*} network currently selected network
+ * @param {*} txHash transaction hash to fetch receipt for
+ * @returns {Promise<TransactionReceipt>}
+ */
+export async function getTransactionReceipt(
+  network: SupportedNetwork,
+  txHash: string
+): Promise<TransactionReceipt> {
+  // console.log('[AlchemyApiHelper] Fetching transaction receipt for:', txHash.slice(0, 6), '...');
+  try {
+    const provider = await getAlchemyProvider(network);
+    const result = await provider.getTransactionReceipt(txHash);
+    // $FlowFixMe[incompatible-return] - ethers provider result type
+    return result;
+  } catch (error) {
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `Failed to fetch transaction receipt: ${error?.message || 'Unknown error'}`,
+      {
+        userMessage: 'Failed to load transaction receipt. Please try again.',
+        details: { network, txHash, originalError: error }
+      }
+    );
+  }
+}
+
+/**
+ * Get transaction details by hash using ethers provider
+ */
+export async function getTransactionByHash(
+  network: SupportedNetwork,
+  txHash: string
+): Promise<SignedTransaction | null> {
+  try {
+    const provider = await getAlchemyProvider(network);
+    const result = await provider.getTransaction(txHash);
+    // $FlowFixMe[incompatible-return] - ethers provider result type
+    return result;
+  } catch (error) {
+    throw TandaPayErrorHandler.createError(
+      'API_ERROR',
+      `Failed to fetch transaction details: ${error?.message || 'Unknown error'}`,
+      {
+        userMessage: 'Failed to load transaction details. Please try again.',
+        details: { network, txHash, originalError: error }
+      }
+    );
+  }
 }

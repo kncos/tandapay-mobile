@@ -2,7 +2,7 @@
 
 import React, { useContext, useState, useEffect } from 'react';
 import type { Node } from 'react';
-import { Modal, View, ScrollView, StyleSheet } from 'react-native';
+import { Modal, View, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -11,7 +11,7 @@ import { Card, ScrollableTextBox, CloseButton } from '../components';
 import { ThemeContext } from '../../styles';
 import TandaPayStyles, { TandaPayColors } from '../styles';
 import ModalStyles from '../styles/modals';
-import type { FullTransaction } from './FullTransaction';
+import type { FullTransaction, GasInfo } from './FullTransaction';
 
 type Props = {|
   visible: boolean,
@@ -105,6 +105,8 @@ export default function TransactionDetailsModal({
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
   const [containerHeight, setContainerHeight] = useState(0);
   const [lastContentHeight, setLastContentHeight] = useState(0);
+  const [gasInfo, setGasInfo] = useState<?GasInfo>(null);
+  const [isLoadingGasInfo, setIsLoadingGasInfo] = useState(false);
 
   // Reset scroll indicator state when transaction changes or modal opens
   useEffect(() => {
@@ -113,6 +115,27 @@ export default function TransactionDetailsModal({
       setShowScrollIndicator(false);
       setLastContentHeight(0);
       setContainerHeight(0);
+    }
+  }, [visible, transaction]);
+
+  // Fetch gas info when transaction changes
+  useEffect(() => {
+    if (visible && transaction) {
+      setIsLoadingGasInfo(true);
+      setGasInfo(null);
+
+      transaction.fetchGasInfo()
+        .then((gasData) => {
+          setGasInfo(gasData);
+        })
+        .catch((error) => {
+          // eslint-disable-next-line no-console
+          console.warn('Failed to fetch gas info:', error);
+          setGasInfo(null);
+        })
+        .finally(() => {
+          setIsLoadingGasInfo(false);
+        });
     }
   }, [visible, transaction]);
 
@@ -347,11 +370,71 @@ export default function TransactionDetailsModal({
     );
   };
 
+  const renderGasInfo = () => {
+    if (isLoadingGasInfo) {
+      return (
+        <View style={styles.horizontalFieldRow}>
+          <ZulipText style={[styles.horizontalFieldLabel, { color: themeData.color }]}>
+            Total Gas Cost
+          </ZulipText>
+          <ActivityIndicator size="small" color={themeData.color} />
+        </View>
+      );
+    }
+
+    if (!gasInfo) {
+      return (
+        <ZulipText style={[styles.fieldValue, { color: themeData.color }]}>
+          Gas information unavailable
+        </ZulipText>
+      );
+    }
+
+    // Convert hex gas values to decimal for display
+    const gasUsedDecimal = gasInfo.gasUsed;
+    const gasPriceGwei = gasInfo.gasPricePerUnit;
+
+    return (
+      <View>
+        <View style={styles.horizontalFieldRow}>
+          <ZulipText style={[styles.horizontalFieldLabel, { color: themeData.color }]}>
+            Gas Used
+          </ZulipText>
+          <ZulipText style={[styles.horizontalFieldValue, { color: themeData.color }]}>
+            {gasUsedDecimal}
+          </ZulipText>
+        </View>
+
+        <View style={styles.horizontalFieldRow}>
+          <ZulipText style={[styles.horizontalFieldLabel, { color: themeData.color }]}>
+            Gas Price
+          </ZulipText>
+          <ZulipText style={[styles.horizontalFieldValue, { color: themeData.color }]}>
+            {gasPriceGwei}
+            {' '}
+            gwei
+          </ZulipText>
+        </View>
+
+        <View style={styles.horizontalFieldRow}>
+          <ZulipText style={[styles.horizontalFieldLabel, { color: themeData.color }]}>
+            Total Gas Cost
+          </ZulipText>
+          <ZulipText style={[styles.horizontalFieldValue, { color: themeData.color }]}>
+            {gasInfo.totalCostDisplay}
+            {' '}
+            ETH
+          </ZulipText>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={ModalStyles.overlay}>
@@ -390,6 +473,12 @@ export default function TransactionDetailsModal({
                 Decoded Function Input
               </ZulipText>
               {renderDecodedInput()}
+
+              {/* Gas Information */}
+              <ZulipText style={[styles.sectionTitle, { color: themeData.color }]}>
+                Gas Information
+              </ZulipText>
+              {renderGasInfo()}
             </ScrollView>
 
             {/* Scroll indicator overlay */}

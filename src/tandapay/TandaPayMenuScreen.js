@@ -13,12 +13,6 @@ import Screen from '../common/Screen';
 import type { AppNavigationProp } from '../nav/AppNavigator'; // Or whatever navigator type is appropriate
 import NavRow from '../common/NavRow';
 import { IconSettings, IconTandaPayActions, IconTandaPayInfo, IconWallet } from '../common/Icons';
-import ZulipButton from '../common/ZulipButton';
-import { TransactionManager } from './wallet/TransactionManagerNew';
-import {
-  getFullTransactionChipInfo,
-  prettyPrintFullTransaction,
-} from './wallet/FullTransaction';
 
 type Props = $ReadOnly<{|
   navigation: AppNavigationProp<'tandapay-menu'>,
@@ -39,11 +33,6 @@ type Props = $ReadOnly<{|
 
 export default function TandaPayMenuScreen(props: Props): Node {
   const { navigation } = props;
-  const tm = new TransactionManager({
-    network: 'sepolia',
-    walletAddress: '0xA726263b90717e431EE068230bA5623469a5D5D9',
-    tandapayContractAddress: '0x02d93c46703e2447e1cC08b457982992763B9Cc0',
-  });
 
   return (
     <Screen title="TandaPay Menu">
@@ -78,37 +67,6 @@ export default function TandaPayMenuScreen(props: Props): Node {
           navigation.push('tandapay-settings');
         }}
         subtitle="Configure some stuff"
-      />
-      <ZulipButton
-        text="Test TransactionManager"
-        onPress={async () => {
-          try {
-//            let i = 0;
-//            while (!tm.isAtLastPage()) {
-//              await tm.loadMore();
-//              if (i > 25) {
-//                console.warn('Loaded more than 25 pages, stopping to avoid infinite loop.');
-//                break;
-//              }
-//              i++;
-//            }
-//            console.log('All transactions loaded successfully.');
-            await tm.loadMore();
-            console.log('Transactions fetched successfully.');
-          } catch (error) {
-            console.error('Error fetching transactions:', error);
-          }
-        }}
-      />
-      <ZulipButton
-        text="Log Transactions"
-        onPress={() => {
-          const res = tm.getOrderedTransactions();
-          for (const ft of res) {
-            console.log(getFullTransactionChipInfo(ft).join('\n'));
-            console.log('----------------------------------');
-          }
-        }}
       />
     </Screen>
   );

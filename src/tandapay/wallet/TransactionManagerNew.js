@@ -285,6 +285,7 @@ export class TransactionManager {
         tandapayContractAddress: this._tandapayContractAddress,
         transfers: transactionData,
         signedTransaction: signedTransaction || null,
+        network: this._network,
       });
       res.push(fullTransaction);
     }
