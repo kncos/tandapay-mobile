@@ -14,7 +14,7 @@ export type NetworkIdentifier = SupportedNetwork | 'custom';
  * Token configuration in chain definitions
  */
 export type TokenConfig = {|
-  +address: string,
+  +address: ?string, // null for native tokens
   +decimals: number,
   +symbol: string,
   +name: string,

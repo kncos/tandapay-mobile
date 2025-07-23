@@ -147,9 +147,7 @@ function TokenPicker({ selectedToken, availableTokens, onSelect, themeData }: To
         mode="dropdown"
         dropdownIconColor={BRAND_COLOR}
         onValueChange={symbol => {
-          console.log('TokenPicker: onValueChange called with symbol:', symbol);
           const token = availableTokens.find(t => t.symbol === symbol);
-          console.log('TokenPicker: Found token:', token);
           if (token) {
             onSelect(token);
           }
@@ -215,7 +213,6 @@ export default function WalletBalanceCard({ walletAddress, onRefresh }: Props): 
   const { balance, loading, error, refreshBalance } = useUpdateBalance(selectedToken, walletAddress);
 
   const handleTokenSelect = (token: TokenWithBalance) => {
-    console.log('WalletBalanceCard: handleTokenSelect called with:', token);
     dispatch(selectToken(token.symbol));
   };
 

@@ -23,7 +23,8 @@ import {
   updateNetworkPerformance,
 } from '../../utils/tokenMigration';
 
-const initialState: TokenState = initializePerNetworkTokenState();
+// Use a function to lazily initialize the state to avoid circular dependency issues
+const getInitialState = (): TokenState => initializePerNetworkTokenState();
 
 // Helper function to ensure state always has perNetworkData
 const ensureValidState = (state: TokenState): TokenState => {
@@ -35,30 +36,21 @@ const ensureValidState = (state: TokenState): TokenState => {
 };
 
 // eslint-disable-next-line default-param-last
-export default (state: TokenState = initialState, action: Action): TokenState => {
+export default (state: TokenState = getInitialState(), action: Action): TokenState => {
   // Ensure state is valid before processing any action
   const currentState = ensureValidState(state);
 
   switch (action.type) {
     case RESET_ACCOUNT_DATA:
       // Reset to initial state but preserve network structure
-      return initialState;
-
-    case TANDAPAY_TOKEN_SELECT: {
+      return getInitialState();    case TANDAPAY_TOKEN_SELECT: {
       // Type-safe access to action properties
       if (action.type !== TANDAPAY_TOKEN_SELECT) {
         return currentState;
       }
 
-      console.log('tokensReducer: TANDAPAY_TOKEN_SELECT action received:', {
-        tokenSymbol: action.tokenSymbol,
-        network: action.network,
-        currentState: currentState.perNetworkData
-      });
-
       // Validate token symbol
       if (typeof action.tokenSymbol !== 'string' || action.tokenSymbol.trim() === '') {
-        console.log('tokensReducer: Invalid token symbol, returning unchanged state');
         return currentState;
       }
 
@@ -68,11 +60,10 @@ export default (state: TokenState = initialState, action: Action): TokenState =>
 
       // If network data doesn't exist, return unchanged state
       if (!currentNetworkData) {
-        console.log('tokensReducer: No network data for network:', network, 'returning unchanged state');
         return currentState;
       }
 
-      const newState = {
+      return {
         ...currentState,
         perNetworkData: {
           ...currentState.perNetworkData,
@@ -80,14 +71,6 @@ export default (state: TokenState = initialState, action: Action): TokenState =>
           [network]: setSelectedTokenForNetwork(currentNetworkData, action.tokenSymbol),
         },
       };
-
-      console.log('tokensReducer: Updated state:', {
-        oldSelectedToken: currentNetworkData.selectedToken,
-        newSelectedToken: action.tokenSymbol,
-        newNetworkData: newState.perNetworkData[network]
-      });
-
-      return newState;
     }
 
     case TANDAPAY_TOKEN_ADD_CUSTOM: {

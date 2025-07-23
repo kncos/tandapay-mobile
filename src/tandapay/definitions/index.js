@@ -1,10 +1,13 @@
 /* @flow strict-local */
 
+// $FlowFixMe[untyped-import] - ethers is a third-party library
+import { ethers } from 'ethers';
+
 import { mainnet } from './mainnet';
 import { polygon } from './polygon';
 import { arbitrum } from './arbitrum';
 import { sepolia } from './sepolia';
-import type { SupportedNetwork } from './types';
+import type { SupportedNetwork, TokenConfig } from './types';
 
 export { mainnet, polygon, arbitrum, sepolia };
 
@@ -40,4 +43,201 @@ export function isTestnet(network: SupportedNetwork): boolean {
 export function getBlockExplorerUrl(network: SupportedNetwork): string {
   const chainConfig = getChainByNetwork(network);
   return chainConfig.blockExplorers.default.url;
+}
+
+// =============================================================================
+// TOKEN UTILITIES
+// =============================================================================
+
+export type TokenFormatResult = {|
+  amount: string,
+  symbol: string,
+  formattedDisplay: string,
+|};
+
+/**
+ * Formats a token amount from smallest units to a human-readable string
+ *
+ * @param token - Token configuration object (can be null for edge cases)
+ * @param amountInSmallestUnits - Amount in smallest possible units (e.g., wei for ETH)
+ * @returns Formatted string like "1.25 ETH" or fallback like "1250000000000000000 units"
+ */
+export function formatTokenAmount(
+  token: ?TokenConfig,
+  amountInSmallestUnits: string | number
+): TokenFormatResult {
+  // Handle null token case
+  if (!token) {
+    const amountStr = typeof amountInSmallestUnits === 'number'
+      ? amountInSmallestUnits.toString()
+      : amountInSmallestUnits;
+
+    return {
+      amount: amountStr,
+      symbol: 'units',
+      formattedDisplay: `${amountStr} units`,
+    };
+  }
+
+  try {
+    // Convert amount to string if it's a number
+    const amountStr = typeof amountInSmallestUnits === 'number'
+      ? amountInSmallestUnits.toString()
+      : amountInSmallestUnits;
+
+    // Format using ethers with the token's decimals
+    const formattedAmount = ethers.utils.formatUnits(amountStr, token.decimals);
+
+    // Remove unnecessary trailing zeros and decimal point
+    const cleanAmount = parseFloat(formattedAmount).toString();
+
+    return {
+      amount: cleanAmount,
+      symbol: token.symbol,
+      formattedDisplay: `${cleanAmount} ${token.symbol}`,
+    };
+  } catch (error) {
+    // Fallback if formatting fails
+    const amountStr = typeof amountInSmallestUnits === 'number'
+      ? amountInSmallestUnits.toString()
+      : amountInSmallestUnits;
+
+    return {
+      amount: amountStr,
+      symbol: token.symbol || 'units',
+      formattedDisplay: `${amountStr} ${token.symbol || 'units'}`,
+    };
+  }
+}
+
+/**
+ * Get all available tokens for a specific network
+ *
+ * @param network - The network to get tokens for
+ * @returns Array of token configurations including native token
+ */
+export function getTokensForNetwork(network: SupportedNetwork): Array<TokenConfig> {
+  const chainConfig = getChainByNetwork(network);
+  const tokens: Array<TokenConfig> = [];
+
+  // Add native token first
+  tokens.push({
+    symbol: chainConfig.nativeCurrency.symbol,
+    name: chainConfig.nativeCurrency.name,
+    decimals: chainConfig.nativeCurrency.decimals,
+    address: null, // Native tokens don't have contract addresses
+  });
+
+  // Add all configured tokens
+  const tokensObj = chainConfig.tokens;
+  const tokenKeys = Object.keys(tokensObj);
+  for (const key of tokenKeys) {
+    const tokenConfig = tokensObj[key];
+    tokens.push(tokenConfig);
+  }
+
+  return tokens;
+}
+
+/**
+ * Find a token by its contract address on a specific network
+ *
+ * @param network - The network to search in
+ * @param address - The contract address to search for (null for native token)
+ * @returns Token configuration or null if not found
+ */
+export function findTokenByAddress(
+  network: SupportedNetwork,
+  address: ?string
+): ?TokenConfig {
+  const chainConfig = getChainByNetwork(network);
+
+  // Handle native token case (address is null)
+  if (address === null || address === undefined) {
+    return {
+      symbol: chainConfig.nativeCurrency.symbol,
+      name: chainConfig.nativeCurrency.name,
+      decimals: chainConfig.nativeCurrency.decimals,
+      address: null,
+    };
+  }
+
+  // Search through configured tokens
+  const tokensObj = chainConfig.tokens;
+  const tokenKeys = Object.keys(tokensObj);
+  for (const key of tokenKeys) {
+    const typedToken = tokensObj[key];
+    if (typedToken.address != null
+        && typedToken.address.toLowerCase() === address.toLowerCase()) {
+      return typedToken;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Find a token by its symbol on a specific network
+ *
+ * @param network - The network to search in
+ * @param symbol - The token symbol to search for
+ * @returns Token configuration or null if not found
+ */
+export function findTokenBySymbol(
+  network: SupportedNetwork,
+  symbol: string
+): ?TokenConfig {
+  const chainConfig = getChainByNetwork(network);
+
+  // Check native token first
+  if (chainConfig.nativeCurrency.symbol === symbol) {
+    return {
+      symbol: chainConfig.nativeCurrency.symbol,
+      name: chainConfig.nativeCurrency.name,
+      decimals: chainConfig.nativeCurrency.decimals,
+      address: null,
+    };
+  }
+
+  // Search through configured tokens
+  const tokensObj = chainConfig.tokens;
+  const tokenKeys = Object.keys(tokensObj);
+  for (const key of tokenKeys) {
+    const typedToken = tokensObj[key];
+    if (typedToken.symbol === symbol) {
+      return typedToken;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a network supports a specific token address
+ *
+ * @param network - The network to check
+ * @param address - The token address to check (null for native token)
+ * @returns true if the token is supported on this network
+ */
+export function isTokenSupportedOnNetwork(
+  network: SupportedNetwork,
+  address: ?string
+): boolean {
+  return findTokenByAddress(network, address) !== null;
+}
+
+/**
+ * Get the native token configuration for a network
+ *
+ * @param network - The network to get the native token for
+ * @returns Native token configuration
+ */
+export function getNativeTokenForNetwork(network: SupportedNetwork): TokenConfig {
+  const chainConfig = getChainByNetwork(network);
+  return {
+    symbol: chainConfig.nativeCurrency.symbol,
+    name: chainConfig.nativeCurrency.name,
+    decimals: chainConfig.nativeCurrency.decimals,
+    address: null,
+  };
 }

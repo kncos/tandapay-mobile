@@ -41,15 +41,7 @@ export function useUpdateBalance(
   );
 
   const refreshBalance = useCallback(async () => {
-    console.log('useUpdateBalance: refreshBalance called with:', {
-      token: token?.symbol,
-      walletAddress,
-      network,
-      isBalanceStale
-    });
-
     if (!token || walletAddress == null || walletAddress === '') {
-      console.log('useUpdateBalance: Missing token or wallet address, returning early');
       return;
     }
 

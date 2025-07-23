@@ -12,16 +12,13 @@ import { useSelector } from '../../react-redux';
 import {
   getCurrentTandaPayContractAddress,
   getTandaPaySelectedNetwork,
-  getTandaPayCustomTokens,
 } from '../redux/selectors';
-import { getAvailableTokens } from '../tokens/tokenSelectors';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
-import { findTokenByAddress, getTokenDisplayText } from '../utils/tokenUtils';
-import type { TokenDisplayInfo } from '../utils/tokenUtils';
+import { formatTokenAmount, findTokenByAddress } from '../definitions';
 import ScrollableTextBox from '../components/ScrollableTextBox';
 
 import type { CommunityInfo } from '../contract/types/index';
-import { formatBigNumber, formatTokenAmount, getCommunityStateDisplayName, bigNumberToNumber } from './utils';
+import { formatBigNumber, getCommunityStateDisplayName, bigNumberToNumber } from './utils';
 
 type Props = $ReadOnly<{|
   communityInfo: CommunityInfo,
@@ -85,21 +82,25 @@ export default function CommunityOverviewCard(props: Props): Node {
   const { communityInfo, onShowMembers, onShowSubgroups } = props;
   const contractAddress = useSelector(state => getCurrentTandaPayContractAddress(state));
   const selectedNetwork = useSelector(state => getTandaPaySelectedNetwork(state));
-  const availableTokens = useSelector(state => getAvailableTokens(state));
-  const customTokens = useSelector(state => getTandaPayCustomTokens(state));
 
   const memberCount = bigNumberToNumber(communityInfo.currentMemberCount);
   const subgroupCount = bigNumberToNumber(communityInfo.currentSubgroupCount);
 
-  // Find the payment token information
-  const paymentTokenInfo: ?TokenDisplayInfo = findTokenByAddress(
-    communityInfo.paymentTokenAddress,
-    selectedNetwork,
-    availableTokens,
-    customTokens
+  // Find the payment token information using the new utility
+  // Handle 'custom' network by falling back to 'sepolia' for token lookup
+  const lookupNetwork = selectedNetwork === 'custom' ? 'sepolia' : selectedNetwork;
+  const paymentTokenInfo = findTokenByAddress(lookupNetwork, communityInfo.paymentTokenAddress);
+
+  // Format the token amounts using the new utility
+  const formattedBasePremium = formatTokenAmount(
+    paymentTokenInfo,
+    formatBigNumber(communityInfo.basePremium) || '0'
   );
 
-  const tokenSymbol = getTokenDisplayText(paymentTokenInfo);
+  const formattedTotalCoverage = formatTokenAmount(
+    paymentTokenInfo,
+    formatBigNumber(communityInfo.totalCoverageAmount) || '0'
+  );
 
   return (
     <Card>
@@ -134,27 +135,23 @@ export default function CommunityOverviewCard(props: Props): Node {
       <View style={styles.infoRow}>
         <ZulipText style={styles.infoLabel}>Base Premium:</ZulipText>
         <ZulipText style={styles.infoValue}>
-          {formatTokenAmount(formatBigNumber(communityInfo.basePremium) || '0')}
-          {' '}
-          {tokenSymbol}
+          {formattedBasePremium.formattedDisplay}
         </ZulipText>
       </View>
 
       <View style={styles.infoRow}>
         <ZulipText style={styles.infoLabel}>Total Coverage:</ZulipText>
         <ZulipText style={styles.infoValue}>
-          {formatTokenAmount(formatBigNumber(communityInfo.totalCoverageAmount) || '0')}
-          {' '}
-          {tokenSymbol}
+          {formattedTotalCoverage.formattedDisplay}
         </ZulipText>
       </View>
 
-      {/* Show payment token address if it's unknown */}
-      {paymentTokenInfo && !paymentTokenInfo.isKnown && (
+      {/* Show payment token address if it's an unknown/custom token */}
+      {paymentTokenInfo && paymentTokenInfo.address != null && (
         <View style={styles.tokenAddressContainer}>
           <ZulipText style={styles.infoLabel}>Payment Token Address:</ZulipText>
           <ScrollableTextBox
-            text={paymentTokenInfo.address}
+            text={paymentTokenInfo.address || ''}
             label="Payment Token"
             size="small"
           />
