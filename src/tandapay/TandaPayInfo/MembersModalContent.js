@@ -21,6 +21,7 @@ import {
 
 type Props = $ReadOnly<{|
   membersData: ?Array<MemberInfo>,
+  paymentTokenAddress?: string | null,
   loading: boolean,
   error: ?string,
   secretaryAddress?: ?string,
@@ -68,7 +69,21 @@ const styles = StyleSheet.create({
 });
 
 // Render member details for a ribbon
-function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, secretaryAddress: ?string, isLast: boolean = false): Node {
+function renderMemberForRibbon(params: $ReadOnly<{|
+  member: MemberInfo,
+  themeData: ThemeData,
+  secretaryAddress?: string | null,
+  isLast?: boolean,
+  paymentTokenAddress: string | null,
+|}>): Node {
+  const {
+    member,
+    themeData,
+    secretaryAddress = '',
+    isLast = false,
+    paymentTokenAddress = null,
+  } = params;
+
   return (
     <View key={formatBigNumber(member.id)}>
       <View style={[styles.memberHeader, { backgroundColor: themeData.cardColor }]}>
@@ -81,6 +96,7 @@ function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, secreta
       <View style={styles.memberDetails}>
         <MemberInfoDisplay
           member={member}
+          paymentTokenAddress={paymentTokenAddress}
           showAddress
           showAssignmentStatus
           showRole
@@ -95,7 +111,14 @@ function renderMemberForRibbon(member: MemberInfo, themeData: ThemeData, secreta
 }
 
 export default function MembersModalContent(props: Props): Node {
-  const { membersData, loading, error, secretaryAddress, onRefresh } = props;
+  const {
+    membersData,
+    loading,
+    error,
+    secretaryAddress,
+    onRefresh,
+    paymentTokenAddress = null,
+  } = props;
   const themeData = useContext(ThemeContext);
 
   // Render members grouped by subgroup using TandaRibbon
@@ -130,7 +153,13 @@ export default function MembersModalContent(props: Props): Node {
               contentBackgroundColor={themeData.cardColor}
             >
               {members.map((member, index) =>
-                renderMemberForRibbon(member, themeData, secretaryAddress, index === members.length - 1)
+                renderMemberForRibbon({
+                  member,
+                  themeData,
+                  secretaryAddress,
+                  isLast: index === members.length - 1,
+                  paymentTokenAddress,
+                })
               )}
             </TandaRibbon>
           );

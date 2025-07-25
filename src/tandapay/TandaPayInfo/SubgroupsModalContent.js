@@ -6,6 +6,7 @@ import { View, ScrollView, RefreshControl, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { TandaRibbon } from '../components';
+import ScrollableTextBox from '../components/ScrollableTextBox';
 import { BRAND_COLOR, HALF_COLOR } from '../../styles/constants';
 import TandaPayColors from '../styles/colors';
 
@@ -96,12 +97,20 @@ export default function SubgroupsModalContent(props: Props): Node {
               </View>
 
               {subgroup.members && subgroup.members.length > 0 && (
-                <View style={styles.infoRow}>
-                  <ZulipText style={styles.infoLabel}>Members:</ZulipText>
-                  <ZulipText style={styles.infoValueSmall}>
-                    {subgroup.members.map(addr => `${addr.slice(0, 6)}...${addr.slice(-4)}`).join(', ')}
-                  </ZulipText>
-                </View>
+                <>
+                  <View style={styles.infoRow}>
+                    <ZulipText style={styles.infoLabel}>Members:</ZulipText>
+                  </View>
+                  {subgroup.members.map((addr, index) => (
+                    <View key={addr} style={{ marginBottom: 8 }}>
+                      <ScrollableTextBox
+                        text={addr}
+                        label={`Subgroup #${formatBigNumber(subgroup.id)} Member ${index + 1}`}
+                        size="small"
+                      />
+                    </View>
+                  ))}
+                </>
               )}
             </View>
           </TandaRibbon>

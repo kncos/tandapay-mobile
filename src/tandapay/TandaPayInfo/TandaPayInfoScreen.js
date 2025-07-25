@@ -287,7 +287,7 @@ function TandaPayInfoScreen(props: Props): Node {
     }
 
     const now = Math.floor(Date.now() / 1000);
-    
+
     // Safely access currentPeriodInfo properties from mixed type
     const currentPeriodInfo = communityInfo.currentPeriodInfo;
     if (currentPeriodInfo == null || typeof currentPeriodInfo !== 'object') {
@@ -360,7 +360,7 @@ function TandaPayInfoScreen(props: Props): Node {
     try {
       // Use the new MemberDataManager to fetch data
       const result = await MemberDataManager.get();
-      
+
       if (result != null) {
         setMembersData(result);
         setModalLoading(false);
@@ -386,7 +386,7 @@ function TandaPayInfoScreen(props: Props): Node {
     try {
       // Use the new SubgroupDataManager to fetch data
       const result = await SubgroupDataManager.get();
-      
+
       if (result != null) {
         setSubgroupsData(result);
         setModalLoading(false);
@@ -552,6 +552,7 @@ function TandaPayInfoScreen(props: Props): Node {
             error={modalError}
             secretaryAddress={communityInfo?.secretaryAddress}
             onRefresh={handleRefreshMembers}
+            paymentTokenAddress={communityInfo?.paymentTokenAddress}
           />
         </ModalContainer>
       </Modal>

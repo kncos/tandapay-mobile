@@ -58,6 +58,7 @@ export default function UserStatusCard(props: Props): Node {
       {isValidMember && userMemberInfo ? (
         <MemberInfoDisplay
           member={userMemberInfo}
+          paymentTokenAddress={communityInfo.paymentTokenAddress}
           showMemberId
           showSubgroupId
           showRole
