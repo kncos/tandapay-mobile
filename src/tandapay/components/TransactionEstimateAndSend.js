@@ -13,6 +13,7 @@ import { useSelector, useGlobalSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { getGlobalSettings } from '../../directSelectors';
 import { getNetworkDisplayInfo } from '../providers/ProviderManager';
+import { getProvider } from '../web3';
 import { openLinkWithUserPreference } from '../../utils/openLink';
 import { showToast } from '../../utils/info';
 import Card from './Card';
@@ -66,6 +67,9 @@ type Props = $ReadOnly<{|
   isFormValid: boolean,
   disabled?: boolean,
 
+  // Transaction options
+  waitForReceipt?: boolean, // Whether to wait for transaction confirmation, defaults to true
+
   // Optional custom gas estimate renderer
   renderGasEstimate?: (gasEstimate: GasEstimate) => Node,
 
@@ -118,6 +122,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     transactionDescription = 'transaction',
     isFormValid,
     disabled = false,
+    waitForReceipt = true,
     renderGasEstimate,
     confirmationTitle = 'Confirm Transaction',
     getConfirmationMessage,
@@ -132,6 +137,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   const [gasEstimate, setGasEstimate] = useState<?GasEstimate>(null);
   const [estimating, setEstimating] = useState(false);
   const [sending, setSending] = useState(false);
+  const [waitingForReceipt, setWaitingForReceipt] = useState(false);
   const [showingConfirmation, setShowingConfirmation] = useState(false);
   // Store the transaction function created during gas estimation
   const [transactionFunction, setTransactionFunction] = useState<?TransactionFunction>(null);
@@ -240,8 +246,34 @@ export default function TransactionEstimateAndSend(props: Props): Node {
               const result = await transactionFunction();
 
               if (result.success && result.txHash != null && result.txHash !== '') {
-                // ...existing success handling...
-                const successMessage = `Your ${transactionDescription} has been submitted to the network.\n\nTransaction Hash: ${result.txHash}\n\nIt may take a few minutes to confirm.`;
+                let finalMessage = `Your ${transactionDescription} has been submitted to the network.\n\nTransaction Hash: ${result.txHash}`;
+
+                // Wait for transaction receipt if enabled
+                if (waitForReceipt) {
+                  setWaitingForReceipt(true);
+                  try {
+                    const provider = await getProvider();
+                    finalMessage += '\n\nWaiting for confirmation...';
+
+                    // Wait for the transaction to be mined
+                    const receipt = await provider.waitForTransaction(result.txHash, 1, 300000); // 5 minute timeout
+
+                    if (receipt && receipt.status === 1) {
+                      finalMessage = `Your ${transactionDescription} has been confirmed!\n\nTransaction Hash: ${result.txHash || ''}\n\nBlock Number: ${receipt.blockNumber}`;
+                    } else if (receipt && receipt.status === 0) {
+                      // Transaction was mined but failed
+                      throw new Error('Transaction was mined but reverted');
+                    }
+                  } catch (receiptError) {
+                    // If receipt waiting fails, still show success but with warning
+                    finalMessage += '\n\nWarning: Could not confirm transaction receipt. Please check the transaction status manually.';
+                  } finally {
+                    setWaitingForReceipt(false);
+                  }
+                } else {
+                  finalMessage += '\n\nIt may take a few minutes to confirm.';
+                }
+
                 const explorerUrl = getExplorerUrl(result.txHash);
 
                 // Create buttons array based on available features
@@ -297,7 +329,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
 
                 Alert.alert(
                   'Transaction Sent!',
-                  successMessage,
+                  finalMessage,
                   buttons,
                 );
               } else {
@@ -331,6 +363,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     invalidateAllTokens,
     showingConfirmation,
     sending,
+    waitForReceipt,
   ]);
 
   const renderDefaultGasEstimate = (estimate: GasEstimate): Node => (
@@ -379,7 +412,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     <View style={customStyles.container}>
       {/* Estimate Gas Button */}
       <ZulipButton
-        disabled={!isFormValid || estimating || disabled}
+        disabled={!isFormValid || estimating || sending || waitingForReceipt || disabled}
         progress={estimating}
         text={estimateButtonText}
         onPress={handleEstimateGas}
@@ -394,7 +427,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
       {gasEstimate && (
         <ZulipButton
           disabled={!isFormValid || sending || showingConfirmation || disabled}
-          text={sending ? 'Processing...' : sendButtonText}
+          text={sending ? (waitingForReceipt ? 'Waiting for confirmation...' : 'Processing...') : sendButtonText}
           onPress={handleSendTransaction}
           style={{
             ...customStyles.sendButton,
@@ -408,7 +441,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
         <View style={customStyles.loadingContainer}>
           <ActivityIndicator size="large" />
           <ZulipText style={customStyles.loadingText}>
-            Processing
+            {waitingForReceipt ? 'Waiting for confirmation' : 'Processing'}
             {' '}
             {transactionDescription}
             ...
