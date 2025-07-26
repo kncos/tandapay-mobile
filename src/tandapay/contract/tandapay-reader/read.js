@@ -450,6 +450,7 @@ export const batchGetClaimInfoInPeriod = async (
   }
 };
 
+
 /**
  * Given an ethers provider/signer and smart contract address, it returns an object that has all TandaPay
  * read actions, automatically injecting the contract instance into the actions so that

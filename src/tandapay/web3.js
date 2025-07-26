@@ -11,32 +11,13 @@ import type { NetworkIdentifier } from './definitions/types';
 import { getChainByNetwork } from './definitions';
 import TandaPayErrorHandler from './errors/ErrorHandler';
 import { createProvider } from './providers/ProviderManager';
+// $FlowFixMe[untyped-import] - Erc20Abi module is untyped
+import { Erc20Abi } from './contract/utils/Erc20Abi';
 
 // Redux store import for getting current network
 import store from '../boot/store';
 import { getTandaPaySelectedNetwork } from './redux/selectors';
 import { tryGetActiveAccountState } from '../account/accountsSelectors';
-
-/**
- * Standard ERC20 ABI for balance, transfer, and other common functions
- */
-const ERC20_ABI = [
-  // Read-only functions
-  'function balanceOf(address owner) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-  'function symbol() view returns (string)',
-  'function name() view returns (string)',
-  'function totalSupply() view returns (uint256)',
-
-  // State-changing functions
-  'function transfer(address to, uint256 amount) returns (bool)',
-  'function approve(address spender, uint256 amount) returns (bool)',
-  'function transferFrom(address from, address to, uint256 amount) returns (bool)',
-
-  // Events
-  'event Transfer(address indexed from, address indexed to, uint256 value)',
-  'event Approval(address indexed owner, address indexed spender, uint256 value)',
-];
 
 /**
  * Get provider instance using Redux state for network selection
@@ -145,7 +126,7 @@ export async function fetchBalance(
       } else {
         // ERC20 balance
         try {
-          const contract = new ethers.Contract(token.address, ERC20_ABI, provider);
+          const contract = new ethers.Contract(token.address, Erc20Abi, provider);
           balancePromise = contract
             .balanceOf(address)
             .then(balance => ethers.utils.formatUnits(balance, token.decimals));
@@ -294,7 +275,7 @@ export async function transferToken(
         }
 
         try {
-          const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, wallet);
+          const contract = new ethers.Contract(checksummedTokenAddress, Erc20Abi, wallet);
           const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
           transactionPromise = contract.transfer(checksummedToAddress, amountInWei);
         } catch (contractError) {
@@ -376,7 +357,7 @@ export async function getTokenInfo(
 
       let tokenInfoPromise: Promise<mixed>;
       try {
-        const contract = new ethers.Contract(checksummedAddress, ERC20_ABI, provider);
+        const contract = new ethers.Contract(checksummedAddress, Erc20Abi, provider);
         tokenInfoPromise = Promise.all([contract.symbol(), contract.name(), contract.decimals()]);
       } catch (contractError) {
         throw TandaPayErrorHandler.createContractError('Failed to create token contract instance', {
@@ -513,7 +494,7 @@ export async function estimateTransferGas(
         }
 
         try {
-          const contract = new ethers.Contract(checksummedTokenAddress, ERC20_ABI, provider);
+          const contract = new ethers.Contract(checksummedTokenAddress, Erc20Abi, provider);
           const amountInWei = ethers.utils.parseUnits(amount, token.decimals);
 
           gasEstimationPromise = Promise.all([
@@ -721,7 +702,7 @@ export async function estimateERC20TransferGas(
   decimals: number,
 ): Promise<TandaPayResult<GasEstimationResult>> {
   try {
-    const erc20Interface = new ethers.utils.Interface(ERC20_ABI);
+    const erc20Interface = new ethers.utils.Interface(Erc20Abi);
     const data = erc20Interface.encodeFunctionData('transfer', [
       ethers.utils.getAddress(toAddress.trim()),
       ethers.utils.parseUnits(amount, decimals),
