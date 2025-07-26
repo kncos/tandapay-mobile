@@ -12,7 +12,7 @@ import { ethers } from 'ethers';
 
 // $FlowFixMe[untyped-import] - TandaPayInfo module doesn't have Flow types
 import { TandaPayInfo } from '../contract/utils/TandaPay';
-import { getTandaPayContractAddressForNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
+import { getTandaPayContractAddressForNetwork } from '../redux/selectors';
 import { getWalletInstance } from '../wallet/WalletManager';
 import { createProvider } from '../providers/ProviderManager';
 import TandaPayErrorHandler from '../errors/ErrorHandler';
@@ -58,7 +58,7 @@ export async function createTandaPayContractWithSigner(
       }
 
       // Create provider
-      const providerResult = await createProvider(network);
+      const providerResult = await createProvider(network, state);
       if (!providerResult.success) {
         throw providerResult.error;
       }
@@ -120,7 +120,7 @@ export async function createTandaPayContractWithProvider(
       }
 
       // Create provider
-      const providerResult = await createProvider(network);
+      const providerResult = await createProvider(network, state);
       if (!providerResult.success) {
         throw providerResult.error;
       }
@@ -206,20 +206,7 @@ export async function createTandaPayContractWithSignerFromState(
       }
 
       // Create provider (handle custom networks)
-      let providerResult;
-      if (network === 'custom') {
-        const customConfig = getTandaPayCustomRpcConfig(state);
-        if (!customConfig) {
-          throw TandaPayErrorHandler.createError(
-            'CONTRACT_ERROR',
-            'Custom RPC configuration not found',
-            { userMessage: 'Please configure custom RPC settings in network settings.' }
-          );
-        }
-        providerResult = await createProvider(network, customConfig);
-      } else {
-        providerResult = await createProvider(network);
-      }
+      const providerResult = await createProvider(network, state);
 
       if (!providerResult.success) {
         throw providerResult.error;
@@ -282,20 +269,7 @@ export async function createTandaPayContractWithProviderFromState(
       }
 
       // Create provider (handle custom networks)
-      let providerResult;
-      if (network === 'custom') {
-        const customConfig = getTandaPayCustomRpcConfig(state);
-        if (!customConfig) {
-          throw TandaPayErrorHandler.createError(
-            'CONTRACT_ERROR',
-            'Custom RPC configuration not found',
-            { userMessage: 'Please configure custom RPC settings in network settings.' }
-          );
-        }
-        providerResult = await createProvider(network, customConfig);
-      } else {
-        providerResult = await createProvider(network);
-      }
+      const providerResult = await createProvider(network, state);
 
       if (!providerResult.success) {
         throw providerResult.error;

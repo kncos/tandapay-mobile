@@ -47,11 +47,12 @@ export async function getProvider(networkOverride?: NetworkIdentifier): Promise<
   // Try to get network from Redux state first
   let network: NetworkIdentifier = 'sepolia'; // default fallback
   let customConfig = null;
+  let perAccountState = null;
 
   try {
     if (store) {
       const globalState = store.getState();
-      const perAccountState = tryGetActiveAccountState(globalState);
+      perAccountState = tryGetActiveAccountState(globalState);
       if (perAccountState) {
         const selectedNetwork = getTandaPaySelectedNetwork(perAccountState);
         const customRpcConfig = perAccountState.tandaPay.settings.customRpcConfig;
@@ -78,16 +79,16 @@ export async function getProvider(networkOverride?: NetworkIdentifier): Promise<
 
   // Handle custom network requirement
   if (network === 'custom') {
-    if (!customConfig) {
-      throw new Error('Custom network requires customRpcConfig in Redux state');
+    if (!perAccountState) {
+      throw new Error('Custom network requires Redux state access');
     }
-    const providerResult = await createProvider(network, customConfig);
+    const providerResult = await createProvider(network, perAccountState);
     if (!providerResult.success) {
       throw providerResult.error;
     }
     return providerResult.data;
   } else {
-    const providerResult = await createProvider(network);
+    const providerResult = await createProvider(network, perAccountState);
     if (!providerResult.success) {
       throw providerResult.error;
     }

@@ -10,7 +10,7 @@ import { useSelector, useDispatch } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayContractAddresses } from '../redux/selectors';
 import { getAvailableTokens } from '../tokens/tokenSelectors';
 import { updateTandaPaySettings } from '../redux/actions';
-import { createProvider } from '../providers/ProviderManager';
+import { createProviderWithState } from '../providers/ProviderManager';
 import { getWalletInstance } from '../wallet/WalletManager';
 import { estimateContractDeploymentGas } from '../web3';
 // $FlowFixMe[untyped-import] - TandaPay contract import
@@ -109,6 +109,8 @@ export default function ContractDeploymentModal(props: Props): Node {
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
   const contractAddresses = useSelector(getTandaPayContractAddresses);
   const availableTokens = useSelector(getAvailableTokens);
+  // Get full Redux state for provider creation with custom networks
+  const perAccountState = useSelector((state) => state);
 
   const [selectedToken, setSelectedToken] = useState<?Token>(null);
   const [secretaryAddress, setSecretaryAddress] = useState('');
@@ -179,20 +181,14 @@ export default function ContractDeploymentModal(props: Props): Node {
       return;
     }
 
-    // Check for custom network and show appropriate error
-    if (selectedNetwork === 'custom') {
-      setErrorMessage('Contract deployment is not supported on custom networks. Please switch to a supported network.');
-      return;
-    }
-
     setIsEstimating(true);
     setErrorMessage(null);
 
     // Wrap the entire estimation process with error handling
     const estimationResult = await TandaPayErrorHandler.withErrorHandling(
       async () => {
-        // Create provider
-        const providerResult = await createProvider(selectedNetwork);
+        // Create provider with automatic custom network support
+        const providerResult = await createProviderWithState(selectedNetwork, perAccountState);
         if (!providerResult.success) {
           throw new Error(providerResult.error.userMessage ?? 'Failed to connect to network');
         }
@@ -251,10 +247,10 @@ export default function ContractDeploymentModal(props: Props): Node {
     } else {
       setErrorMessage(estimationResult.error.userMessage ?? 'Failed to estimate gas costs');
     }
-  }, [selectedToken, secretaryAddress, selectedNetwork]);
+  }, [selectedToken, secretaryAddress, selectedNetwork, perAccountState]);
 
   const handleDeploy = useCallback(async () => {
-    if (!selectedToken || !secretaryAddress.trim() || selectedNetwork === 'custom') {
+    if (!selectedToken || !secretaryAddress.trim()) {
       return;
     }
 
@@ -264,8 +260,8 @@ export default function ContractDeploymentModal(props: Props): Node {
     // Wrap the entire deployment process with error handling
     const deploymentResult = await TandaPayErrorHandler.withErrorHandling(
       async () => {
-        // Create provider
-        const providerResult = await createProvider(selectedNetwork);
+        // Create provider with automatic custom network support
+        const providerResult = await createProviderWithState(selectedNetwork, perAccountState);
         if (!providerResult.success) {
           throw new Error(providerResult.error.userMessage ?? 'Failed to connect to network');
         }
@@ -359,7 +355,7 @@ export default function ContractDeploymentModal(props: Props): Node {
       TandaPayErrorHandler.handleError(deploymentResult.error, true);
       setErrorMessage(deploymentResult.error.userMessage ?? 'Contract deployment failed');
     }
-  }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit, gasEstimate, contractAddresses, dispatch, onDeploymentComplete, onClose]);
+  }, [selectedToken, secretaryAddress, selectedNetwork, customGasLimit, gasEstimate, contractAddresses, dispatch, onDeploymentComplete, onClose, perAccountState]);
 
   return (
     <Modal

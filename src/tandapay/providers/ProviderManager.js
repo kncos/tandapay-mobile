@@ -80,12 +80,45 @@ type NetworkConfig = {|
 
 /**
  * Get network configuration dynamically (for networks that need API keys)
+ * Now supports both supported networks and custom networks via Redux state
  */
-async function getNetworkConfig(network: SupportedNetwork): Promise<NetworkConfig> {
-  const chain = getChainByNetwork(network);
+async function getNetworkConfig(network: NetworkIdentifier, perAccountState?: ?PerAccountState): Promise<NetworkConfig> {
+  if (network === 'custom') {
+    // Handle custom networks by fetching from Redux state
+    if (!perAccountState) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Redux state required for custom network',
+        'Custom network configuration requires Redux state access.'
+      );
+    }
+
+    const customRpcConfig = getTandaPayCustomRpcConfig(perAccountState);
+
+    if (!customRpcConfig) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Custom network not configured',
+        'Please configure a custom network in settings before using it.'
+      );
+    }
+
+    // Convert Redux config to NetworkConfig format
+    return {
+      name: customRpcConfig.name,
+      rpcUrl: customRpcConfig.rpcUrl,
+      chainId: customRpcConfig.chainId,
+      blockExplorerUrl: customRpcConfig.blockExplorerUrl,
+      multicall3Address: customRpcConfig.multicall3Address,
+      nativeToken: customRpcConfig.nativeToken,
+    };
+  }
+
+  // Handle supported networks
+  // $FlowFixMe[incompatible-cast] - we know network is not 'custom' at this point
+  const supportedNetwork = (network: SupportedNetwork);
+  const chain = getChainByNetwork(supportedNetwork);
 
   // Try to get Alchemy URL first (for better performance), fall back to default
-  const alchemyUrl = await getAlchemyRpcUrl(network);
+  const alchemyUrl = await getAlchemyRpcUrl(network, perAccountState);
   const rpcUrl = (alchemyUrl != null && alchemyUrl !== '') ? alchemyUrl : chain.rpcUrls.default.http[0];
 
   return {
@@ -134,33 +167,21 @@ function evictLRUIfNeeded(): void {
 }
 
 /**
- * Get provider instance for a specific network or custom configuration with error handling
+ * Get provider instance for a specific network with error handling
+ * Now supports custom networks automatically via getNetworkConfig
  */
 export async function createProvider(
   network: NetworkIdentifier,
-  customConfig?: NetworkConfig
+  perAccountState?: ?PerAccountState
 ): Promise<TandaPayResult<mixed>> {
   try {
     let cacheKey = network;
-    let config;
+
+    // Get network configuration - this now handles both supported and custom networks
+    const config = await getNetworkConfig(network, perAccountState);
 
     if (network === 'custom') {
-      if (!customConfig) {
-        throw TandaPayErrorHandler.createValidationError(
-          'Custom network configuration required',
-          'Please provide a valid custom network configuration.'
-        );
-      }
-      cacheKey = `custom-${customConfig.chainId}`;
-      config = customConfig;
-    } else {
-      config = await getNetworkConfig(network);
-      if (!config) {
-        throw TandaPayErrorHandler.createValidationError(
-          `Unsupported network: ${network}`,
-          'Please select a supported network from the list.'
-        );
-      }
+      cacheKey = `custom-${config.chainId}`;
     }
 
     if (providerCache.has(cacheKey)) {
@@ -190,6 +211,17 @@ export async function createProvider(
     );
     return { success: false, error: tandaPayError };
   }
+}
+
+/**
+ * Create a provider with automatic Redux state handling for custom networks
+ * This is now just a convenience wrapper since createProvider handles state automatically
+ */
+export async function createProviderWithState(
+  network: NetworkIdentifier,
+  perAccountState: PerAccountState
+): Promise<TandaPayResult<mixed>> {
+  return createProvider(network, perAccountState);
 }
 
 /**
