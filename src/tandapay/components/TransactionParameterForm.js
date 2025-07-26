@@ -2,6 +2,7 @@
 
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useSelector } from '../../react-redux';
 
 import type { WriteTransaction, WriteTransactionParameter } from '../contract/tandapay-writer/writeTransactionObjects';
 import type { TransactionFormState } from '../hooks/useTransactionForm';
@@ -13,6 +14,9 @@ import BooleanToggle from './BooleanToggle';
 import AddressArrayInput from './AddressArrayInput';
 import ErrorText from './ErrorText';
 import { ExpectedSuccessorCounts } from '../contract/constants';
+import { getAvailableTokens } from '../tokens/tokenSelectors';
+import { getTandaPaySelectedNetwork } from '../redux/selectors';
+import { findTokenByAddress } from '../definitions';
 
 import FormStyles from '../styles/forms';
 import { TandaPayColors } from '../styles';
@@ -48,7 +52,9 @@ function renderParameterInput(
   error: ?string,
   onParameterChange: (name: string, value: any) => void,
   themeData: any,
-  transaction: WriteTransaction
+  transaction: WriteTransaction,
+  availableTokens: any,
+  selectedNetwork: string
 ): React$Node {
   const { name, type, label, placeholder, isCurrency } = parameter;
 
@@ -69,6 +75,42 @@ function renderParameterInput(
     case 'uint256':
       // Use AmountInput for currency values, NumberInput for regular numbers
       if (isCurrency) {
+        // Get payment token information for proper currency formatting
+        let tokenSymbol = 'ETH';
+        let tokenDecimals = 18;
+
+        // Check if transaction provides payment token address via prefilledParams
+        if (transaction.prefilledParams && transaction.prefilledParams.paymentTokenAddress) {
+          const paymentTokenAddress = transaction.prefilledParams.paymentTokenAddress;
+
+          // Try to find token info using the available tokens and token utilities
+          if (typeof paymentTokenAddress === 'string' && paymentTokenAddress) {
+            const tokenInfo = findTokenByAddress(
+              (selectedNetwork: any),
+              paymentTokenAddress,
+              availableTokens
+            );
+
+            if (tokenInfo) {
+              tokenSymbol = tokenInfo.symbol;
+              tokenDecimals = tokenInfo.decimals;
+            } else {
+              // Fallback: Use basic pattern matching for common tokens
+              const addressLower = paymentTokenAddress.toLowerCase();
+              if (addressLower.includes('usdc')) {
+                tokenSymbol = 'USDC';
+                tokenDecimals = 6;
+              } else if (addressLower.includes('usdt')) {
+                tokenSymbol = 'USDT';
+                tokenDecimals = 6;
+              } else if (addressLower.includes('dai')) {
+                tokenSymbol = 'DAI';
+                tokenDecimals = 18;
+              }
+            }
+          }
+        }
+
         return (
           <View key={name} style={styles.parameterContainer}>
             <AmountInput
@@ -76,8 +118,8 @@ function renderParameterInput(
               placeholder={placeholder}
               value={value || ''}
               onChangeText={(newValue: string) => onParameterChange(name, newValue)}
-              tokenSymbol="ETH"
-              tokenDecimals={18}
+              tokenSymbol={tokenSymbol}
+              tokenDecimals={tokenDecimals}
             />
             {error && <ErrorText>{error}</ErrorText>}
           </View>
@@ -209,6 +251,10 @@ export default function TransactionParameterForm({
 }: Props): React$Node {
   const themeData = useContext(ThemeContext);
 
+  // Get token and network information for currency rendering
+  const availableTokens = useSelector(getAvailableTokens);
+  const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
+
   // Dynamic styles that use theme context
   const dynamicStyles = {
     ...styles,
@@ -246,7 +292,9 @@ export default function TransactionParameterForm({
             error,
             onParameterChange,
             themeData,
-            transaction
+            transaction,
+            availableTokens,
+            selectedNetwork
           );
         })}
       </View>

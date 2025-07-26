@@ -111,6 +111,45 @@ export function formatTokenAmount(
 }
 
 /**
+ * Convert human-readable token amount to smallest units (wei-like units)
+ * This is the inverse operation of formatTokenAmount
+ *
+ * @param token - Token configuration object (can be null for edge cases)
+ * @param humanReadableAmount - Amount in human-readable format (e.g., "10.5" for 10.5 USDC)
+ * @returns BigNumber in smallest units or fallback number for unknown tokens
+ */
+export function parseTokenAmount(
+  token: ?TokenConfig,
+  humanReadableAmount: string | number
+): mixed {
+  // Convert amount to string if it's a number
+  const amountStr = typeof humanReadableAmount === 'number'
+    ? humanReadableAmount.toString()
+    : humanReadableAmount;
+
+  // Handle null token case - return as number for backward compatibility
+  if (!token) {
+    try {
+      return Number(amountStr);
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  try {
+    // Convert human-readable amount to smallest units using ethers
+    return ethers.utils.parseUnits(amountStr, token.decimals);
+  } catch (error) {
+    // Fallback: try as a regular number for backward compatibility
+    try {
+      return Number(amountStr);
+    } catch (numberError) {
+      return 0;
+    }
+  }
+}
+
+/**
  * Get all available tokens for a specific network
  *
  * @param network - The network to get tokens for
@@ -492,6 +531,107 @@ export function findTokenBySymbol(
   }
 
   return null;
+}
+
+/**
+ * Convert currency parameters from human-readable values to smallest units
+ * Helper function for transaction parameter conversion
+ *
+ * @param paramValues - Array of parameter values from form
+ * @param transaction - Transaction object with parameter definitions
+ * @param selectedNetwork - Currently selected network
+ * @param availableTokens - Available tokens from Redux state
+ * @returns Array with currency parameters converted to smallest units
+ */
+export function convertCurrencyParameters(
+  paramValues: mixed[],
+  transaction: $ReadOnly<{
+    parameters?: $ReadOnlyArray<$ReadOnly<{
+      type: string,
+      isCurrency?: boolean,
+      ...
+    }>>,
+    prefilledParams?: $ReadOnly<{
+      paymentTokenAddress?: string,
+      ...
+    }>,
+    ...
+  }>,
+  selectedNetwork: string,
+  availableTokens: $ReadOnlyArray<$ReadOnly<{
+    symbol: string,
+    decimals: number,
+    address: ?string,
+    ...
+  }>>
+): mixed[] {
+  if (!transaction.parameters) {
+    return paramValues;
+  }
+
+  return transaction.parameters.map((param, index) => {
+    const value = paramValues[index];
+    
+    // Only convert currency uint256 parameters
+    if (param.type === 'uint256' && param.isCurrency === true && typeof value === 'string' && value !== '0') {
+      // Get token information for conversion
+      let tokenInfo = null;
+      
+      // Check if transaction provides payment token address via prefilledParams
+      const paymentTokenAddress = transaction.prefilledParams?.paymentTokenAddress;
+      if (paymentTokenAddress != null && paymentTokenAddress !== '') {
+        // Try to find token info by looking through availableTokens directly
+        if (availableTokens) {
+          const foundToken = availableTokens.find(token =>
+            token.address === paymentTokenAddress
+            || (token.address == null && paymentTokenAddress === '0x0000000000000000000000000000000000000000')
+          );
+          
+          if (foundToken) {
+            // Convert to TokenConfig format by excluding isCustom
+            tokenInfo = {
+              symbol: foundToken.symbol,
+              decimals: foundToken.decimals,
+              address: foundToken.address,
+              name: foundToken.symbol // Use symbol as name since name might not be available
+            };
+          }
+        }
+        
+        // Fallback: Use basic pattern matching for common tokens if not found
+        if (!tokenInfo) {
+          const addressLower = paymentTokenAddress.toLowerCase();
+          if (addressLower.includes('usdc') || addressLower.includes('usdt')) {
+            tokenInfo = {
+              symbol: 'USDC',
+              decimals: 6,
+              address: paymentTokenAddress,
+              name: 'USD Coin'
+            };
+          } else if (addressLower.includes('dai')) {
+            tokenInfo = {
+              symbol: 'DAI',
+              decimals: 18,
+              address: paymentTokenAddress,
+              name: 'Dai Stablecoin'
+            };
+          } else {
+            tokenInfo = {
+              symbol: 'ETH',
+              decimals: 18,
+              address: null,
+              name: 'Ethereum'
+            }; // Default fallback
+          }
+        }
+      }
+      
+      // Use parseTokenAmount utility for conversion
+      return parseTokenAmount(tokenInfo, value);
+    }
+    
+    return value;
+  });
 }
 
 /**

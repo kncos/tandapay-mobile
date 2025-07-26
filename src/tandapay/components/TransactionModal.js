@@ -12,6 +12,8 @@ import { createTandaPayContractWithSignerFromState, isTandaPayAvailable } from '
 import { ThemeContext } from '../../styles';
 import { useSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork } from '../redux/selectors';
+import { getAvailableTokens } from '../tokens/tokenSelectors';
+import { convertCurrencyParameters } from '../definitions';
 import type {
   TransactionParams,
   EstimateGasCallback,
@@ -94,6 +96,7 @@ export default function TransactionModal(props: Props): Node {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const themeData = useContext(ThemeContext);
   const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
+  const availableTokens = useSelector(getAvailableTokens);
   const reduxState = useSelector(state => state);
 
   // Create a default transaction to avoid conditional hook usage
@@ -176,9 +179,18 @@ export default function TransactionModal(props: Props): Node {
       const contract = contractResult.data;
       const paramValues = getParameterValues();
 
+      // Convert currency parameters from human-readable to smallest units
+      const convertedParams = convertCurrencyParameters(
+        paramValues,
+        // $FlowFixMe[incompatible-call] - transaction types are compatible for this function
+        (transaction: any),
+        selectedNetwork,
+        availableTokens
+      );
+
       // FIRST: Simulate the transaction to check if it would succeed
       // This prevents UNPREDICTABLE_GAS_LIMIT errors by checking transaction validity first
-      const simulationResult = await transaction.simulateFunction(contract, ...paramValues);
+      const simulationResult = await transaction.simulateFunction(contract, ...convertedParams);
       if (!simulationResult.success) {
         // If simulation fails, the transaction would revert
         return {
@@ -198,7 +210,7 @@ export default function TransactionModal(props: Props): Node {
         };
       }
 
-      const gasEstimateResult = await gasEstimateFunction(contract, ...paramValues);
+      const gasEstimateResult = await gasEstimateFunction(contract, ...convertedParams);
 
       if (!gasEstimateResult.success) {
         return {
@@ -224,7 +236,7 @@ export default function TransactionModal(props: Props): Node {
         originalError: error.message || String(error),
       };
     }
-  }, [transaction, getParameterValues, selectedNetwork, reduxState]);
+  }, [transaction, getParameterValues, selectedNetwork, reduxState, availableTokens]);
 
   // Transaction simulation and execution callback
   const handleSendTransaction: SendTransactionCallback = useCallback(async (params: TransactionParams, gasEstimate: GasEstimate) => {
@@ -258,8 +270,17 @@ export default function TransactionModal(props: Props): Node {
       const contract = contractResult.data;
       const paramValues = getParameterValues();
 
+      // Convert currency parameters from human-readable to smallest units
+      const convertedParams = convertCurrencyParameters(
+        paramValues,
+        // $FlowFixMe[incompatible-call] - transaction types are compatible for this function
+        (transaction: any),
+        selectedNetwork,
+        availableTokens
+      );
+
       // First, simulate the transaction
-      const simulationResult = await transaction.simulateFunction(contract, ...paramValues);
+      const simulationResult = await transaction.simulateFunction(contract, ...convertedParams);
       if (!simulationResult.success) {
         return {
           success: false,
@@ -269,7 +290,7 @@ export default function TransactionModal(props: Props): Node {
       }
 
       // If simulation succeeds, execute the actual transaction
-      const txResult = await transaction.writeFunction(contract, ...paramValues);
+      const txResult = await transaction.writeFunction(contract, ...convertedParams);
 
       return {
         success: true,
@@ -284,7 +305,7 @@ export default function TransactionModal(props: Props): Node {
     } finally {
       setIsSubmitting(false);
     }
-  }, [transaction, getParameterValues, selectedNetwork, reduxState]);
+  }, [transaction, getParameterValues, selectedNetwork, reduxState, availableTokens]);
 
   // Transaction success callback
   const handleTransactionSuccess = useCallback((txHash: string) => {

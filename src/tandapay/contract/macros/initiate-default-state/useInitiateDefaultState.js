@@ -135,7 +135,24 @@ export function useInitiateDefaultState(): {|
         );
 
         if (initiateTransaction) {
-          transactions.push(initiateTransaction);
+          // Clone the transaction and add payment token information via prefilledParams
+          // $FlowFixMe[prop-missing] - paymentTokenAddress exists in community data
+          // $FlowFixMe[unclear-type] - communityData is mixed type from manager
+          const paymentTokenAddress = (communityData: Object).paymentTokenAddress;
+
+          // Only add paymentTokenAddress if it's a valid string
+          const enhancedPrefilledParams = initiateTransaction.prefilledParams ? { ...initiateTransaction.prefilledParams } : {};
+          if (paymentTokenAddress && typeof paymentTokenAddress === 'string') {
+            enhancedPrefilledParams.paymentTokenAddress = paymentTokenAddress;
+          }
+
+          const enhancedTransaction: WriteTransaction = {
+            ...initiateTransaction,
+            // Pass payment token address to help with currency rendering
+            prefilledParams: enhancedPrefilledParams,
+          };
+
+          transactions.push(enhancedTransaction);
         }
       }
 

@@ -51,7 +51,12 @@ export function validateParameterWithContext(
 
       case 'uint256': {
         const numValue = Number(value);
-        if (Number.isNaN(numValue) || numValue < 0 || !Number.isInteger(numValue)) {
+        if (Number.isNaN(numValue) || numValue < 0) {
+          return 'Please enter a valid non-negative number';
+        }
+
+        // For currency parameters, allow decimal values since they'll be converted to smallest units
+        if (!parameter.isCurrency && !Number.isInteger(numValue)) {
           return 'Please enter a valid non-negative integer';
         }
 
@@ -129,8 +134,19 @@ export function validateParameter(
 
       case 'uint256': {
         const numValue = Number(value);
-        if (Number.isNaN(numValue) || numValue < 0 || !Number.isInteger(numValue)) {
-          return 'Please enter a valid non-negative integer';
+        if (Number.isNaN(numValue) || numValue < 0) {
+          return 'Please enter a valid non-negative number';
+        }
+
+        // For currency parameters, allow decimal values since they'll be converted to smallest units
+        // Note: In the backward compatible function, we don't have access to parameter.isCurrency
+        // so we'll be more permissive and allow decimal values for all uint256 fields
+        if (!Number.isInteger(numValue)) {
+          // Allow decimal values but warn that they should be valid numbers
+          const hasValidDecimals = /^\d+(\.\d+)?$/.test(String(value));
+          if (!hasValidDecimals) {
+            return 'Please enter a valid number';
+          }
         }
 
         if (validation.min !== undefined && numValue < validation.min) {
@@ -357,6 +373,12 @@ export function useTransactionForm(
       // Convert values to appropriate types for contract calls
       switch (param.type) {
         case 'uint256':
+          // For currency parameters, keep the string value to allow for BigNumber handling
+          // in the transaction execution layer
+          if (param.isCurrency) {
+            return value === '' ? '0' : String(value);
+          }
+          // For non-currency uint256, convert to number (for backward compatibility)
           return value === '' ? 0 : Number(value);
         case 'bool':
           return Boolean(value);
