@@ -379,6 +379,77 @@ export const batchGetAllSubgroupInfo = async (
   }
 };
 
+export const batchGetClaimInfoInPeriod = async (
+  contractAddress: string,
+  claimIds: Array<number | string>,
+  periodId: number | string = 0,
+  maxBatchSize: number = 16
+): Promise<TandaPayResult<Array<ClaimInfo>>> => {
+  try {
+    // Input validation
+    if (!contractAddress || !ethers.utils.isAddress(contractAddress)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid contract address',
+        'Please provide a valid TandaPay contract address.'
+      );
+    }
+
+    if (claimIds.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    if (maxBatchSize <= 0 || !Number.isInteger(maxBatchSize)) {
+      throw TandaPayErrorHandler.createValidationError(
+        'Invalid batch size',
+        'Batch size must be a positive integer.'
+      );
+    }
+
+    const results: Array<ClaimInfo> = [];
+
+    // Process in batches
+    for (let i = 0; i < claimIds.length; i += maxBatchSize) {
+      const batch = claimIds.slice(i, i + maxBatchSize);
+
+      // Create multicall calls for this batch
+      const calls = batch.map(claimId => ({
+        functionName: 'getClaimInfo',
+        args: [ethers.BigNumber.from(claimId), ethers.BigNumber.from(periodId)]
+      }));
+
+      const multicallResult = await executeTandaPayMulticall(
+        contractAddress,
+        TandaPayInfo.abi,
+        calls
+      );
+
+      if (!multicallResult.success) {
+        return multicallResult;
+      }
+
+      // Process results for this batch
+      for (let j = 0; j < multicallResult.data.length; j++) {
+        const claimInfo = multicallResult.data[j];
+        if (claimInfo != null) {
+          // Use converter helper for consistent data shape
+          results.push(convertRawClaimInfo(claimInfo, ethers.BigNumber.from(periodId)));
+        }
+      }
+    }
+
+    return { success: true, data: results };
+  } catch (error) {
+    if (error?.type) {
+      return { success: false, error };
+    }
+    const tandaPayError = TandaPayErrorHandler.createContractError(
+      'Failed to batch fetch claim information',
+      'Unable to retrieve claim information. Please try again.'
+    );
+    return { success: false, error: tandaPayError };
+  }
+};
+
 /**
  * Given an ethers provider/signer and smart contract address, it returns an object that has all TandaPay
  * read actions, automatically injecting the contract instance into the actions so that

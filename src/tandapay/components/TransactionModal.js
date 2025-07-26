@@ -154,6 +154,7 @@ export default function TransactionModal(props: Props): Node {
       };
     }
 
+    //! here
     try {
       // Check if network is supported
       if (selectedNetwork === 'custom') {
@@ -242,6 +243,7 @@ export default function TransactionModal(props: Props): Node {
       };
     }
 
+    //! here
     setIsSubmitting(true);
     try {
       // Check if network is supported
@@ -305,7 +307,7 @@ export default function TransactionModal(props: Props): Node {
     if (onTransactionComplete) {
       onTransactionComplete({ success: true, txHash });
     }
-    
+
     // Only close the modal if we're NOT in a workflow (transaction chain)
     // If we're in a workflow, let the workflow logic handle modal state
     if (!workflowProgress) {

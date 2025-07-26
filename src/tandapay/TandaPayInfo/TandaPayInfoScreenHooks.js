@@ -65,6 +65,7 @@ export function useTandaPayInfoScreenHooks(): {|
     //   MemberDataManager.refresh(),
     //   SubgroupDataManager.refresh(),
     // ]);
+    console.log('Refreshing all TandaPay data...');
   }, []);
 
   return {
