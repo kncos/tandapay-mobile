@@ -156,14 +156,6 @@ export default function TransactionModal(props: Props): Node {
 
     //! here
     try {
-      // Check if network is supported
-      if (selectedNetwork === 'custom') {
-        return {
-          success: false,
-          error: 'TandaPay transactions are not supported on custom networks. Please switch to a supported network.',
-        };
-      }
-
       // Check if contract is deployed on the selected network
       if (!isTandaPayAvailable(selectedNetwork, reduxState)) {
         return {
@@ -246,14 +238,6 @@ export default function TransactionModal(props: Props): Node {
     //! here
     setIsSubmitting(true);
     try {
-      // Check if network is supported
-      if (selectedNetwork === 'custom') {
-        return {
-          success: false,
-          error: 'TandaPay transactions are not supported on custom networks. Please switch to a supported network.',
-        };
-      }
-
       // Check if contract is deployed on the selected network
       if (!isTandaPayAvailable(selectedNetwork, reduxState)) {
         return {

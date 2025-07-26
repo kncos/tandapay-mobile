@@ -160,11 +160,11 @@ export function getContractAddress(network: SupportedNetwork, state: PerAccountS
 
 /**
  * Check if TandaPay contract address is configured for a specific network
- * @param network The network name
+ * @param network The network name (supports both supported networks and custom)
  * @param state The Redux state containing user-configured contract addresses
  * @returns True if a valid contract address is configured for the network
  */
-export function isTandaPayAvailable(network: SupportedNetwork, state: PerAccountState): boolean {
+export function isTandaPayAvailable(network: NetworkIdentifier, state: PerAccountState): boolean {
   const address = getTandaPayContractAddressForNetwork(state, network);
   return address != null && address.trim() !== '' && address !== '0x0000000000000000000000000000000000000000';
 }
