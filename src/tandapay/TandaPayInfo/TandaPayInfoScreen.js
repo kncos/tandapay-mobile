@@ -278,12 +278,12 @@ function TandaPayInfoScreen(props: Props): Node {
 
       // Get the current period ID
       const currentPeriodId = bigNumberToNumber(communityInfo.currentPeriodId);
-      
+
       // For now, we'll just get claim IDs manually - this could be enhanced later
       // to first fetch claim IDs from the contract, but for simplicity we'll try a range
       const maxClaimsToCheck = 50; // Reasonable limit for claims in a period
       const claimIds = Array.from({ length: maxClaimsToCheck }, (_, i) => i + 1);
-      
+
       const result = await batchGetClaimInfoInPeriod(
         contractAddress,
         claimIds,
@@ -296,7 +296,7 @@ function TandaPayInfoScreen(props: Props): Node {
         const validClaims = result.data.filter(claim =>
           claim && claim.claimantWalletAddress && claim.claimantWalletAddress !== '0x0000000000000000000000000000000000000000'
         );
-        
+
         // Serialize BigNumbers for state storage
         const serializedClaims = serializeBigNumbers(validClaims);
         setClaimsData(serializedClaims);
