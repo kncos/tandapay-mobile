@@ -251,9 +251,14 @@ export default function TransactionEstimateAndSend(props: Props): Node {
                 buttons.push({
                   text: 'Copy Hash',
                   onPress: () => {
-                    if (result.txHash != null) {
-                      Clipboard.setString(result.txHash);
+                    const txHash = result.txHash;
+                    if (txHash != null) {
+                      Clipboard.setString(txHash);
                       showToast('Transaction hash copied to clipboard');
+
+                      // Also call onTransactionSuccess to progress macro chain
+                      invalidateAllTokens();
+                      onTransactionSuccess?.(txHash);
                     }
                   },
                 });
@@ -265,6 +270,13 @@ export default function TransactionEstimateAndSend(props: Props): Node {
                     onPress: () => {
                       const explorerUrlObj = new URL(explorerUrl);
                       openLinkWithUserPreference(explorerUrlObj, globalSettings);
+
+                      // Also call onTransactionSuccess to progress macro chain
+                      invalidateAllTokens();
+                      const txHash = result.txHash;
+                      if (txHash != null) {
+                        onTransactionSuccess?.(txHash);
+                      }
                     },
                   });
                 }
