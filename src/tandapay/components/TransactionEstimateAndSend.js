@@ -174,26 +174,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     }
   }, [selectedNetwork, customRpcConfig]);
 
-  const handleEstimateGas = useCallback(async () => {
-    if (!isFormValid) {
-      Alert.alert('Form Invalid', 'Please complete all required fields before estimating gas.');
-      return;
-    }
-
-    // Prevent multiple estimation requests
-    if (estimating) {
-      return;
-    }
-
-    // Check if ERC20 approval is required and not yet approved
-    if (approvalState.isRequired && !approvalState.isApproved) {
-      Alert.alert(
-        'ERC20 Approval Required',
-        'You must approve ERC20 token spending before estimating gas. Please calculate and approve the required amount first.'
-      );
-      return;
-    }
-
+  const performGasEstimation = useCallback(async () => {
     setEstimating(true);
     setGasEstimate(null);
     setTransactionFunction((): ?TransactionFunction => null);
@@ -222,7 +203,48 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     } finally {
       setEstimating(false);
     }
-  }, [isFormValid, onEstimateGas, onSendTransaction, transactionParams, estimating, approvalState.isRequired, approvalState.isApproved]);
+  }, [onEstimateGas, onSendTransaction, transactionParams]);
+
+  const handleEstimateGas = useCallback(async () => {
+    if (!isFormValid) {
+      Alert.alert('Form Invalid', 'Please complete all required fields before estimating gas.');
+      return;
+    }
+
+    // Prevent multiple estimation requests
+    if (estimating) {
+      return;
+    }
+
+    // Check if ERC20 approval is required and not yet approved
+    if (approvalState.isRequired && !approvalState.isApproved) {
+      // Show warning dialog instead of completely blocking
+      Alert.alert(
+        'ERC20 Approval Warning',
+        'You did not calculate the ERC20 amount. This transaction may not work as expected unless you have manually approved ERC20 spending. Proceed?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => {
+              // User chose to cancel, do nothing
+            },
+          },
+          {
+            text: 'OK',
+            onPress: () => {
+              // User chose to proceed, start gas estimation
+              performGasEstimation();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // If approval is not required or is already approved, proceed directly
+    performGasEstimation();
+  }, [isFormValid, estimating, approvalState.isRequired, approvalState.isApproved, performGasEstimation]);
 
   const handleSendTransaction = useCallback(async () => {
     if (!gasEstimate || !transactionFunction) {
