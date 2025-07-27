@@ -17,6 +17,7 @@ export { default as NetworkInfo } from './NetworkInfo';
 export { default as WalletNetworkInfo } from './WalletNetworkInfo';
 export { default as NetworkPerformanceSettings } from './NetworkPerformanceSettings';
 export { default as ContractAddressConfiguration } from './ContractAddressConfiguration';
+export { default as ManualErc20Approval } from './ManualErc20Approval';
 
 // Transaction Components
 export { default as TransactionEstimateAndSend } from './TransactionEstimateAndSend';

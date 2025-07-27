@@ -1,7 +1,5 @@
 /* @flow strict-local */
 
-// $FlowFixMe[untyped-import] - ethers.js imports
-import { ethers } from 'ethers';
 import type { TandaPayResult } from '../errors/types';
 import type { BigNumber } from './types';
 import {
@@ -70,7 +68,7 @@ export type Erc20ApprovalResult = {|
  */
 export async function estimateErc20Spending(methodName: string): Promise<Erc20ApprovalResult> {
   const estimator = getErc20SpendingEstimator(methodName);
-  
+
   if (!estimator) {
     return {
       success: false,
@@ -80,7 +78,7 @@ export async function estimateErc20Spending(methodName: string): Promise<Erc20Ap
 
   try {
     const result = await estimator();
-    
+
     if (result.success && result.data != null) {
       return {
         success: true,
@@ -105,38 +103,12 @@ export async function estimateErc20Spending(methodName: string): Promise<Erc20Ap
 }
 
 /**
- * Format ERC20 amount for display (handles different decimal places)
- */
-export function formatErc20Amount(amount: BigNumber, decimals: number = 18, maxDecimals: number = 6): string {
-  try {
-    // $FlowFixMe[incompatible-use] - BigNumber is from ethers
-    const formatted = ethers.utils.formatUnits(amount, decimals);
-    const num = parseFloat(formatted);
-    
-    if (num === 0) {
-      return '0';
-    }
-    
-    // For very small amounts, show more precision
-    if (num < 0.000001) {
-      return formatted;
-    }
-    
-    // For normal amounts, limit decimal places
-    return num.toFixed(Math.min(maxDecimals, decimals));
-  } catch (error) {
-    // $FlowFixMe[incompatible-use] - BigNumber toString method
-    return amount.toString();
-  }
-}
-
-/**
  * Check current ERC20 allowance for TandaPay contract
  */
 export async function checkErc20Allowance(): Promise<Erc20ApprovalResult> {
   try {
     const allowanceResult = await checkErc20AllowanceForTandaPay();
-    
+
     if (allowanceResult.success && allowanceResult.data != null) {
       return {
         success: true,
@@ -166,7 +138,7 @@ export async function checkErc20Allowance(): Promise<Erc20ApprovalResult> {
 export async function approveErc20Spending(amount: BigNumber): Promise<Erc20ApprovalResult> {
   try {
     const approvalResult = await approveErc20ForTandaPay(amount);
-    
+
     if (approvalResult.success) {
       return {
         success: true

@@ -1,12 +1,15 @@
 /* @flow strict-local */
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSelector } from '../../react-redux';
+import { getTandaPaySelectedNetwork, getCommunityInfo } from '../redux/selectors';
+import { getAvailableTokens } from '../tokens/tokenSelectors';
+import { findTokenByAddress, formatTokenAmount } from '../definitions';
 import {
   requiresErc20Approval,
   estimateErc20Spending,
   approveErc20Spending,
   checkErc20Allowance,
-  formatErc20Amount,
   type Erc20ApprovalState,
   type Erc20ApprovalResult
 } from '../contract/erc20ApprovalUtils';
@@ -23,6 +26,10 @@ export type UseErc20ApprovalResult = {|
  * React hook for managing ERC20 approval workflow for TandaPay transactions
  */
 export function useErc20Approval(methodName: ?string): UseErc20ApprovalResult {
+  const selectedNetwork = useSelector(getTandaPaySelectedNetwork);
+  const communityInfo = useSelector(getCommunityInfo);
+  const availableTokens = useSelector(getAvailableTokens);
+
   const [approvalState, setApprovalState] = useState<Erc20ApprovalState>(() => ({
     isRequired: (methodName != null && methodName !== '') ? requiresErc20Approval(methodName) : false,
     isEstimating: false,
@@ -61,14 +68,14 @@ export function useErc20Approval(methodName: ?string): UseErc20ApprovalResult {
 
     try {
       const result: Erc20ApprovalResult = await estimateErc20Spending(methodName);
-      
+
       if (result.success && result.estimatedAmount != null) {
         // After getting estimated amount, check current allowance
         const allowanceCheckResult = await checkErc20Allowance();
-        
+
         let currentAllowance = null;
         let isAlreadyApproved = false;
-        
+
         if (allowanceCheckResult.success && allowanceCheckResult.currentAllowance != null) {
           currentAllowance = allowanceCheckResult.currentAllowance;
           // Check if current allowance is already sufficient
@@ -117,11 +124,11 @@ export function useErc20Approval(methodName: ?string): UseErc20ApprovalResult {
 
     try {
       const result: Erc20ApprovalResult = await approveErc20Spending(approvalState.estimatedAmount);
-      
+
       if (result.success) {
         // After successful approval, verify the allowance is actually sufficient
         const allowanceCheckResult = await checkErc20Allowance();
-        
+
         let isActuallyApproved = false;
         if (allowanceCheckResult.success && allowanceCheckResult.currentAllowance != null) {
           // Check if the current allowance is >= the estimated amount
@@ -173,9 +180,38 @@ export function useErc20Approval(methodName: ?string): UseErc20ApprovalResult {
     }));
   }, []);
 
-  const formattedAmount = (approvalState.estimatedAmount != null)
-    ? formatErc20Amount(approvalState.estimatedAmount)
-    : null;
+  // Get the payment token info and format the amount with correct decimals
+  const formattedAmount = (() => {
+    if (approvalState.estimatedAmount == null) {
+      return null;
+    }
+
+    // Get payment token address from community info
+    const paymentTokenAddress = communityInfo?.paymentTokenAddress;
+
+    // Find the token information with correct decimals
+    const paymentTokenInfo = findTokenByAddress(
+      selectedNetwork,
+      paymentTokenAddress,
+      availableTokens
+    );
+
+    // Convert BigNumber to string safely
+    // $FlowFixMe[incompatible-use] - BigNumber has toString method
+    const amountString = approvalState.estimatedAmount.toString();
+
+    if (paymentTokenInfo) {
+      // Use formatTokenAmount for proper token formatting with correct decimals
+      const result = formatTokenAmount(
+        paymentTokenInfo,
+        amountString
+      );
+      return result.formattedDisplay;
+    } else {
+      // Fallback: display as raw units if token info is not available
+      return `${amountString} units`;
+    }
+  })();
 
   return {
     approvalState,

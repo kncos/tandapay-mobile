@@ -13,6 +13,7 @@ import {
   NetworkInfo,
   NetworkPerformanceSettings,
   ContractAddressConfiguration,
+  ManualErc20Approval,
 } from './components';
 import { useNetworkSettings } from './hooks/useNetworkSettings';
 import { useNetworkPerformanceSettings } from './hooks/useNetworkPerformanceSettings';
@@ -64,6 +65,8 @@ export default function TandaPayNetworkSettingsScreen(props: Props): Node {
         />
 
         <ContractAddressConfiguration disabled={Boolean(switchingNetwork)} />
+
+        <ManualErc20Approval disabled={Boolean(switchingNetwork)} />
 
         <NetworkPerformanceSettings
           cacheExpirationMs={cacheExpirationMs}

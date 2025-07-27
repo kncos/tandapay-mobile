@@ -4,6 +4,9 @@ import React, { useState, useCallback } from 'react';
 import type { Node } from 'react';
 import { View, StyleSheet } from 'react-native';
 
+// $FlowFixMe[untyped-import] - ethers.js imports
+import { ethers } from 'ethers';
+
 import Input from '../../common/Input';
 import ZulipText from '../../common/ZulipText';
 import ZulipTextButton from '../../common/ZulipTextButton';
@@ -64,11 +67,18 @@ export default function AmountInput(props: Props): Node {
       return '';
     }
 
+    // Special case for MaxUint256 (infinite approval)
+    if (amountValue === ethers.constants.MaxUint256.toString()) {
+      return ''; // This is valid (MaxUint256)
+    }
+
+    // For very large numbers, we can't use parseFloat safely, so we'll do string-based validation
     const numericAmount = parseFloat(amountValue);
     if (Number.isNaN(numericAmount)) {
       return 'Please enter a valid number';
     }
 
+    // Only check for <= 0 if it's not MaxUint256
     if (numericAmount <= 0) {
       return 'Amount must be greater than 0';
     }
