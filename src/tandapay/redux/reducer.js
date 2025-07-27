@@ -6,11 +6,13 @@ import tokensReducer from './reducers/tokensReducer';
 import communityInfoDataReducer from './reducers/communityInfoDataReducer';
 import memberDataReducer from './reducers/memberDataReducer';
 import subgroupDataReducer from './reducers/subgroupDataReducer';
+import walletReducer from './reducers/walletReducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
 import type { TokenState } from '../tokens/tokenTypes';
 import type { CommunityInfoDataState } from './reducers/communityInfoDataReducer';
 import type { MemberDataState } from './reducers/memberDataReducer';
 import type { SubgroupDataState } from './reducers/subgroupDataReducer';
+import type { WalletState } from './reducers/walletReducer';
 
 export type TandaPayState = $ReadOnly<{|
   settings: TandaPaySettingsState,
@@ -19,6 +21,7 @@ export type TandaPayState = $ReadOnly<{|
   communityInfoData: CommunityInfoDataState,
   memberData: MemberDataState,
   subgroupData: SubgroupDataState,
+  wallet: WalletState,
 |}>;
 
 // Re-export types for backward compatibility
@@ -26,6 +29,7 @@ export type { TandaPaySettingsState };
 export type { CommunityInfoDataState };
 export type { MemberDataState };
 export type { SubgroupDataState };
+export type { WalletState };
 
 // Combined TandaPay reducer
 // eslint-disable-next-line default-param-last
@@ -36,6 +40,7 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
     communityInfoData: communityInfoDataReducer(undefined, action),
     memberData: memberDataReducer(undefined, action),
     subgroupData: subgroupDataReducer(undefined, action),
+    wallet: walletReducer(undefined, action),
   };
 
   const newSettings = settingsReducer(currentState.settings, action);
@@ -43,13 +48,15 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
   const newCommunityInfoData = communityInfoDataReducer(currentState.communityInfoData, action);
   const newMemberData = memberDataReducer(currentState.memberData, action);
   const newSubgroupData = subgroupDataReducer(currentState.subgroupData, action);
+  const newWallet = walletReducer(currentState.wallet, action);
 
   // Only return a new object if at least one sub-reducer changed
   if (newSettings === currentState.settings
       && newTokens === currentState.tokens
       && newCommunityInfoData === currentState.communityInfoData
       && newMemberData === currentState.memberData
-      && newSubgroupData === currentState.subgroupData) {
+      && newSubgroupData === currentState.subgroupData
+      && newWallet === currentState.wallet) {
     return currentState;
   }
 
@@ -59,5 +66,6 @@ export default (state: TandaPayState | void, action: Action): TandaPayState => {
     communityInfoData: newCommunityInfoData,
     memberData: newMemberData,
     subgroupData: newSubgroupData,
+    wallet: newWallet,
   };
 };

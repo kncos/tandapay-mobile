@@ -2,6 +2,7 @@
 import type { PerAccountState } from '../../reduxTypes';
 import type {
   TandaPayState,
+  WalletState,
 } from './reducer';
 import type { TandaPaySettingsState } from './reducers/settingsReducer';
 import type { CommunityInfoDataState } from './reducers/communityInfoDataReducer';
@@ -52,6 +53,10 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
         isLoading: false,
         error: null,
         lastUpdated: null,
+      },
+      wallet: {
+        hasWallet: false,
+        walletAddress: null,
       },
     };
   }
@@ -376,3 +381,22 @@ export const getCustomNetworkAlchemyUrl = (state: PerAccountState): ?string => {
     return null;
   }
 };
+
+// =============================================================================
+// WALLET SELECTORS
+// =============================================================================
+
+/**
+ * Get wallet state
+ */
+export const getWalletState = (state: PerAccountState): WalletState => getTandaPayState(state).wallet;
+
+/**
+ * Check if user has a wallet
+ */
+export const getHasWallet = (state: PerAccountState): boolean => getWalletState(state).hasWallet;
+
+/**
+ * Get wallet address
+ */
+export const getWalletAddress = (state: PerAccountState): ?string => getWalletState(state).walletAddress;

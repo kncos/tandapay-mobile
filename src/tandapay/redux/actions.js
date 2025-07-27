@@ -24,6 +24,11 @@ import {
   TANDAPAY_MEMBER_DATA_INVALIDATE,
   TANDAPAY_SUBGROUP_DATA_UPDATE,
   TANDAPAY_SUBGROUP_DATA_INVALIDATE,
+  TANDAPAY_WALLET_SET,
+  TANDAPAY_WALLET_CLEAR,
+  TANDAPAY_WALLET_UPDATE_ADDRESS,
+  TANDAPAY_ALCHEMY_API_KEY_SET,
+  TANDAPAY_ALCHEMY_API_KEY_CLEAR,
 } from '../../actionConstants';
 
 // =============================================================================
@@ -395,5 +400,66 @@ export function invalidateCommunityInfoData(): PerAccountAction {
   // $FlowFixMe[incompatible-return] - New action type not yet in union
   return {
     type: TANDAPAY_COMMUNITY_INFO_INVALIDATE,
+  };
+}
+
+// =============================================================================
+// WALLET ACTIONS
+// =============================================================================
+
+/**
+ * Action to set wallet state when wallet is created/imported
+ */
+export function setWallet(walletAddress: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_WALLET_SET,
+    walletAddress,
+  };
+}
+
+/**
+ * Action to clear wallet state when wallet is deleted
+ */
+export function clearWallet(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_WALLET_CLEAR,
+  };
+}
+
+/**
+ * Action to update wallet address
+ */
+export function updateWalletAddress(walletAddress: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_WALLET_UPDATE_ADDRESS,
+    walletAddress,
+  };
+}
+
+// =============================================================================
+// ALCHEMY API KEY ACTIONS
+// =============================================================================
+
+/**
+ * Action to set Alchemy API key
+ */
+export function setAlchemyApiKey(apiKey: string): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_ALCHEMY_API_KEY_SET,
+    apiKey,
+  };
+}
+
+/**
+ * Action to clear Alchemy API key
+ */
+export function clearAlchemyApiKey(): PerAccountAction {
+  // $FlowFixMe[incompatible-return] - New action type not yet in union
+  return {
+    type: TANDAPAY_ALCHEMY_API_KEY_CLEAR,
   };
 }

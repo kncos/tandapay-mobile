@@ -79,6 +79,13 @@ import {
   TANDAPAY_MEMBER_DATA_INVALIDATE,
   TANDAPAY_SUBGROUP_DATA_UPDATE,
   TANDAPAY_SUBGROUP_DATA_INVALIDATE,
+  // TandaPay wallet actions
+  TANDAPAY_WALLET_SET,
+  TANDAPAY_WALLET_CLEAR,
+  TANDAPAY_WALLET_UPDATE_ADDRESS,
+  // TandaPay Alchemy API key actions
+  TANDAPAY_ALCHEMY_API_KEY_SET,
+  TANDAPAY_ALCHEMY_API_KEY_CLEAR,
 } from './actionConstants';
 
 import type { UserMessageFlag } from './api/modelTypes';
@@ -772,6 +779,31 @@ type TandaPayCommunityInfoErrorAction = $ReadOnly<{|
   error: string,
 |}>;
 
+// TandaPay wallet action types
+type TandaPayWalletSetAction = $ReadOnly<{|
+  type: typeof TANDAPAY_WALLET_SET,
+  walletAddress: string,
+|}>;
+
+type TandaPayWalletClearAction = $ReadOnly<{|
+  type: typeof TANDAPAY_WALLET_CLEAR,
+|}>;
+
+type TandaPayWalletUpdateAddressAction = $ReadOnly<{|
+  type: typeof TANDAPAY_WALLET_UPDATE_ADDRESS,
+  walletAddress: string,
+|}>;
+
+// TandaPay Alchemy API key action types
+type TandaPayAlchemyApiKeySetAction = $ReadOnly<{|
+  type: typeof TANDAPAY_ALCHEMY_API_KEY_SET,
+  apiKey: string,
+|}>;
+
+type TandaPayAlchemyApiKeyClearAction = $ReadOnly<{|
+  type: typeof TANDAPAY_ALCHEMY_API_KEY_CLEAR,
+|}>;
+
 type TandaPayAction =
   | TandaPaySettingsUpdateAction
   | TandaPayTokenSelectAction
@@ -783,7 +815,12 @@ type TandaPayAction =
   | TandaPayUpdateNetworkPerformanceAction
   | TandaPayCommunityInfoUpdateAction
   | TandaPayCommunityInfoLoadingAction
-  | TandaPayCommunityInfoErrorAction;
+  | TandaPayCommunityInfoErrorAction
+  | TandaPayWalletSetAction
+  | TandaPayWalletClearAction
+  | TandaPayWalletUpdateAddressAction
+  | TandaPayAlchemyApiKeySetAction
+  | TandaPayAlchemyApiKeyClearAction;
 
 //
 // Then, the primary subtypes of `Action`.  Each of these should have some
@@ -959,6 +996,11 @@ export function isPerAccountApplicableAction(action: Action): boolean {
     case TANDAPAY_COMMUNITY_INFO_UPDATE:
     case TANDAPAY_COMMUNITY_INFO_LOADING:
     case TANDAPAY_COMMUNITY_INFO_ERROR:
+    case TANDAPAY_WALLET_SET:
+    case TANDAPAY_WALLET_CLEAR:
+    case TANDAPAY_WALLET_UPDATE_ADDRESS:
+    case TANDAPAY_ALCHEMY_API_KEY_SET:
+    case TANDAPAY_ALCHEMY_API_KEY_CLEAR:
       (action: PerAccountAction);
       (action: PerAccountApplicableAction);
       return true;

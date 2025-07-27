@@ -590,6 +590,10 @@ const migrationsInner: {| [string]: (LessPartialState) => LessPartialState |} = 
         isLoading: false,
         error: null,
       },
+      wallet: {
+        hasWallet: false,
+        walletAddress: null,
+      },
     },
   }),
 

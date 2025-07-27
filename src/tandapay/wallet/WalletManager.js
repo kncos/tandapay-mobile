@@ -8,12 +8,12 @@ import { ethers } from 'ethers';
 
 import TandaPayErrorHandler from '../errors/ErrorHandler';
 import type { TandaPayResult } from '../errors/types';
+import { syncWalletToRedux, clearWalletFromRedux, getWalletStateFromRedux, getAlchemyApiKeyFromRedux } from './WalletReduxHelper';
+import { setAlchemyApiKey, clearAlchemyApiKey } from '../redux/actions';
+import store from '../../boot/store';
 
-// Storage keys for secure store
+// Storage keys for secure store (only mnemonic now)
 const MNEMONIC_STORAGE_KEY = 'wallet_mnemonic';
-const WALLET_ADDRESS_STORAGE_KEY = 'wallet_address';
-const HAS_WALLET_KEY = 'has_wallet';
-const ALCHEMY_API_KEY_STORAGE_KEY = 'alchemy_api_key';
 
 export type WalletInfo = {|
   address: string,
@@ -21,13 +21,75 @@ export type WalletInfo = {|
 |};
 
 /**
+ * Check if user has a wallet set up (for UI display purposes only)
+ * Uses Redux state only - no SecureStore access, no fingerprint prompt
+ * This should be used by UI components to determine whether to show wallet or setup screens
+ */
+export function hasWalletForUI(): boolean {
+  try {
+    const walletState = getWalletStateFromRedux(store.getState);
+    // eslint-disable-next-line no-console
+    console.log('[WalletManager] hasWalletForUI() Redux state:', walletState);
+    return walletState.hasWallet && walletState.walletAddress != null && walletState.walletAddress !== '';
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('[WalletManager] hasWalletForUI() error accessing Redux state:', error);
+    return false;
+  }
+}
+
+/**
  * Check if user has a wallet set up
+ * Uses direct SecureStore call like getMnemonic() does (no timeout needed)
+ * This triggers fingerprint authentication and should only be used when authentication is required
  */
 export async function hasWallet(): Promise<TandaPayResult<boolean>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      const hasWalletFlag = await SecureStore.getItemAsync(HAS_WALLET_KEY);
-      return hasWalletFlag === 'true';
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] hasWallet() called - checking SecureStore directly...');
+
+      // Use same approach as getMnemonic() - no timeout needed
+      const mnemonic = await SecureStore.getItemAsync(MNEMONIC_STORAGE_KEY);
+
+      const walletExists = mnemonic != null && mnemonic.trim() !== '';
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] hasWallet() SecureStore result:', walletExists);
+
+      // If we have a wallet but Redux state doesn't know about it, sync it
+      if (walletExists) {
+        const walletState = getWalletStateFromRedux(store.getState);
+        // eslint-disable-next-line no-console
+        console.log('[WalletManager] hasWallet() Current Redux state:', walletState);
+
+        if (!walletState.hasWallet || walletState.walletAddress == null || walletState.walletAddress === '') {
+          // eslint-disable-next-line no-console
+          console.log('[WalletManager] hasWallet() Wallet exists but Redux not synced, syncing...');
+          try {
+            const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+            // $FlowFixMe[incompatible-call] - store.dispatch type is too strict
+            const syncResult = await syncWalletToRedux(wallet.address, store.dispatch);
+            if (syncResult.success) {
+              // eslint-disable-next-line no-console
+              console.log('[WalletManager] hasWallet() Redux sync completed');
+              // Wait a moment for Redux to update
+              await new Promise(resolve => setTimeout(resolve, 100));
+              const updatedState = getWalletStateFromRedux(store.getState);
+              // eslint-disable-next-line no-console
+              console.log('[WalletManager] hasWallet() Updated Redux state:', updatedState);
+            } else {
+              // eslint-disable-next-line no-console
+              console.warn('[WalletManager] hasWallet() Redux sync failed:', syncResult.error);
+            }
+          } catch (syncError) {
+            // eslint-disable-next-line no-console
+            console.warn('[WalletManager] hasWallet() Redux sync error:', syncError);
+            // Continue anyway since mnemonic exists
+          }
+        }
+      }
+
+      return walletExists;
     },
     'STORAGE_ERROR',
     'Unable to check wallet status. Please try restarting the app.',
@@ -37,12 +99,18 @@ export async function hasWallet(): Promise<TandaPayResult<boolean>> {
 
 /**
  * Get the current wallet address (if exists)
+ * Uses Redux state only (no legacy SecureStore fallback)
  */
 export async function getWalletAddress(): Promise<TandaPayResult<?string>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      const address = await SecureStore.getItemAsync(WALLET_ADDRESS_STORAGE_KEY);
-      return address; // Can be null if no wallet exists
+      // Check Redux state only
+      const walletState = getWalletStateFromRedux(store.getState);
+      // $FlowFixMe[sketchy-null-check] - Intentionally checking for both null and empty string
+      if (walletState.walletAddress != null && walletState.walletAddress !== '') {
+        return walletState.walletAddress;
+      }
+      return null;
     },
     'STORAGE_ERROR',
     'Unable to access wallet address. Please try restarting the app.',
@@ -52,6 +120,7 @@ export async function getWalletAddress(): Promise<TandaPayResult<?string>> {
 
 /**
  * Generate a new wallet with mnemonic
+ * Automatically syncs wallet state to Redux
  */
 export async function generateWallet(): Promise<TandaPayResult<WalletInfo>> {
   return TandaPayErrorHandler.withErrorHandling(
@@ -81,47 +150,50 @@ export async function generateWallet(): Promise<TandaPayResult<WalletInfo>> {
       // eslint-disable-next-line no-console
       console.log('[WalletManager] Starting secure storage operations...');
 
+      // Store mnemonic with authentication fallback
       try {
-        // Store the mnemonic and address securely
+        await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
+          requireAuthentication: true,
+        });
         // eslint-disable-next-line no-console
-        console.log('[WalletManager] Storing mnemonic...');
-
-        // Try with authentication first, fall back to no authentication if it fails
+        console.log('[WalletManager] Mnemonic stored with authentication');
+      } catch (authError) {
+        // eslint-disable-next-line no-console
+        console.warn('[WalletManager] Failed to store with authentication, trying without:', authError.message);
         try {
-          await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
-            requireAuthentication: true,
-          });
-          // eslint-disable-next-line no-console
-          console.log('[WalletManager] Mnemonic stored with authentication');
-        } catch (authError) {
-          // eslint-disable-next-line no-console
-          console.warn('[WalletManager] Failed to store with authentication, trying without:', authError.message);
           await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
             requireAuthentication: false,
           });
           // eslint-disable-next-line no-console
           console.log('[WalletManager] Mnemonic stored without authentication');
+        } catch (noAuthError) {
+          // eslint-disable-next-line no-console
+          console.error('[WalletManager] Failed to store mnemonic even without authentication:', noAuthError);
+          throw TandaPayErrorHandler.createError(
+            'STORAGE_ERROR',
+            `Failed to store wallet mnemonic: ${noAuthError.message}`,
+            { userMessage: 'Failed to securely store wallet data. Please try restarting the app.' }
+          );
         }
-
-        // eslint-disable-next-line no-console
-        console.log('[WalletManager] Storing wallet address...');
-        await SecureStore.setItemAsync(WALLET_ADDRESS_STORAGE_KEY, wallet.address, {
-          requireAuthentication: false,
-        });
-
-        // eslint-disable-next-line no-console
-        console.log('[WalletManager] Setting wallet flag...');
-        await SecureStore.setItemAsync(HAS_WALLET_KEY, 'true', {
-          requireAuthentication: false,
-        });
-
-        // eslint-disable-next-line no-console
-        console.log('[WalletManager] All storage operations completed successfully');
-      } catch (storageError) {
-        // eslint-disable-next-line no-console
-        console.error('[WalletManager] Storage operation failed:', storageError);
-        throw storageError; // Re-throw to be caught by the outer error handler
       }
+
+      // Sync wallet state to Redux
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Syncing wallet state to Redux...');
+      // $FlowFixMe[incompatible-call] - store.dispatch type is too strict
+      const syncResult = await syncWalletToRedux(wallet.address, store.dispatch);
+      if (!syncResult.success) {
+        throw TandaPayErrorHandler.createError(
+          'STORAGE_ERROR',
+          `Failed to sync wallet state to Redux: ${syncResult.error ? syncResult.error.message : 'Unknown error'}`,
+          { userMessage: 'Failed to complete wallet setup. Please try restarting the app.' }
+        );
+      }
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Wallet state synced to Redux successfully');
+
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] All storage operations completed successfully');
 
       return {
         address: wallet.address,
@@ -136,6 +208,7 @@ export async function generateWallet(): Promise<TandaPayResult<WalletInfo>> {
 
 /**
  * Import wallet from mnemonic
+ * Automatically syncs wallet state to Redux
  */
 export async function importWallet(mnemonic: string): Promise<TandaPayResult<WalletInfo>> {
   return TandaPayErrorHandler.withErrorHandling(
@@ -171,7 +244,7 @@ export async function importWallet(mnemonic: string): Promise<TandaPayResult<Wal
         );
       }
 
-      // Store the mnemonic and address securely
+      // Store mnemonic with authentication fallback
       try {
         await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
           requireAuthentication: true,
@@ -179,17 +252,29 @@ export async function importWallet(mnemonic: string): Promise<TandaPayResult<Wal
       } catch (authError) {
         // eslint-disable-next-line no-console
         console.warn('[WalletManager] Import: Failed to store with authentication, trying without:', authError.message);
-        await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
-          requireAuthentication: false,
-        });
+        try {
+          await SecureStore.setItemAsync(MNEMONIC_STORAGE_KEY, wallet.mnemonic.phrase, {
+            requireAuthentication: false,
+          });
+        } catch (noAuthError) {
+          throw TandaPayErrorHandler.createError(
+            'STORAGE_ERROR',
+            `Failed to store wallet mnemonic: ${noAuthError.message}`,
+            { userMessage: 'Failed to securely store wallet data. Please try restarting the app.' }
+          );
+        }
       }
 
-      await SecureStore.setItemAsync(WALLET_ADDRESS_STORAGE_KEY, wallet.address, {
-        requireAuthentication: false,
-      });
-      await SecureStore.setItemAsync(HAS_WALLET_KEY, 'true', {
-        requireAuthentication: false,
-      });
+      // Sync wallet state to Redux
+      // $FlowFixMe[incompatible-call] - store.dispatch type is too strict
+      const syncResult = await syncWalletToRedux(wallet.address, store.dispatch);
+      if (!syncResult.success) {
+        throw TandaPayErrorHandler.createError(
+          'STORAGE_ERROR',
+          `Failed to sync wallet state to Redux: ${syncResult.error ? syncResult.error.message : 'Unknown error'}`,
+          { userMessage: 'Failed to complete wallet import. Please try restarting the app.' }
+        );
+      }
 
       return {
         address: wallet.address,
@@ -213,57 +298,57 @@ export async function getWalletInstance(provider?: any): Promise<TandaPayResult<
       if (!mnemonic) {
         throw TandaPayErrorHandler.createError(
           'WALLET_ERROR',
-          'No wallet mnemonic found in secure storage',
-          { userMessage: 'No wallet found. Please create or import a wallet first.' }
+          'No wallet found',
+          { userMessage: 'Please create or import a wallet first.' }
         );
       }
 
-      let wallet;
       try {
-        wallet = ethers.Wallet.fromMnemonic(mnemonic);
+        const wallet = ethers.Wallet.fromMnemonic(mnemonic);
+        return provider ? wallet.connect(provider) : wallet;
       } catch (ethersError) {
         throw TandaPayErrorHandler.createError(
           'WALLET_ERROR',
-          `Failed to create wallet from stored mnemonic: ${ethersError.message}`,
-          { userMessage: 'Wallet data is corrupted. Please reimport your wallet.' }
+          `Failed to create wallet instance: ${ethersError.message}`,
+          { userMessage: 'Failed to access wallet. The wallet data may be corrupted.' }
         );
       }
-
-      return provider ? wallet.connect(provider) : wallet;
     },
-    'STORAGE_ERROR',
+    'WALLET_ERROR',
     'Unable to access wallet. Please try restarting the app.',
-    'WALLET_INSTANCE_FETCH'
+    'WALLET_INSTANCE_CREATION'
   );
 }
 
 /**
- * Get the stored mnemonic (for backup/recovery display)
+ * Get the mnemonic phrase (for backup purposes)
  */
 export async function getMnemonic(): Promise<TandaPayResult<?string>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
       const mnemonic = await SecureStore.getItemAsync(MNEMONIC_STORAGE_KEY);
-      return mnemonic; // Can be null if no wallet exists
+      return mnemonic || null;
     },
     'STORAGE_ERROR',
-    'Unable to access wallet backup phrase. Please try restarting the app.',
+    'Unable to access wallet mnemonic. Please try restarting the app.',
     'MNEMONIC_FETCH'
   );
 }
 
 /**
- * Delete wallet and all associated data
+ * Delete wallet and clear all related data
+ * Note: Does NOT delete the Alchemy API key - it's preserved for reuse
+ * Automatically clears wallet state from Redux
  */
 export async function deleteWallet(): Promise<TandaPayResult<void>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      // Delete all wallet-related data
+      // Delete only the mnemonic from SecureStore and clear wallet state from Redux
+      // Note: We DO NOT delete the Alchemy API key as it should be preserved
       const deletePromises = [
         SecureStore.deleteItemAsync(MNEMONIC_STORAGE_KEY),
-        SecureStore.deleteItemAsync(WALLET_ADDRESS_STORAGE_KEY),
-        SecureStore.deleteItemAsync(HAS_WALLET_KEY),
-        SecureStore.deleteItemAsync(ALCHEMY_API_KEY_STORAGE_KEY),
+        // $FlowFixMe[incompatible-call] - store.dispatch type is too strict
+        clearWalletFromRedux(store.dispatch).then(() => {}), // Convert to Promise<void>
       ];
 
       // Wait for all deletions to complete
@@ -300,21 +385,23 @@ export function validateMnemonic(mnemonic: string): TandaPayResult<boolean> {
 
 /**
  * Check if an Alchemy API key is stored
+ * Uses Redux state only (no legacy SecureStore fallback)
  */
 export async function hasAlchemyApiKey(): Promise<TandaPayResult<boolean>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      const apiKey = await SecureStore.getItemAsync(ALCHEMY_API_KEY_STORAGE_KEY);
-      return apiKey !== null && apiKey.trim() !== '';
+      // Check Redux state only
+      const apiKeyFromRedux = getAlchemyApiKeyFromRedux(store.getState);
+      return apiKeyFromRedux !== null && apiKeyFromRedux !== undefined && apiKeyFromRedux.trim() !== '';
     },
     'STORAGE_ERROR',
     'Unable to check Alchemy API key status. Please try restarting the app.',
-    'ALCHEMY_API_KEY_STATUS_CHECK'
+    'ALCHEMY_API_KEY_CHECK'
   );
 }
 
 /**
- * Store Alchemy API key securely
+ * Store Alchemy API key in Redux
  */
 export async function storeAlchemyApiKey(apiKey: string): Promise<TandaPayResult<void>> {
   return TandaPayErrorHandler.withErrorHandling(
@@ -324,13 +411,13 @@ export async function storeAlchemyApiKey(apiKey: string): Promise<TandaPayResult
         throw TandaPayErrorHandler.createError(
           'VALIDATION_ERROR',
           'Empty API key provided',
-          { userMessage: 'Please enter a valid Alchemy API key.' }
+          { userMessage: 'Please enter a valid API key.' }
         );
       }
 
-      await SecureStore.setItemAsync(ALCHEMY_API_KEY_STORAGE_KEY, trimmedApiKey, {
-        requireAuthentication: false,
-      });
+      // Store in Redux
+      // $FlowFixMe[incompatible-call] - store.dispatch type is too strict
+      store.dispatch(setAlchemyApiKey(trimmedApiKey));
     },
     'STORAGE_ERROR',
     'Failed to store Alchemy API key. Please try again.',
@@ -339,30 +426,99 @@ export async function storeAlchemyApiKey(apiKey: string): Promise<TandaPayResult
 }
 
 /**
- * Get the stored Alchemy API key
+ * Get stored Alchemy API key from Redux
+ * Uses Redux state only (no legacy SecureStore fallback)
  */
 export async function getAlchemyApiKey(): Promise<TandaPayResult<?string>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      const apiKey = await SecureStore.getItemAsync(ALCHEMY_API_KEY_STORAGE_KEY);
-      return apiKey; // Can be null if no API key is stored
+      // Check Redux state only
+      const apiKeyFromRedux = getAlchemyApiKeyFromRedux(store.getState);
+      // $FlowFixMe[sketchy-null-check] - Intentionally checking for both null and empty string
+      if (apiKeyFromRedux != null && apiKeyFromRedux !== '') {
+        return apiKeyFromRedux;
+      }
+      return null;
     },
     'STORAGE_ERROR',
-    'Unable to access Alchemy API key. Please try restarting the app.',
+    'Unable to retrieve Alchemy API key. Please try restarting the app.',
     'ALCHEMY_API_KEY_FETCH'
   );
 }
 
 /**
- * Delete the stored Alchemy API key
+ * Clear stored Alchemy API key from Redux
  */
 export async function deleteAlchemyApiKey(): Promise<TandaPayResult<void>> {
   return TandaPayErrorHandler.withErrorHandling(
     async () => {
-      await SecureStore.deleteItemAsync(ALCHEMY_API_KEY_STORAGE_KEY);
+      // Clear from Redux
+      // $FlowFixMe[incompatible-call] - store.dispatch type is too strict
+      store.dispatch(clearAlchemyApiKey());
     },
     'STORAGE_ERROR',
     'Failed to delete Alchemy API key. Please try again.',
     'ALCHEMY_API_KEY_DELETION'
+  );
+}
+
+/**
+ * Attempt to recover from keychain corruption by re-syncing with Redux
+ * This is a recovery function for when SecureStore encryption issues persist
+ * Automatically syncs recovered wallet state to Redux
+ */
+export async function recoverFromKeychainCorruption(): Promise<TandaPayResult<boolean>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Starting keychain recovery process...');
+
+      // First, try to get the mnemonic (this is the most important piece)
+      let mnemonic;
+      try {
+        mnemonic = await SecureStore.getItemAsync(MNEMONIC_STORAGE_KEY);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[WalletManager] Cannot recover - mnemonic is not accessible:', error);
+        return false;
+      }
+
+      if (!mnemonic) {
+        // eslint-disable-next-line no-console
+        console.log('[WalletManager] No mnemonic found - nothing to recover');
+        return false;
+      }
+
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Found mnemonic, re-deriving wallet info...');
+
+      // Re-derive wallet info from mnemonic
+      let wallet;
+      try {
+        wallet = ethers.Wallet.fromMnemonic(mnemonic);
+      } catch (walletError) {
+        // eslint-disable-next-line no-console
+        console.error('[WalletManager] Mnemonic is corrupted:', walletError);
+        return false;
+      }
+
+      // Sync the recovered wallet state to Redux
+      // $FlowFixMe[incompatible-call] - store.dispatch type is too strict
+      const syncResult = await syncWalletToRedux(wallet.address, store.dispatch);
+      if (!syncResult.success) {
+        // eslint-disable-next-line no-console
+        console.warn('[WalletManager] Could not sync recovered wallet to Redux, but wallet is still functional');
+      } else {
+        // eslint-disable-next-line no-console
+        console.log('[WalletManager] Successfully synced recovered wallet to Redux');
+      }
+
+      // eslint-disable-next-line no-console
+      console.log('[WalletManager] Keychain recovery completed');
+      return true;
+    },
+    'STORAGE_ERROR',
+    'Failed to recover from keychain corruption. The wallet may still be functional.',
+    'KEYCHAIN_RECOVERY'
   );
 }

@@ -14,7 +14,7 @@ import WalletBalanceCard from './WalletBalanceCard';
 import ZulipText from '../../common/ZulipText';
 import { TandaRibbon } from '../components';
 import { BRAND_COLOR } from '../../styles';
-import { hasWallet, getWalletAddress, hasAlchemyApiKey } from './WalletManager';
+import { hasWalletForUI, getWalletAddress, hasAlchemyApiKey } from './WalletManager';
 import { useNavigation } from '../../react-navigation';
 import { useSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getCurrentTandaPayContractAddress } from '../redux/selectors';
@@ -120,24 +120,26 @@ export default function WalletScreen(props: Props): Node {
       if (!isMounted) {
         return;
       }
+      // eslint-disable-next-line no-console
+      console.log('[WalletScreen] Starting checkWallet...');
       setLoading(true);
 
-      const walletExistsResult = await hasWallet();
-      if (!walletExistsResult.success) {
-        // Handle wallet check error - treat as no wallet for now
-        if (isMounted) {
-          setWalletExists(false);
-        }
-        return;
-      }
+      // eslint-disable-next-line no-console
+      console.log('[WalletScreen] About to call hasWalletForUI()...');
+      const exists = hasWalletForUI();
+      // eslint-disable-next-line no-console
+      console.log('[WalletScreen] hasWalletForUI() returned:', exists);
 
-      const exists = walletExistsResult.data;
+      // eslint-disable-next-line no-console
+      console.log('[WalletScreen] Wallet exists data:', exists);
       if (isMounted) {
         setWalletExists(exists);
       }
 
       if (exists) {
         const addressResult = await getWalletAddress();
+        // eslint-disable-next-line no-console
+        console.log('[WalletScreen] Wallet address:', addressResult);
         if (!addressResult.success) {
           // Handle address fetch error - treat as no address
           if (isMounted) {
@@ -153,6 +155,8 @@ export default function WalletScreen(props: Props): Node {
 
         // Check if API key is configured
         const apiKeyResult = await hasAlchemyApiKey();
+        // eslint-disable-next-line no-console
+        console.log('[WalletScreen] API key configured:', apiKeyResult);
         if (apiKeyResult.success) {
           const hasApiKey = apiKeyResult.data;
           if (isMounted) {

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import type { Node } from 'react';
 import { View, Alert, StyleSheet } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { connect } from '../../../react-redux';
 
 import type { RouteProp } from '../../../react-navigation';
 import type { AppNavigationProp } from '../../../nav/AppNavigator';
