@@ -337,6 +337,15 @@ class AuthScreenInner extends PureComponent<Props> {
               />
             ),
           )}
+          <ZulipButton
+            style={styles.halfMarginTop}
+            text="Don't have an account? Sign up"
+            Icon={IconPrivate}
+            onPress={() => {
+              const registrationUrl = new URL('/register/', serverSettings.realm_uri).toString();
+              Linking.openURL(registrationUrl);
+            }}
+          />
         </Centerer>
       </Screen>
     );
