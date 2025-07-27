@@ -17,6 +17,7 @@ import {
 
 import TandaPayErrorHandler from '../../errors/ErrorHandler';
 import { estimateContractTransactionGas } from '../../web3';
+import { createErc20AwareSimulation } from '../queryErc20Spending';
 
 /**
  * Parameter metadata for dynamic form generation
@@ -167,50 +168,8 @@ const transactions: WriteTransaction[] = [
     requiresParams: false,
     icon: IconUserPlus,
     writeFunction: contract => contract.joinCommunity(),
-    // Direct approach for no-parameter methods
-    simulateFunction: async (contract) => {
-      try {
-        const callResult = await contract.callStatic.joinCommunity();
-        return {
-          success: true,
-          result: callResult,
-          gasEstimate: null,
-          error: null,
-        };
-      } catch (error) {
-        // Handle simulation errors with more specific messaging
-        const parsedError = TandaPayErrorHandler.parseEthersError(error);
-
-        // For simulation failures, be explicit that the transaction would revert
-        let userMessage = parsedError.userMessage;
-
-        // Clean up layered error messages and make them more user-friendly
-        if (parsedError.type === 'CONTRACT_ERROR') {
-          // If it's already a good user message, use it directly
-          if (userMessage.includes('Premium has already been paid')
-              || userMessage.includes('This action can only be performed')
-              || userMessage.includes('community has collapsed')
-              || userMessage.includes('already been added')
-              || userMessage.includes('not valid for the current period')) {
-            // Keep the specific message as-is
-          } else if (userMessage.includes('Smart contract operation failed')
-                     || userMessage.includes('execution reverted')
-                     || userMessage.includes('transaction may fail')) {
-            // Replace generic messages with clearer revert message
-            userMessage = 'This transaction cannot be completed at this time. The contract state may not allow this operation right now.';
-          }
-        }
-
-        return {
-          success: false,
-          result: null,
-          gasEstimate: null,
-          error: userMessage,
-          // Preserve original error for debugging
-          originalError: error?.message || String(error),
-        };
-      }
-    },
+    // ERC20-aware simulation for joinCommunity
+    simulateFunction: createErc20AwareSimulation('joinCommunity'),
     estimateGasFunction: contract => estimateContractTransactionGas(contract, 'joinCommunity'),
   },
 
@@ -330,7 +289,7 @@ const transactions: WriteTransaction[] = [
     ],
     writeFunction: (contract, useAvailableBalance = false) =>
       contract.payPremium(useAvailableBalance),
-    simulateFunction: createSimulation('payPremium'),
+    simulateFunction: createErc20AwareSimulation('payPremium'),
     estimateGasFunction: (contract, useAvailableBalance = false) =>
       estimateContractTransactionGas(contract, 'payPremium', undefined, [useAvailableBalance]),
   },
@@ -634,7 +593,7 @@ const transactions: WriteTransaction[] = [
     requiresParams: false,
     icon: IconDollarSign,
     writeFunction: contract => contract.injectFunds(),
-    simulateFunction: createSimulation('injectFunds'),
+    simulateFunction: createErc20AwareSimulation('injectFunds'),
     estimateGasFunction: contract => estimateContractTransactionGas(contract, 'injectFunds'),
   },
 
@@ -646,7 +605,7 @@ const transactions: WriteTransaction[] = [
     requiresParams: false,
     icon: IconTrendingUp,
     writeFunction: contract => contract.divideShortfall(),
-    simulateFunction: createSimulation('divideShortfall'),
+    simulateFunction: createErc20AwareSimulation('divideShortfall'),
     estimateGasFunction: contract => estimateContractTransactionGas(contract, 'divideShortfall'),
   },
 

@@ -9,6 +9,7 @@ import ZulipButton from '../../common/ZulipButton';
 import ZulipText from '../../common/ZulipText';
 import { TandaPayColors, TandaPayTypography } from '../styles';
 import { useBalanceInvalidation } from '../hooks/useBalanceInvalidation';
+import { useErc20Approval } from '../hooks/useErc20Approval';
 import { useSelector, useGlobalSelector } from '../../react-redux';
 import { getTandaPaySelectedNetwork, getTandaPayCustomRpcConfig } from '../redux/selectors';
 import { getGlobalSettings } from '../../directSelectors';
@@ -17,6 +18,7 @@ import { getProvider } from '../web3';
 import { openLinkWithUserPreference } from '../../utils/openLink';
 import { showToast } from '../../utils/info';
 import Card from './Card';
+import Erc20ApprovalDisplay from './Erc20ApprovalDisplay';
 
 export type GasEstimate = {|
   gasLimit: string,
@@ -80,6 +82,9 @@ type Props = $ReadOnly<{|
   // Success/Error callbacks
   onTransactionSuccess?: (txHash: string) => void,
   onTransactionError?: (error: string) => void,
+
+  // ERC20 approval support
+  methodName?: string, // Contract method name for ERC20 approval detection
 |}>;
 
 // Custom styles for this component
@@ -128,6 +133,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     getConfirmationMessage,
     onTransactionSuccess,
     onTransactionError,
+    methodName,
   } = props;
 
   const { invalidateAllTokens } = useBalanceInvalidation();
@@ -141,6 +147,15 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   const [showingConfirmation, setShowingConfirmation] = useState(false);
   // Store the transaction function created during gas estimation
   const [transactionFunction, setTransactionFunction] = useState<?TransactionFunction>(null);
+
+  // ERC20 approval hook
+  const {
+    approvalState,
+    estimateSpending,
+    approveSpending,
+    reset: resetApproval,
+    formattedAmount,
+  } = useErc20Approval(methodName);
 
   // Get explorer URL for the current network
   const getExplorerUrl = useCallback((txHash: string): string | null => {
@@ -167,6 +182,15 @@ export default function TransactionEstimateAndSend(props: Props): Node {
 
     // Prevent multiple estimation requests
     if (estimating) {
+      return;
+    }
+
+    // Check if ERC20 approval is required and not yet approved
+    if (approvalState.isRequired && !approvalState.isApproved) {
+      Alert.alert(
+        'ERC20 Approval Required',
+        'You must approve ERC20 token spending before estimating gas. Please calculate and approve the required amount first.'
+      );
       return;
     }
 
@@ -198,7 +222,7 @@ export default function TransactionEstimateAndSend(props: Props): Node {
     } finally {
       setEstimating(false);
     }
-  }, [isFormValid, onEstimateGas, onSendTransaction, transactionParams, estimating]);
+  }, [isFormValid, onEstimateGas, onSendTransaction, transactionParams, estimating, approvalState.isRequired, approvalState.isApproved]);
 
   const handleSendTransaction = useCallback(async () => {
     if (!gasEstimate || !transactionFunction) {
@@ -406,10 +430,21 @@ export default function TransactionEstimateAndSend(props: Props): Node {
   useEffect(() => {
     setGasEstimate(null);
     setTransactionFunction((): ?TransactionFunction => null);
-  }, [transactionParams]);
+    resetApproval(); // Also reset ERC20 approval state
+  }, [transactionParams, resetApproval]);
 
   return (
     <View style={customStyles.container}>
+      {/* ERC20 Approval Section */}
+      <Erc20ApprovalDisplay
+        approvalState={approvalState}
+        formattedAmount={formattedAmount}
+        onEstimateSpending={estimateSpending}
+        onApproveSpending={approveSpending}
+        isFormValid={isFormValid}
+        disabled={disabled}
+      />
+
       {/* Estimate Gas Button */}
       <ZulipButton
         disabled={!isFormValid || estimating || sending || waitingForReceipt || disabled}

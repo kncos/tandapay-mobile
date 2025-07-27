@@ -401,6 +401,7 @@ export default function TransactionModal(props: Props): Node {
               onTransactionSuccess={handleTransactionSuccess}
               onTransactionError={handleTransactionError}
               disabled={isSubmitting}
+              methodName={transaction.functionName}
             />
           </ScrollView>
         </Card>

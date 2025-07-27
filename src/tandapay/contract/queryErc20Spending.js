@@ -225,28 +225,21 @@ function parsePaymentTokenTransferFailedError(error: mixed): ?string {
       // Try TandaPay PaymentTokenTransferFailed error first
       try {
         const decoded = tandaPayInterface.parseError(errorData);
-        // $FlowFixMe[incompatible-use] - console for debugging
-        console.log('Decoded TandaPay error:', decoded);
         if (decoded && decoded.name === 'PaymentTokenTransferFailed' && decoded.args && decoded.args[0]) {
           return decoded.args[0].toString();
         }
       } catch (decodeError) {
-        // $FlowFixMe[incompatible-use] - console for debugging
-        console.log('Failed to decode TandaPay error, trying ERC20 error...');
+        // Continue to ERC20 error parsing
       }
 
       // Try ERC20InsufficientAllowance error
       try {
         const decoded = erc20ErrorInterface.parseError(errorData);
-        // $FlowFixMe[incompatible-use] - console for debugging
-        console.log('Decoded ERC20 error:', decoded);
         if (decoded && decoded.name === 'ERC20InsufficientAllowance' && decoded.args && decoded.args[2]) {
           // The third argument (index 2) is the 'needed' amount
           return decoded.args[2].toString();
         }
       } catch (decodeError) {
-        // $FlowFixMe[incompatible-use] - console for debugging
-        console.log('Failed to decode error data:', errorData, decodeError);
         // Continue to next method
       }
     }
@@ -288,9 +281,10 @@ function parsePaymentTokenTransferFailedError(error: mixed): ?string {
 }
 
 /**
- * Internal helper to simulate contract method and extract spending amount
+ * First simulation: Intentionally create insufficient allowance to extract required amount
+ * This temporarily sets allowance to 0, simulates to get the error, then restores allowance
  */
-async function simulateAndExtractSpending(
+async function simulateToExtractSpendingAmount(
   contractAddress: string,
   methodName: string,
   methodArgs: mixed[] = []
@@ -318,7 +312,7 @@ async function simulateAndExtractSpending(
 
       const userAddress = walletAddressResult.data;
 
-      // Step 1: Get current allowance
+      // Step 1: Get current allowance to restore later
       const currentAllowanceResult = await getCurrentAllowance(tokenAddress, userAddress, contractAddress);
       if (!currentAllowanceResult.success) {
         throw currentAllowanceResult.error;
@@ -327,13 +321,13 @@ async function simulateAndExtractSpending(
       const originalAllowance = currentAllowanceResult.data;
 
       try {
-        // Step 2: Set allowance to 0
+        // Step 2: Temporarily set allowance to 0 to force PaymentTokenTransferFailed error
         const zeroAllowanceResult = await manageAllowance(tokenAddress, contractAddress, userAddress, '0');
         if (!zeroAllowanceResult.success) {
           throw zeroAllowanceResult.error;
         }
 
-        // Step 3: Simulate the contract method call (this should revert with PaymentTokenTransferFailed)
+        // Step 3: Simulate the contract method (should fail with PaymentTokenTransferFailed)
         const provider = await getProvider();
         const walletResult = await getWalletInstance(provider);
 
@@ -346,11 +340,8 @@ async function simulateAndExtractSpending(
 
         let simulationError = null;
         try {
-          // Use callStatic to simulate the transaction without actually executing it
           await tandaPayContract.callStatic[methodName](...methodArgs);
-
-          // If we get here, the method didn't revert, which means it doesn't need any tokens
-          // This shouldn't happen for methods that require payment, but we'll handle it gracefully
+          // If we get here without error, no tokens are needed
           return '0';
         } catch (error) {
           simulationError = error;
@@ -360,36 +351,87 @@ async function simulateAndExtractSpending(
         if (simulationError) {
           const amount = parsePaymentTokenTransferFailedError(simulationError);
           if (amount) {
-            // Successfully extracted the amount - this is the expected case
             return amount;
           } else {
-            // The error wasn't PaymentTokenTransferFailed, or we couldn't parse it
-            // This might indicate a different kind of error (e.g., timing, permissions)
+            // The error wasn't PaymentTokenTransferFailed - this means the method call failed for other reasons
             throw TandaPayErrorHandler.createError(
               'CONTRACT_ERROR',
-              `Method simulation failed with unexpected error: ${String(simulationError)}`,
-              { userMessage: `Unable to determine required token amount for ${methodName}. The contract may not be in the correct state.` }
+              `Method call failed with unexpected error: ${String(simulationError)}`,
+              { userMessage: `Unable to determine required token amount for ${methodName}. The contract may not be in the correct state or you may not have permission to call this method.` }
             );
           }
         }
 
-        // This shouldn't be reached, but just in case
+        // This shouldn't be reached
         return '0';
       } finally {
         // Step 5: Always restore original allowance
         try {
           const restoreResult = await manageAllowance(tokenAddress, contractAddress, userAddress, originalAllowance);
           if (!restoreResult.success) {
-            // Log the error but don't fail the main operation
+            // Note: We don't throw here to avoid masking the main operation result
+            // But this is a serious issue - the user's allowance couldn't be restored
           }
         } catch (restoreError) {
-          // Log the error but don't fail the main operation
+          // Note: We don't throw here to avoid masking the main operation result
+          // But this is a serious issue - the user's allowance couldn't be restored
         }
       }
     },
     'CONTRACT_ERROR',
-    `Failed to query ERC20 spending amount for ${methodName}.`,
-    'ERC20_SPENDING_QUERY'
+    `Failed to determine ERC20 spending amount for ${methodName}.`,
+    'ERC20_SPENDING_ESTIMATION'
+  );
+}
+
+/**
+ * Second simulation: Normal gas estimation after ERC20 approval
+ * This should be used for actual gas estimation in the transaction workflow
+ */
+export async function simulateTransactionForGasEstimation(
+  contractAddress: string,
+  methodName: string,
+  methodArgs: mixed[] = []
+): Promise<TandaPayResult<mixed>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const provider = await getProvider();
+      const walletResult = await getWalletInstance(provider);
+
+      if (!walletResult.success) {
+        throw walletResult.error;
+      }
+
+      const signer = walletResult.data;
+      const tandaPayContract = new ethers.Contract(contractAddress, TandaPayInfo.abi, signer);
+
+      try {
+        // Use callStatic to simulate the transaction
+        // At this point, ERC20 approval should be sufficient, so this should succeed
+        const result = await tandaPayContract.callStatic[methodName](...methodArgs);
+        return result;
+      } catch (error) {
+        // If we get PaymentTokenTransferFailed here, it means the approval wasn't sufficient
+        const amount = parsePaymentTokenTransferFailedError(error);
+        if (amount) {
+          throw TandaPayErrorHandler.createError(
+            'CONTRACT_ERROR',
+            `Insufficient ERC20 allowance for transaction. Required: ${amount}`,
+            { userMessage: 'The ERC20 approval amount was insufficient. Please approve a higher amount and try again.' }
+          );
+        } else {
+          // Some other error occurred during simulation
+          throw TandaPayErrorHandler.createError(
+            'CONTRACT_ERROR',
+            `Transaction simulation failed: ${String(error)}`,
+            { userMessage: 'Transaction simulation failed. The contract may not be in the correct state or you may not have permission to call this method.' }
+          );
+        }
+      }
+    },
+    'CONTRACT_ERROR',
+    `Failed to simulate transaction for gas estimation: ${methodName}`,
+    'TRANSACTION_SIMULATION'
   );
 }
 
@@ -407,7 +449,7 @@ export const tryGetPayPremiumErc20Spend = async (): Promise<TandaPayResult<BigNu
 
     // PayPremium method takes a boolean parameter (_useFromATW)
     // We want to simulate with false to force token transfer
-    const amountResult = await simulateAndExtractSpending(contractAddress, 'payPremium', [false]);
+    const amountResult = await simulateToExtractSpendingAmount(contractAddress, 'payPremium', [false]);
 
     if (!amountResult.success) {
       throw amountResult.error;
@@ -434,7 +476,7 @@ export const tryGetJoinCommunityErc20Spend = async (): Promise<TandaPayResult<Bi
     const { contractAddress } = stateResult.data;
 
     // JoinCommunity method takes no parameters
-    const amountResult = await simulateAndExtractSpending(contractAddress, 'joinCommunity', []);
+    const amountResult = await simulateToExtractSpendingAmount(contractAddress, 'joinCommunity', []);
 
     if (!amountResult.success) {
       throw amountResult.error;
@@ -461,7 +503,7 @@ export const tryGetInjectFundsErc20Spend = async (): Promise<TandaPayResult<BigN
     const { contractAddress } = stateResult.data;
 
     // InjectFunds method takes no parameters
-    const amountResult = await simulateAndExtractSpending(contractAddress, 'injectFunds', []);
+    const amountResult = await simulateToExtractSpendingAmount(contractAddress, 'injectFunds', []);
 
     if (!amountResult.success) {
       throw amountResult.error;
@@ -488,7 +530,7 @@ export const tryGetDivideShortfallErc20Spend = async (): Promise<TandaPayResult<
     const { contractAddress } = stateResult.data;
 
     // DivideShortfall method takes no parameters
-    const amountResult = await simulateAndExtractSpending(contractAddress, 'divideShortfall', []);
+    const amountResult = await simulateToExtractSpendingAmount(contractAddress, 'divideShortfall', []);
 
     if (!amountResult.success) {
       throw amountResult.error;
@@ -501,3 +543,145 @@ export const tryGetDivideShortfallErc20Spend = async (): Promise<TandaPayResult<
   'Failed to determine required token amount for dividing shortfall.',
   'DIVIDE_SHORTFALL_SPENDING_QUERY'
 );
+
+/**
+ * Public function to approve ERC20 tokens for TandaPay contract
+ */
+export async function approveErc20ForTandaPay(amount: BigNumber): Promise<TandaPayResult<string>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const stateResult = getCurrentStateAndContract();
+      if (!stateResult.success) {
+        throw stateResult.error;
+      }
+
+      const { contractAddress } = stateResult.data;
+
+      // Get payment token address
+      const tokenAddressResult = await getPaymentTokenAddress(contractAddress);
+      if (!tokenAddressResult.success) {
+        throw tokenAddressResult.error;
+      }
+
+      const tokenAddress = tokenAddressResult.data;
+
+      // Get user wallet address
+      const walletAddressResult = await getWalletAddress();
+      if (!walletAddressResult.success) {
+        throw walletAddressResult.error;
+      }
+
+      const userAddress = walletAddressResult.data;
+
+      // Approve the specified amount
+      const approvalResult = await manageAllowance(
+        tokenAddress,
+        contractAddress,
+        userAddress,
+        // $FlowFixMe[incompatible-use] - BigNumber toString method
+        amount.toString()
+      );
+
+      if (!approvalResult.success) {
+        throw approvalResult.error;
+      }
+
+      return approvalResult.data;
+    },
+    'CONTRACT_ERROR',
+    'Failed to approve ERC20 tokens for TandaPay contract.',
+    'ERC20_APPROVAL'
+  );
+}
+
+/**
+ * Public function to check current ERC20 allowance for TandaPay contract
+ */
+export async function checkErc20AllowanceForTandaPay(): Promise<TandaPayResult<BigNumber>> {
+  return TandaPayErrorHandler.withErrorHandling(
+    async () => {
+      const stateResult = getCurrentStateAndContract();
+      if (!stateResult.success) {
+        throw stateResult.error;
+      }
+
+      const { contractAddress } = stateResult.data;
+
+      // Get payment token address
+      const tokenAddressResult = await getPaymentTokenAddress(contractAddress);
+      if (!tokenAddressResult.success) {
+        throw tokenAddressResult.error;
+      }
+
+      const tokenAddress = tokenAddressResult.data;
+
+      // Get user wallet address
+      const walletAddressResult = await getWalletAddress();
+      if (!walletAddressResult.success) {
+        throw walletAddressResult.error;
+      }
+
+      const userAddress = walletAddressResult.data;
+
+      // Get current allowance
+      const allowanceResult = await getCurrentAllowance(tokenAddress, userAddress, contractAddress);
+      if (!allowanceResult.success) {
+        throw allowanceResult.error;
+      }
+
+      // Convert string to BigNumber
+      return ethers.BigNumber.from(allowanceResult.data);
+    },
+    'CONTRACT_ERROR',
+    'Failed to check ERC20 allowance for TandaPay contract.',
+    'ERC20_ALLOWANCE_CHECK'
+  );
+}
+
+/**
+ * Enhanced simulation for ERC20-requiring methods that provides better error handling
+ * Use this instead of the standard createSimulation for payPremium, joinCommunity, injectFunds, divideShortfall
+ */
+export function createErc20AwareSimulation(contractMethod: string, paramTransform?: (...args: any[]) => any[]): (contract: any, ...args: any[]) => Promise<{|success: boolean, result: any, gasEstimate: any, error: any, originalError?: any|}> {
+  return async (contract: any, ...args: any[]) => {
+    try {
+      const transformedArgs = paramTransform ? paramTransform(...args) : args;
+      
+      // Use our enhanced simulation function that provides better ERC20 error handling
+      const contractAddress = contract.address;
+      const simulationResult = await simulateTransactionForGasEstimation(
+        contractAddress,
+        contractMethod,
+        transformedArgs
+      );
+
+      if (simulationResult.success) {
+        return {
+          success: true,
+          result: simulationResult.data,
+          gasEstimate: null,
+          error: null,
+        };
+      } else {
+        return {
+          success: false,
+          result: null,
+          gasEstimate: null,
+          error: simulationResult.error && simulationResult.error.userMessage ? simulationResult.error.userMessage : 'Transaction simulation failed',
+          originalError: simulationResult.error,
+        };
+      }
+    } catch (error) {
+      // Fallback to standard error handling
+      const parsedError = TandaPayErrorHandler.parseEthersError(error);
+      
+      return {
+        success: false,
+        result: null,
+        gasEstimate: null,
+        error: parsedError.userMessage || 'Transaction simulation failed',
+        originalError: error,
+      };
+    }
+  };
+}
