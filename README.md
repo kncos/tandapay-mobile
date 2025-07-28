@@ -37,7 +37,7 @@ Features of TandaPay Mobile include:
   - [x] Defining secretary successors workflow
   - [x] intelligent default state initialization macro
   - [x] exiting the initialization state workflow (chained macro)
-- [ ] a refined user onboarding experience using the existing server infrastructure, but with modifications to make sign-up go more smoothly within TandaPay mobile's application
+- [x] a refined user onboarding experience using the existing server infrastructure, but with modifications to make sign-up go more smoothly within TandaPay mobile's application
 
 
 # Original Zulip Readme:
