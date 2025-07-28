@@ -175,15 +175,16 @@ android {
         abi {
             reset()
             enable true // Build a separate APK for each ABI.
-            universalApk false  // If true, also generate a universal APK
+            universalApk true // If true, also generate a universal APK
             include (*reactNativeArchitectures())
         }
     }
     buildTypes {
         debug {
-            applicationIdSuffix ".debug"
+            applicationIdSuffix ".debug.tandapay"
         }
         release {
+            applicationIdSuffix ".tandapay"
             minifyEnabled enableProguardInReleaseBuilds
             // `minifyEnabled` is required for `shrinkResources`
             shrinkResources(enableProguardInReleaseBuilds && shrinkResourcesInProguardBuilds)
