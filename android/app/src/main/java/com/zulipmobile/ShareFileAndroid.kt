@@ -3,6 +3,7 @@ package com.zulipmobile
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
+import com.tandapay.mobile.R
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule

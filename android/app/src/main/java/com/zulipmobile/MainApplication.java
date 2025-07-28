@@ -15,6 +15,7 @@ import expo.modules.ReactNativeHostWrapper;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
+import com.tandapay.mobile.BuildConfig;
 import com.zulipmobile.notifications.NotificationChannelManager;
 import com.zulipmobile.notifications.NotificationsPackage;
 import com.zulipmobile.sharing.SharingPackage;

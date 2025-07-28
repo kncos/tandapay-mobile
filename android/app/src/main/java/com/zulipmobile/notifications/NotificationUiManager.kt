@@ -17,9 +17,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.Person
 import androidx.core.graphics.drawable.IconCompat
 import androidx.core.os.bundleOf
-import com.zulipmobile.BuildConfig
+import com.tandapay.mobile.BuildConfig
 import com.zulipmobile.MainActivity
-import com.zulipmobile.R
+import com.tandapay.mobile.R
 import com.zulipmobile.ZLog
 import java.io.IOException
 import java.io.InputStream

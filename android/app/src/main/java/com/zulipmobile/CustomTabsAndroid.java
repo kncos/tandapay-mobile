@@ -10,6 +10,8 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import java.util.List;
 
+import com.tandapay.mobile.R;
+
 /**
  * Launches custom tabs.
  */
