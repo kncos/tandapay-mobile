@@ -2,7 +2,7 @@
 
 import React, { useContext } from 'react';
 import type { Node } from 'react';
-import { View , StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import { ThemeContext } from '../../styles';

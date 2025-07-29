@@ -199,7 +199,7 @@ export default function ClaimsModalContent(props: Props): Node {
   } = props;
 
   const themeData = useContext(ThemeContext);
-  
+
   // Find the payment token information using the token selector
   const paymentTokenInfo = useSelector(state =>
     (paymentTokenAddress != null && paymentTokenAddress.trim() !== '')
@@ -237,7 +237,7 @@ export default function ClaimsModalContent(props: Props): Node {
         {sortedClaims.map((claim, index) => {
           const claimId = formatBigNumber(claim.id);
           const whitelistedStatus = claim.isWhitelisted ? 'Whitelisted' : 'Not Whitelisted';
-          
+
           return (
             <TandaRibbon
               key={claimId}

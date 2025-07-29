@@ -194,7 +194,7 @@ function parsePaymentTokenTransferFailedError(error: mixed): ?string {
   try {
     // Use the TandaPay ABI directly to parse errors
     const tandaPayInterface = new ethers.utils.Interface(TandaPayInfo.abi);
-    
+
     // Also create interface for standard ERC20 errors
     const erc20ErrorInterface = new ethers.utils.Interface([
       'error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)'
@@ -646,7 +646,7 @@ export function createErc20AwareSimulation(contractMethod: string, paramTransfor
   return async (contract: any, ...args: any[]) => {
     try {
       const transformedArgs = paramTransform ? paramTransform(...args) : args;
-      
+
       // Use our enhanced simulation function that provides better ERC20 error handling
       const contractAddress = contract.address;
       const simulationResult = await simulateTransactionForGasEstimation(
@@ -674,7 +674,7 @@ export function createErc20AwareSimulation(contractMethod: string, paramTransfor
     } catch (error) {
       // Fallback to standard error handling
       const parsedError = TandaPayErrorHandler.parseEthersError(error);
-      
+
       return {
         success: false,
         result: null,

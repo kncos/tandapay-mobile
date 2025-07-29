@@ -57,6 +57,7 @@ export const getTandaPayState = (state: PerAccountState): TandaPayState => {
       wallet: {
         hasWallet: false,
         walletAddress: null,
+        alchemyApiKey: null,
       },
     };
   }
