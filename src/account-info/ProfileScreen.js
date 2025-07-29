@@ -72,8 +72,7 @@ function TandaPayButton(props: {||}) {
   return (
     <ZulipButton
       style={styles.button}
-      secondary
-      text="TandaPay Menu"
+      text="Open Tribunals Menu"
       onPress={() => {
         navigation.push('tandapay-menu');
       }}

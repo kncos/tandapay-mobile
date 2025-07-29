@@ -22,7 +22,7 @@ export default function TandaPayMenuScreen(props: Props): Node {
   const { navigation } = props;
 
   return (
-    <Screen title="TandaPay Menu">
+    <Screen title="Open Tribunals / TandaPay Menu">
       <NavRow
         leftElement={{ type: 'icon', Component: IconWallet }}
         title="Wallet"
@@ -33,7 +33,7 @@ export default function TandaPayMenuScreen(props: Props): Node {
       />
       <NavRow
         leftElement={{ type: 'icon', Component: IconTandaPayInfo }}
-        title="TandaPay Info"
+        title="Tribunal (TandaPay) Info"
         onPress={() => {
           navigation.push('tandapay-info');
         }}
@@ -41,7 +41,7 @@ export default function TandaPayMenuScreen(props: Props): Node {
       />
       <NavRow
         leftElement={{ type: 'icon', Component: IconTandaPayActions }}
-        title="TandaPay Actions"
+        title="Tribunal (TandaPay) Actions"
         onPress={() => {
           navigation.push('tandapay-actions');
         }}
@@ -49,7 +49,7 @@ export default function TandaPayMenuScreen(props: Props): Node {
       />
       <NavRow
         leftElement={{ type: 'icon', Component: IconSettings }}
-        title="TandaPay Settings"
+        title="Tribunal (TandaPay) Settings"
         onPress={() => {
           navigation.push('tandapay-settings');
         }}

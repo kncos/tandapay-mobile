@@ -479,7 +479,7 @@ const transactions: WriteTransaction[] = [
         type: 'uint256',
         label: 'Total Coverage Amount',
         description: 'Total coverage amount for the community',
-        placeholder: 'Enter coverage amount',
+        placeholder: 'Enter coverage amount in smallest token units (e.g., 1000000...)',
         isCurrency: true,
         validation: { required: true, min: 0 },
       },

@@ -111,11 +111,21 @@ function renderParameterInput(
           }
         }
 
+        // Determine if we successfully identified the token
+        const hasTokenInfo = tokenSymbol !== 'ETH'
+          || (transaction.prefilledParams && transaction.prefilledParams.paymentTokenAddress);
+
+        // Create dynamic placeholder based on token information
+        let dynamicPlaceholder = placeholder;
+        if (hasTokenInfo) {
+          dynamicPlaceholder = `Enter coverage amount in ${tokenSymbol} (e.g., 10.0 ${tokenSymbol})`;
+        }
+
         return (
           <View key={name} style={styles.parameterContainer}>
             <AmountInput
               label={label}
-              placeholder={placeholder}
+              placeholder={dynamicPlaceholder}
               value={value || ''}
               onChangeText={(newValue: string) => onParameterChange(name, newValue)}
               tokenSymbol={tokenSymbol}

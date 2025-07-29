@@ -19,7 +19,7 @@ export default function TandaPaySettingsScreen(props: Props): Node {
   const { navigation } = props;
 
   return (
-    <Screen title="TandaPay Settings">
+    <Screen title="Open Tribunals / TandaPay Settings">
       <NavRow
         leftElement={{ type: 'icon', Component: IconWallet }}
         title="Wallet Settings"
@@ -46,7 +46,7 @@ export default function TandaPaySettingsScreen(props: Props): Node {
       />
       <TextRow
         icon={{ Component: IconSmartphone }}
-        title="TandaPay version"
+        title="Open Tribunals / TandaPay version"
         subtitle="v1.0.0 Beta"
       />
     </Screen>

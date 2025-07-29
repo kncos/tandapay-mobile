@@ -417,7 +417,7 @@ function TandaPayInfoScreen(props: Props): Node {
   // Render loading state
   if (isLoading && !communityInfo) {
     return (
-      <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
+      <Screen title="Tribunal Info" canGoBack={navigation.canGoBack()}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={BRAND_COLOR} style={{ marginBottom: 16 }} />
           <ZulipText style={styles.loadingText}>Loading community information...</ZulipText>
@@ -429,7 +429,7 @@ function TandaPayInfoScreen(props: Props): Node {
   // Render error state
   if (error != null && error.trim() !== '' && !communityInfo) {
     return (
-      <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
+      <Screen title="Tribunal Info" canGoBack={navigation.canGoBack()}>
         <View style={styles.errorContainer}>
           <IconAlertTriangle size={48} color="#f44336" />
           <ZulipText style={styles.errorTitle}>Unable to Load Community Info</ZulipText>
@@ -460,7 +460,7 @@ function TandaPayInfoScreen(props: Props): Node {
   const claimsCount = Array.isArray(deserializedClaimsData) ? deserializedClaimsData.length : 0;
 
   return (
-    <Screen title="TandaPay Info" canGoBack={navigation.canGoBack()}>
+    <Screen title="Tribunal Info" canGoBack={navigation.canGoBack()}>
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
         style={styles.scrollContainer}

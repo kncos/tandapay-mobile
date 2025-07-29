@@ -188,7 +188,7 @@ export default function TandaPayActionsScreen(props: Props): Node {
   );
 
   return (
-    <Screen title="TandaPay Actions">
+    <Screen title="Tribunal Actions">
       {/* Complete Setup Macro Chain */}
       <TandaRibbon label="Complete Setup" marginTop={0}>
         <NavRow

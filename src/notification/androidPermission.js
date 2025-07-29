@@ -51,7 +51,7 @@ export const androidRequestNotificationsPermission = async (): Promise<boolean |
     // TODO: Offer link to a help doc saying how to configure which
     //   messages you get notifications for.
     //! rebranded from "Zulip" to "TandaPay"
-    message: 'TandaPay can send push notifications about messages you might be interested in.',
+    message: 'Open Tribunals / TandaPay can send push notifications about messages you might be interested in.',
     buttonPositive: 'OK',
   });
   return result === PermissionsAndroid.RESULTS.GRANTED;
