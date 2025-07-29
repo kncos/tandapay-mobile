@@ -49,6 +49,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A component for inputting and validating Ethereum addresses with QR code scanning support.
+ * Provides real-time validation and optional QR code scanner for easy address input.
+ */
 export default function AddressInput(props: Props): Node {
   const {
     value,

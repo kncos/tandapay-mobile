@@ -78,6 +78,10 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * A component for displaying and managing ERC20 token approval states.
+ * Shows approval status and provides buttons for estimating and approving token spending.
+ */
 export default function Erc20ApprovalDisplay(props: Props): Node {
   const {
     approvalState,

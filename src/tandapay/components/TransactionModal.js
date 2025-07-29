@@ -91,6 +91,10 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * A modal component for displaying and executing blockchain transactions.
+ * Provides transaction details, parameter input, and execution with progress tracking.
+ */
 export default function TransactionModal(props: Props): Node {
   const { visible, transaction, onClose, onTransactionComplete, workflowProgress } = props;
   const [isSubmitting, setIsSubmitting] = useState(false);

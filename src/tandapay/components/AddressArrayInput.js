@@ -37,6 +37,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A component for managing an array of Ethereum addresses with validation.
+ * Allows users to add, remove, and validate multiple Ethereum addresses with min/max limits.
+ */
 export default function AddressArrayInput(props: Props): Node {
   const {
     addresses,

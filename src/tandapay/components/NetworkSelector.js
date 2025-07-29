@@ -48,6 +48,10 @@ const networkStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A network selection component for choosing blockchain networks.
+ * Displays available networks with visual indicators for selection and switching states.
+ */
 export default function NetworkSelector(props: Props): Node {
   const { selectedNetwork, onNetworkSelect, switchingNetwork, disabled, customRpcConfig } = props;
   const themeData = useContext(ThemeContext);

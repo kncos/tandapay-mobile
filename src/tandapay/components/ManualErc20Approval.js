@@ -82,6 +82,10 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * A component for manually managing ERC20 token approvals.
+ * Allows users to approve, revoke, or modify spending allowances for ERC20 tokens.
+ */
 export default function ManualErc20Approval(props: Props): Node {
   const { disabled = false } = props;
 

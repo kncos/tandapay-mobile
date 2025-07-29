@@ -95,6 +95,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A token selection component with modal picker interface.
+ * Allows users to select from available tokens with filtering options.
+ */
 export default function TokenPicker(props: Props): Node {
   const { tokens, selectedToken, onTokenSelect, placeholder = 'Select a token', disabled = false, erc20Only = false } = props;
   const [modalVisible, setModalVisible] = useState(false);

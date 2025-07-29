@@ -86,6 +86,10 @@ async function handleCopy(
   }
 }
 
+/**
+ * A scrollable text box component for displaying long text content with copy functionality.
+ * Provides horizontal scrolling and copy-to-clipboard features for addresses or other text.
+ */
 export default function ScrollableTextBox({
   text,
   label,

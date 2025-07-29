@@ -2,7 +2,7 @@
 
 import React, { useState, useContext, useEffect } from 'react';
 import type { Node } from 'react';
-import { View , StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import ZulipText from '../../common/ZulipText';
 import ZulipButton from '../../common/ZulipButton';
@@ -40,6 +40,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A settings component for configuring network performance parameters.
+ * Allows adjustment of cache expiration, rate limiting, and retry settings.
+ */
 export default function NetworkPerformanceSettings(props: Props): Node {
   const {
     cacheExpirationMs,

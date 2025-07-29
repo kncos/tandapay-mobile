@@ -41,6 +41,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A component for configuring TandaPay contract addresses per network.
+ * Allows users to set, update, and deploy contract addresses for different blockchain networks.
+ */
 export default function ContractAddressConfiguration(props: Props): Node {
   const { disabled = false } = props;
 

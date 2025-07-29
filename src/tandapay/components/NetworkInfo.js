@@ -28,6 +28,10 @@ type Props = $ReadOnly<{|
   switchingNetwork?: ?string,
 |}>;
 
+/**
+ * A component for displaying current network information and connection status.
+ * Shows network details including name, chain ID, and native currency information.
+ */
 export default function NetworkInfo(props: Props): Node {
   const { selectedNetwork, customRpcConfig, switchingNetwork } = props;
 

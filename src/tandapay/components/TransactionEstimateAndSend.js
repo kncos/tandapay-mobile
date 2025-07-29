@@ -117,6 +117,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A component for estimating gas costs and sending blockchain transactions.
+ * Provides a two-step process: estimate transaction costs, then execute the transaction.
+ */
 export default function TransactionEstimateAndSend(props: Props): Node {
   const {
     transactionParams,

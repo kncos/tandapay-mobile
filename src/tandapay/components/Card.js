@@ -15,6 +15,10 @@ type Props = $ReadOnly<{|
   borderRadius?: number,
 |}>;
 
+/**
+ * A reusable card container component with configurable styling.
+ * Provides consistent card appearance with customizable padding, border radius, and background color.
+ */
 export default function Card(props: Props): Node {
   const {
     children,

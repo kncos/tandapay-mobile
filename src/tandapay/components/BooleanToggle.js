@@ -51,6 +51,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A toggle switch component with label and optional description.
+ * Provides a user-friendly way to toggle boolean values with consistent styling.
+ */
 export default function BooleanToggle(props: Props): Node {
   const {
     value,

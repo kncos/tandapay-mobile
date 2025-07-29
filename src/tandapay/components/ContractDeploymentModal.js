@@ -101,6 +101,10 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * A modal component for deploying TandaPay smart contracts to blockchain networks.
+ * Provides UI for contract deployment with parameter configuration and deployment tracking.
+ */
 export default function ContractDeploymentModal(props: Props): Node {
   const { visible, onClose, onDeploymentComplete } = props;
 

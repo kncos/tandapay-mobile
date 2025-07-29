@@ -60,6 +60,10 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * A modal component for introducing and managing macro transaction chains.
+ * Displays macro information and provides controls for executing multi-transaction workflows.
+ */
 export default function MacroIntroModal(props: Props): Node {
   const { visible, macroChainConfig, onClose, onMacroChainAdvance, onStartTransactionChain } = props;
   const themeData = useContext(ThemeContext);

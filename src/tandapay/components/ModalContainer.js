@@ -39,6 +39,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A modal container component providing consistent layout and styling for modals.
+ * Includes header with title and close button, plus content area with configurable padding.
+ */
 export default function ModalContainer(props: Props): Node {
   const { children, onClose, title, contentPadding = 16 } = props;
   const themeData = useContext(ThemeContext);

@@ -79,6 +79,10 @@ const validateDecimals = (decimals: string): boolean => {
   return !Number.isNaN(parsed) && parsed > 0 && parsed <= 77 && Number.isInteger(parsed);
 };
 
+/**
+ * A form component for configuring custom RPC network settings.
+ * Allows users to input and validate custom network parameters including RPC URL, chain ID, and currency details.
+ */
 export default function CustomRpcForm(props: Props): Node {
   const { initialConfig, onSave, onClear, loading, disabled } = props;
 

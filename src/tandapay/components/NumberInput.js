@@ -26,6 +26,10 @@ const customStyles = StyleSheet.create({
   container: FormStyles.container,
 });
 
+/**
+ * A numeric input component with validation and formatting options.
+ * Supports integer and decimal number input with customizable constraints.
+ */
 export default function NumberInput(props: Props): Node {
   const {
     value,

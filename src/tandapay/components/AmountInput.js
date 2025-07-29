@@ -44,6 +44,10 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * A component for inputting cryptocurrency amounts with validation and formatting.
+ * Supports token decimals, MAX button functionality, and balance display.
+ */
 export default function AmountInput(props: Props): Node {
   const {
     value,

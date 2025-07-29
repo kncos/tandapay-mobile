@@ -30,6 +30,10 @@ const customStyles = StyleSheet.create({
   },
 });
 
+/**
+ * A compact component for displaying wallet network information.
+ * Shows the current network name and key details in a condensed format.
+ */
 export default function WalletNetworkInfo(props: Props): Node {
   const { selectedNetwork, customRpcConfig } = props;
   const themeData = useContext(ThemeContext);
