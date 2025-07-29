@@ -14,6 +14,8 @@ import store from '../../boot/store';
 import { getTandaPaySelectedNetwork, getCurrentTandaPayContractAddress } from '../redux/selectors';
 import { tryGetActiveAccountState } from '../../account/accountsSelectors';
 
+const helperString = 'Either this transaction may revert for another reason, or you may be having network issues. Please try again later or bypass this by using manual ERC20 approval in network settings.';
+
 /**
  * Internal helper to get user wallet address
  */
@@ -379,7 +381,7 @@ async function simulateToExtractSpendingAmount(
       }
     },
     'CONTRACT_ERROR',
-    `Failed to determine ERC20 spending amount for ${methodName}.`,
+    `Failed to determine ERC20 spending amount for ${methodName}. ${helperString}`,
     'ERC20_SPENDING_ESTIMATION'
   );
 }
@@ -459,7 +461,7 @@ export const tryGetPayPremiumErc20Spend = async (): Promise<TandaPayResult<BigNu
     return ethers.BigNumber.from(amountResult.data);
   },
   'CONTRACT_ERROR',
-  'Failed to determine required token amount for premium payment.',
+  `Failed to determine required token amount for premium payment. ${helperString}`,
   'PAY_PREMIUM_SPENDING_QUERY'
 );
 
@@ -486,7 +488,7 @@ export const tryGetJoinCommunityErc20Spend = async (): Promise<TandaPayResult<Bi
     return ethers.BigNumber.from(amountResult.data);
   },
   'CONTRACT_ERROR',
-  'Failed to determine required token amount for joining community.',
+  `Failed to determine required token amount for joining community. ${helperString}`,
   'JOIN_COMMUNITY_SPENDING_QUERY'
 );
 
@@ -513,7 +515,7 @@ export const tryGetInjectFundsErc20Spend = async (): Promise<TandaPayResult<BigN
     return ethers.BigNumber.from(amountResult.data);
   },
   'CONTRACT_ERROR',
-  'Failed to determine required token amount for injecting funds.',
+  `Failed to determine required token amount for injecting funds. ${helperString}`,
   'INJECT_FUNDS_SPENDING_QUERY'
 );
 
@@ -540,7 +542,7 @@ export const tryGetDivideShortfallErc20Spend = async (): Promise<TandaPayResult<
     return ethers.BigNumber.from(amountResult.data);
   },
   'CONTRACT_ERROR',
-  'Failed to determine required token amount for dividing shortfall.',
+  `Failed to determine required token amount for dividing shortfall. ${helperString}`,
   'DIVIDE_SHORTFALL_SPENDING_QUERY'
 );
 
